@@ -1,0 +1,78 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:ViridiscaUi.ViewModels.Auth"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+             x:Class="ViridiscaUi.Views.Auth.RegisterView"
+             x:DataType="vm:RegisterViewModel">
+    
+    <Grid RowDefinitions="*,Auto,*" ColumnDefinitions="*,Auto,*">
+        <Border Grid.Row="1" Grid.Column="1"
+                Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+                CornerRadius="8"
+                MinWidth="400"
+                Padding="32">
+            <StackPanel Spacing="16">
+                <TextBlock Text="Регистрация"
+                           FontSize="24"
+                           FontWeight="SemiBold"
+                           HorizontalAlignment="Center"
+                           Margin="0,0,0,16" />
+                
+                <!-- Форма регистрации -->
+                <TextBox Watermark="Имя пользователя"
+                         Text="{Binding Username}"
+                         UseFloatingWatermark="True" />
+                
+                <TextBox Watermark="Электронная почта"
+                         Text="{Binding Email}"
+                         UseFloatingWatermark="True" />
+                
+                <TextBox Watermark="Имя"
+                         Text="{Binding FirstName}"
+                         UseFloatingWatermark="True" />
+                
+                <TextBox Watermark="Фамилия"
+                         Text="{Binding LastName}"
+                         UseFloatingWatermark="True" />
+                
+                <TextBox Watermark="Пароль"
+                         Text="{Binding Password}"
+                         PasswordChar="•"
+                         UseFloatingWatermark="True" />
+                
+                <TextBox Watermark="Подтвердите пароль"
+                         Text="{Binding ConfirmPassword}"
+                         PasswordChar="•"
+                         UseFloatingWatermark="True" />
+                
+                <!-- Сообщение об ошибке -->
+                <TextBlock Text="{Binding ErrorMessage}"
+                           Foreground="Red"
+                           IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                           TextWrapping="Wrap" />
+                
+                <!-- Кнопка регистрации -->
+                <Button Content="Зарегистрироваться"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Center"
+                        Command="{Binding RegisterCommand}"
+                        IsEnabled="{Binding !IsRegistering}"
+                        Classes="accent" />
+                
+                <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Center"
+                            Margin="0,8,0,0">
+                    <TextBlock Text="Уже есть аккаунт? " />
+                    <Button Content="Войти"
+                            Command="{Binding GoToLoginCommand}"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="2,0"
+                            Foreground="{DynamicResource SystemAccentColor}" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl> 

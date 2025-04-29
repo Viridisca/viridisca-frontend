@@ -1,9 +1,13 @@
 ﻿using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.ReactiveUI;
 using Microsoft.Extensions.DependencyInjection;
+using ReactiveUI;
+using Splat;
 using System;
 using ViridiscaUi.DI;
+using ViridiscaUi.Infrastructure;
 using ViridiscaUi.ViewModels;
 using ViridiscaUi.Views;
 
@@ -20,6 +24,13 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        // Регистрация ViewLocator для ReactiveUI
+        Locator.CurrentMutable.RegisterViewsForViewModels(typeof(App).Assembly);
+        Locator.CurrentMutable.Register<IViewLocator>(() => new AppViewLocator());
+        
+        // Настройка ReactiveUI планировщика для Avalonia
+        RxApp.MainThreadScheduler = AvaloniaScheduler.Instance;
+        
         // Create and build the service provider
         var services = new ServiceCollection();
         services.AddViridiscaServices();

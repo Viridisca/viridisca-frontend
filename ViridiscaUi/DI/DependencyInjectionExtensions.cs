@@ -4,6 +4,8 @@ using ViridiscaUi.ViewModels;
 using ViridiscaUi.Infrastructure;
 using ViridiscaUi.Services.Implementations;
 using ViridiscaUi.Services.Interfaces;
+using ViridiscaUi.ViewModels.Auth;
+using ViridiscaUi.ViewModels.Pages;
 
 namespace ViridiscaUi.DI;
 
@@ -12,11 +14,8 @@ public static class DependencyInjectionExtensions
     public static IServiceCollection AddViridiscaServices(this IServiceCollection services)
     {
         // Register ReactiveUI ViewLocator
-        services.AddSingleton<IViewLocator, Infrastructure.ViewLocator>();
-        
-        // Register ViewModels
-        services.AddSingleton<MainViewModel>();
-        
+        services.AddSingleton<IViewLocator, Infrastructure.AppViewLocator>();
+         
         // Register data services
         services.AddSingleton<LocalDbContext>();
         
@@ -34,12 +33,23 @@ public static class DependencyInjectionExtensions
         services.AddSingleton<IRoleService, RoleService>();
         services.AddSingleton<IPermissionService, PermissionService>();
         services.AddSingleton<IRolePermissionService, RolePermissionService>();
-        
-        // Эти сервисы будут реализованы позже, не регистрируем их сейчас
-        // services.AddSingleton<IAuthService, AuthService>();
-        // services.AddSingleton<INavigationService, NavigationService>();
-        // services.AddSingleton<IDialogService, DialogService>();
-        
+         
+        // Сервисы
+        services.AddSingleton<IAuthService, AuthService>();
+        services.AddSingleton<INavigationService, NavigationService>();
+        services.AddSingleton<IRoleService, RoleService>();
+        services.AddSingleton<IUserService, UserService>();
+        services.AddSingleton<IPermissionService, PermissionService>();
+        services.AddSingleton<IRolePermissionService, RolePermissionService>();
+
+        // ViewModels
+        services.AddSingleton<MainViewModel>();
+        services.AddTransient<HomeViewModel>();
+        services.AddTransient<CoursesViewModel>();
+        services.AddTransient<UsersViewModel>();
+        services.AddTransient<LoginViewModel>();
+        services.AddTransient<RegisterViewModel>();
+
         return services;
     }
 } 

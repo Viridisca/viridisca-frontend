@@ -4,10 +4,20 @@ using System.Threading.Tasks;
 namespace ViridiscaUi.Services.Interfaces
 {
     /// <summary>
-    /// Сервис для навигации между представлениями
+    /// Интерфейс для сервиса навигации
     /// </summary>
     public interface INavigationService
     {
+        /// <summary>
+        /// Текущий путь навигации
+        /// </summary>
+        string CurrentRoute { get; }
+        
+        /// <summary>
+        /// Наблюдаемый объект для отслеживания изменений маршрута
+        /// </summary>
+        IObservable<string> RouteChanged { get; }
+        
         /// <summary>
         /// Навигация к представлению
         /// </summary>
@@ -22,10 +32,5 @@ namespace ViridiscaUi.Services.Interfaces
         /// Навигация назад
         /// </summary>
         Task NavigateBackAsync();
-        
-        /// <summary>
-        /// Текущий путь навигации
-        /// </summary>
-        string CurrentRoute { get; }
     }
 } 

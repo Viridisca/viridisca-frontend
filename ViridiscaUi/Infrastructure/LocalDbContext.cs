@@ -1,10 +1,13 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reactive.Linq;
+using System.Runtime.Serialization;
 using DynamicData;
 using ViridiscaUi.Domain.Models.Auth;
 using ViridiscaUi.Domain.Models.Education;
-using System.Linq;
-using System.Collections.Generic;
-using System;
 using ReactiveUI;
+using BCrypt.Net;
 
 namespace ViridiscaUi.Domain.Models.Education
 {
@@ -633,103 +636,6 @@ namespace ViridiscaUi.Domain.Models.Education
     }
 }
 
-namespace ViridiscaUi.Domain.Models.Auth
-{
-    /// <summary>
-    /// Разрешение в системе
-    /// </summary>
-    public class Permission : Base.ViewModelBase
-    {
-        private Guid _uid;
-        private string _name = string.Empty;
-        private string _description = string.Empty;
-
-        /// <summary>
-        /// Уникальный идентификатор разрешения
-        /// </summary>
-        public new Guid Uid
-        {
-            get => _uid;
-            set => this.RaiseAndSetIfChanged(ref _uid, value);
-        }
-
-        /// <summary>
-        /// Название разрешения
-        /// </summary>
-        public string Name
-        {
-            get => _name;
-            set => this.RaiseAndSetIfChanged(ref _name, value);
-        }
-
-        /// <summary>
-        /// Описание разрешения
-        /// </summary>
-        public string Description
-        {
-            get => _description;
-            set => this.RaiseAndSetIfChanged(ref _description, value);
-        }
-    }
-
-    /// <summary>
-    /// Связь роли с разрешением
-    /// </summary>
-    public class RolePermission : Base.ViewModelBase
-    {
-        private Guid _uid;
-        private Guid _roleUid;
-        private Role? _role;
-        private Guid _permissionUid;
-        private Permission? _permission;
-
-        /// <summary>
-        /// Уникальный идентификатор связи
-        /// </summary>
-        public new Guid Uid
-        {
-            get => _uid;
-            set => this.RaiseAndSetIfChanged(ref _uid, value);
-        }
-
-        /// <summary>
-        /// Идентификатор роли
-        /// </summary>
-        public Guid RoleUid
-        {
-            get => _roleUid;
-            set => this.RaiseAndSetIfChanged(ref _roleUid, value);
-        }
-
-        /// <summary>
-        /// Роль
-        /// </summary>
-        public Role? Role
-        {
-            get => _role;
-            set => this.RaiseAndSetIfChanged(ref _role, value);
-        }
-
-        /// <summary>
-        /// Идентификатор разрешения
-        /// </summary>
-        public Guid PermissionUid
-        {
-            get => _permissionUid;
-            set => this.RaiseAndSetIfChanged(ref _permissionUid, value);
-        }
-
-        /// <summary>
-        /// Разрешение
-        /// </summary>
-        public Permission? Permission
-        {
-            get => _permission;
-            set => this.RaiseAndSetIfChanged(ref _permission, value);
-        }
-    }
-}
-
 namespace ViridiscaUi.Infrastructure
 {
     /// <summary>
@@ -810,6 +716,7 @@ namespace ViridiscaUi.Infrastructure
                 FirstName = "Admin",
                 LastName = "Viridisca",
                 IsActive = true,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin123"),
                 CreatedAt = DateTime.UtcNow,
                 LastModifiedAt = DateTime.UtcNow
             };
@@ -841,6 +748,7 @@ namespace ViridiscaUi.Infrastructure
                 LastName = "Преподавателев",
                 MiddleName = "Иванович",
                 IsActive = true,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("teacher123"),
                 CreatedAt = DateTime.UtcNow,
                 LastModifiedAt = DateTime.UtcNow
             };
@@ -892,6 +800,7 @@ namespace ViridiscaUi.Infrastructure
                 LastName = "Студентов",
                 MiddleName = "Петрович",
                 IsActive = true,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("student123"),
                 CreatedAt = DateTime.UtcNow,
                 LastModifiedAt = DateTime.UtcNow
             };
@@ -1387,6 +1296,71 @@ namespace ViridiscaUi.Infrastructure
             if (enrollment != null)
             {
                 Enrollments.Remove(enrollment);
+            }
+        }
+        #endregion
+
+        #region UserRole CRUD Operations
+        /// <summary>
+        /// Возвращает текущий список связей пользователей с ролями
+        /// </summary>
+        public IObservable<IChangeSet<UserRole>> ConnectUserRoles() => UserRoles.Connect().RefCount();
+        
+        /// <summary>
+        /// Возвращает все связи пользователей с ролями
+        /// </summary>
+        public IEnumerable<UserRole> GetAllUserRoles() => UserRoles.Items;
+        
+        /// <summary>
+        /// Возвращает связь пользователя с ролью по идентификатору
+        /// </summary>
+        public UserRole? GetUserRoleByUid(Guid uid) => UserRoles.Items.FirstOrDefault(ur => ur.Uid == uid);
+        
+        /// <summary>
+        /// Возвращает связи для указанного пользователя
+        /// </summary>
+        public IEnumerable<UserRole> GetUserRolesByUserUid(Guid userUid) => 
+            UserRoles.Items.Where(ur => ur.UserUid == userUid);
+        
+        /// <summary>
+        /// Возвращает связи для указанной роли
+        /// </summary>
+        public IEnumerable<UserRole> GetUserRolesByRoleUid(Guid roleUid) => 
+            UserRoles.Items.Where(ur => ur.RoleUid == roleUid);
+        
+        /// <summary>
+        /// Добавляет новую связь пользователя с ролью
+        /// </summary>
+        public void AddUserRole(UserRole userRole)
+        {
+            userRole.CreatedAt = DateTime.UtcNow;
+            userRole.LastModifiedAt = DateTime.UtcNow;
+            UserRoles.Add(userRole);
+        }
+        
+        /// <summary>
+        /// Обновляет существующую связь пользователя с ролью
+        /// </summary>
+        public void UpdateUserRole(UserRole userRole)
+        {
+            var existing = GetUserRoleByUid(userRole.Uid);
+            if (existing != null)
+            {
+                UserRoles.Remove(existing);
+                userRole.LastModifiedAt = DateTime.UtcNow;
+                UserRoles.Add(userRole);
+            }
+        }
+        
+        /// <summary>
+        /// Удаляет связь пользователя с ролью
+        /// </summary>
+        public void DeleteUserRole(Guid uid)
+        {
+            var userRole = GetUserRoleByUid(uid);
+            if (userRole != null)
+            {
+                UserRoles.Remove(userRole);
             }
         }
         #endregion

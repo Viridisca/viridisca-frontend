@@ -2,102 +2,121 @@ using System;
 using System.Reactive;
 using System.Threading.Tasks;
 using ReactiveUI;
-using ViridiscaUi.Domain.Models.Auth;
+using ReactiveUI.Fody.Helpers;
+using ViridiscaUi.Services.Interfaces;
+using ViridiscaUi.ViewModels;
 
 namespace ViridiscaUi.ViewModels.Auth;
 
-public class LoginViewModel : ViewModelBase
+/// <summary>
+/// ViewModel для страницы входа в систему
+/// </summary>
+public class LoginViewModel : RoutableViewModelBase
 {
-    private LoginRequest _loginRequest;
-    private bool _isLoading;
-    private string _errorMessage = string.Empty;
-    private bool _rememberMe;
+    private readonly IAuthService _authService;
+    private readonly INavigationService _navigationService;
 
-    public LoginRequest LoginRequest 
-    { 
-        get => _loginRequest;
-        set => this.RaiseAndSetIfChanged(ref _loginRequest, value);
-    }
+    /// <summary>
+    /// URL-сегмент для навигации
+    /// </summary>
+    public override string UrlPathSegment => "login";
 
-    public bool IsLoading
-    {
-        get => _isLoading;
-        set => this.RaiseAndSetIfChanged(ref _isLoading, value);
-    }
+    /// <summary>
+    /// Имя пользователя (логин)
+    /// </summary>
+    [Reactive]
+    public string Username { get; set; } = string.Empty;
 
-    public string ErrorMessage
-    {
-        get => _errorMessage;
-        set => this.RaiseAndSetIfChanged(ref _errorMessage, value);
-    }
+    /// <summary>
+    /// Пароль пользователя
+    /// </summary>
+    [Reactive]
+    public string Password { get; set; } = string.Empty;
 
-    public bool RememberMe
-    {
-        get => _rememberMe;
-        set => this.RaiseAndSetIfChanged(ref _rememberMe, value);
-    }
+    /// <summary>
+    /// Сообщение об ошибке
+    /// </summary>
+    [Reactive]
+    public string ErrorMessage { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Флаг, указывающий на процесс входа
+    /// </summary>
+    [Reactive]
+    public bool IsLoggingIn { get; set; } = false;
+
+    /// <summary>
+    /// Команда для входа в систему
+    /// </summary>
     public ReactiveCommand<Unit, Unit> LoginCommand { get; }
-    public ReactiveCommand<Unit, Unit> NavigateToRegisterCommand { get; }
-    public ReactiveCommand<Unit, Unit> NavigateToForgotPasswordCommand { get; }
+    
+    /// <summary>
+    /// Команда для перехода на страницу регистрации
+    /// </summary>
+    public ReactiveCommand<Unit, Unit> GoToRegisterCommand { get; }
 
-    public LoginViewModel()
+    /// <summary>
+    /// Создает новый экземпляр ViewModel для входа в систему
+    /// </summary>
+    /// <param name="authService">Сервис аутентификации</param>
+    /// <param name="navigationService">Сервис навигации</param>
+    /// <param name="hostScreen">Родительский экран</param>
+    public LoginViewModel(IAuthService authService, INavigationService navigationService, IScreen hostScreen) 
+        : base(hostScreen)
     {
-        _loginRequest = new LoginRequest();
+        _authService = authService ?? throw new ArgumentNullException(nameof(authService));
+        _navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
 
+        // Проверка возможности выполнения команды входа
         var canLogin = this.WhenAnyValue(
-            x => x.LoginRequest.Username,
-            x => x.LoginRequest.Password,
-            x => x.IsLoading,
-            (username, password, isLoading) => 
-                !string.IsNullOrWhiteSpace(username) && 
-                !string.IsNullOrWhiteSpace(password) && 
-                !isLoading
+            x => x.Username,
+            x => x.Password,
+            x => x.IsLoggingIn,
+            (username, password, isLoggingIn) =>
+                !string.IsNullOrWhiteSpace(username) &&
+                !string.IsNullOrWhiteSpace(password) &&
+                !isLoggingIn
         );
 
+        // Создание команды входа
         LoginCommand = ReactiveCommand.CreateFromTask(LoginAsync, canLogin);
-        NavigateToRegisterCommand = ReactiveCommand.Create(NavigateToRegister);
-        NavigateToForgotPasswordCommand = ReactiveCommand.Create(NavigateToForgotPassword);
+        
+        // Команда для перехода на страницу регистрации
+        GoToRegisterCommand = ReactiveCommand.CreateFromTask(async () =>
+        {
+            await _navigationService.NavigateToAsync("register");
+        });
     }
 
+    /// <summary>
+    /// Асинхронный метод для выполнения входа в систему
+    /// </summary>
     private async Task LoginAsync()
     {
         try
         {
-            IsLoading = true;
+            IsLoggingIn = true;
             ErrorMessage = string.Empty;
 
-            // Здесь будет реализация запроса к API для авторизации
-            await Task.Delay(1000); // Имитация запроса
+            var result = await _authService.AuthenticateAsync(Username, Password);
 
-            // Временная заглушка для демонстрации
-            if (LoginRequest.Username == "admin" && LoginRequest.Password == "password")
+            if (result.Success)
             {
-                // Успешная авторизация
-                // Здесь будет навигация на главную страницу
+                // Если вход успешный, перейти на домашнюю страницу или по умолчанию
+                await _navigationService.NavigateToAsync("home");
             }
             else
             {
-                ErrorMessage = "Неверное имя пользователя или пароль";
+                ErrorMessage = result.ErrorMessage;
             }
         }
         catch (Exception ex)
         {
-            ErrorMessage = $"Ошибка при авторизации: {ex.Message}";
+            ErrorMessage = $"Ошибка входа: {ex.Message}";
         }
         finally
         {
-            IsLoading = false;
+            IsLoggingIn = false;
         }
     }
-
-    private void NavigateToRegister()
-    {
-        // Навигация на страницу регистрации
-    }
-
-    private void NavigateToForgotPassword()
-    {
-        // Навигация на страницу восстановления пароля
-    }
-} 
+}

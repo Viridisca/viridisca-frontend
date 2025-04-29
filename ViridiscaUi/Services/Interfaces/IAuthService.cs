@@ -30,6 +30,11 @@ namespace ViridiscaUi.Services.Interfaces
         Task<User?> GetCurrentUserAsync();
         
         /// <summary>
+        /// Наблюдаемый объект, отражающий текущего пользователя
+        /// </summary>
+        IObservable<User?> CurrentUserObservable { get; }
+        
+        /// <summary>
         /// Проверяет доступ пользователя к определенному разрешению
         /// </summary>
         Task<bool> HasPermissionAsync(Guid userUid, string permissionName);

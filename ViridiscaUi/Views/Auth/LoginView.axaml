@@ -1,0 +1,102 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:ViridiscaUi.ViewModels.Auth;assembly=ViridiscaUi"
+             mc:Ignorable="d" d:DesignWidth="450" d:DesignHeight="500"
+             x:Class="ViridiscaUi.Views.Auth.LoginView">
+    
+    <Design.DataContext>
+        <vm:LoginViewModel />
+    </Design.DataContext>
+
+    <Grid RowDefinitions="Auto,*,Auto" 
+          Margin="20">
+        
+        <!-- Заголовок -->
+        <StackPanel Grid.Row="0" 
+                    HorizontalAlignment="Center" 
+                    VerticalAlignment="Center" 
+                    Margin="0,30,0,20">
+            <TextBlock Text="Viridisca LMS" 
+                       HorizontalAlignment="Center" 
+                       FontSize="28" 
+                       FontWeight="Bold" 
+                       Margin="0,0,0,5"/>
+            <TextBlock Text="Система управления обучением" 
+                       HorizontalAlignment="Center" 
+                       FontSize="16" 
+                       Opacity="0.7"/>
+        </StackPanel>
+        
+        <!-- Форма входа -->
+        <Border Grid.Row="1" 
+                Background="{DynamicResource SystemControlBackgroundAltHighBrush}" 
+                CornerRadius="8" 
+                BoxShadow="0 4 8 0 #15000000" 
+                Padding="20">
+            <StackPanel VerticalAlignment="Center" 
+                        Spacing="15">
+                <TextBlock Text="Вход в систему" 
+                           FontSize="20" 
+                           FontWeight="SemiBold" 
+                           HorizontalAlignment="Center" 
+                           Margin="0,0,0,15"/>
+                
+                <!-- Сообщение об ошибке -->
+                <TextBlock Text="{Binding ErrorMessage}" 
+                           Foreground="Red"
+                           TextWrapping="Wrap" 
+                           IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" 
+                           Margin="0,0,0,10"/>
+                
+                <!-- Поле имени пользователя -->
+                <TextBox Watermark="Имя пользователя" 
+                         Text="{Binding Username}" 
+                         Padding="10,8"/>
+                
+                <!-- Поле пароля -->
+                <TextBox Watermark="Пароль" 
+                         Text="{Binding Password}" 
+                         PasswordChar="•" 
+                         Padding="10,8"/>
+                
+                <!-- Кнопка входа -->
+                <Button Content="Войти"
+                        Command="{Binding LoginCommand}" 
+                        HorizontalAlignment="Stretch" 
+                        HorizontalContentAlignment="Center" 
+                        Padding="0,8" 
+                        Margin="0,10,0,0"
+                        Classes="accent"/>
+                
+                <!-- Индикатор загрузки -->
+                <ProgressBar IsIndeterminate="True" 
+                             IsVisible="{Binding IsLoggingIn}"/>
+                
+                <!-- Ссылки -->
+                <StackPanel Orientation="Horizontal" 
+                            HorizontalAlignment="Center" 
+                            Spacing="20" 
+                            Margin="0,10,0,0">
+                    <TextBlock Text="Забыли пароль?" 
+                               Foreground="{DynamicResource SystemAccentColor}" 
+                               Cursor="Hand"/>
+                    <Button Content="Регистрация"
+                            Command="{Binding GoToRegisterCommand}"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="0"
+                            Foreground="{DynamicResource SystemAccentColor}"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+        
+        <!-- Нижний текст -->
+        <TextBlock Grid.Row="2" 
+                   Text="© 2024 Viridisca LMS. Все права защищены." 
+                   HorizontalAlignment="Center" 
+                   Opacity="0.6" 
+                   Margin="0,20,0,0"/>
+    </Grid>
+</UserControl> 

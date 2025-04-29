@@ -54,7 +54,7 @@
       </rxui:RoutedViewHost.DefaultContent>
             
       <rxui:RoutedViewHost.ViewLocator>
-        <infrastructure:ViewLocator />
+		  <infrastructure:AppViewLocator />
       </rxui:RoutedViewHost.ViewLocator>
     </rxui:RoutedViewHost>
   </Grid>
