@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using ReactiveUI;
 using ViridiscaUi.ViewModels;
 using ViridiscaUi.Infrastructure;
 using ViridiscaUi.Services.Implementations;
@@ -10,6 +11,9 @@ public static class DependencyInjectionExtensions
 {
     public static IServiceCollection AddViridiscaServices(this IServiceCollection services)
     {
+        // Register ReactiveUI ViewLocator
+        services.AddSingleton<IViewLocator, Infrastructure.ViewLocator>();
+        
         // Register ViewModels
         services.AddSingleton<MainViewModel>();
         

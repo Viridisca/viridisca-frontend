@@ -1,0 +1,26 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:ViridiscaUi.ViewModels.Pages"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="ViridiscaUi.Views.Pages.HomeView"
+             x:DataType="vm:HomeViewModel">
+    <StackPanel HorizontalAlignment="Center" 
+                VerticalAlignment="Center" 
+                Spacing="20">
+        <TextBlock Text="{Binding Title}" 
+                   FontSize="24" 
+                   FontWeight="Bold" 
+                   HorizontalAlignment="Center"/>
+                   
+        <TextBlock Text="{Binding Description}" 
+                   FontSize="16" 
+                   HorizontalAlignment="Center"/>
+                   
+        <Button Content="Перейти к курсам" 
+                Command="{Binding NavigateToCoursesCommand}" 
+                HorizontalAlignment="Center" 
+                Padding="15,10"/>
+    </StackPanel>
+</UserControl> 
