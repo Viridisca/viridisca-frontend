@@ -14,7 +14,7 @@
 2.  **Доступ к документации:** Если запрос касается тем, описанных в документации, используй инструмент `read_file` для чтения соответствующих файлов из директории `.cursor/docs`.
 3.  **Ключевые Документы:** Обращай особое внимание на следующие файлы в `.cursor/docs` (если существуют):
     *   `viridisca-project-structure.md`: Структура папок, правила именования.
-    *   `avalonia-coding-standards.md`: Стандарты кода для Avalonia/ReactiveUI.
+    *   `avalonia-coding-standards.md`: Базовые стандарты кода для Avalonia/ReactiveUI.
     *   `lms-components.md`: Описание компонентов и моделей данных LMS.
     *   `avalonia-funcui.md`: Правила использования Avalonia.FuncUI.
     *   Другие `.md` файлы в `.cursor/docs`.
@@ -35,9 +35,10 @@
 ## Содержимое
 
 1. [Структура проекта](./viridisca-project-structure.md) - организация файлов и папок в проекте
-2. [Стандарты кодирования Avalonia C#, Документация Avalonia UI (ReactiveUI)](./avalonia-coding-standards.md) - стандарты и лучшие практики написания кода
-3. [Компоненты LMS системы](./lms-components.md) - модели, представления и функциональные компоненты LMS
-4. [Avalonia.FuncUI](./avalonia-funcui.md) - правила использования Avalonia.FuncUI для создания UI
+2. [Стандарты кодирования Avalonia](./avalonia-coding-standards.md) - базовые стандарты и правила написания кода
+3. [Лучшие практики Avalonia UI](./avalonia-ui-best-practices.md) - продвинутые практики и паттерны UI
+4. [Компоненты LMS системы](./lms-components.md) - модели, представления и функциональные компоненты LMS
+5. [Avalonia.FuncUI](./avalonia-funcui.md) - правила использования Avalonia.FuncUI для создания UI
 
 ## Краткое руководство
 
@@ -59,6 +60,7 @@
 2. **Организация кода**:
    - Группируйте код по функциональным модулям
    - Используйте стандартную структуру папок согласно [структуре проекта](./viridisca-project-structure.md)
+   - Используйте файловые namespace (C# 10+)
 
 3. **Именование**:
    - Используйте суффиксы для типов: `ViewModel`, `View`, `Service` и т.д.
@@ -70,6 +72,7 @@
    - Используйте стили для единообразия интерфейса
    - Следуйте рекомендациям по UI из [компонентов LMS](./lms-components.md)
    - Для сложных интерфейсов используйте подход из [руководства по Avalonia.FuncUI](./avalonia-funcui.md)
+   - Придерживайтесь [лучших практик Avalonia UI](./avalonia-ui-best-practices.md)
 
 ## Рекомендуемый процесс разработки
 

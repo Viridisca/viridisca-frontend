@@ -984,3 +984,182 @@ namespace ViridiscaUi.ViewModels.Auth
 ## 5. Заключение
 
 Этот документ представляет собой основу для разработки компонентов LMS ViridiscaUi. Он определяет структуру данных и базовые компоненты, которые могут быть расширены и доработаны в процессе разработки. Следование этим рекомендациям поможет создать согласованное, масштабируемое и поддерживаемое приложение. 
+
+## Общие принципы
+
+### Адаптивная верстка
+
+1. **Запрещенные практики**
+   - Не используйте фиксированные размеры (Width, Height)
+   - Не используйте проценты в Grid
+   - Не используйте абсолютные значения для размеров
+
+2. **Рекомендуемые подходы**
+   - Используйте Grid с `*` для адаптивного распределения пространства
+   - Используйте DockPanel для сложных layouts
+   - Используйте ScrollViewer для прокручиваемого контента
+   - Используйте WrapPanel для адаптивных списков
+
+### Обработка текста
+
+1. **Предотвращение обрезания**
+   - Всегда используйте `TextWrapping="Wrap"`
+   - Устанавливайте `TextTrimming="None"`
+   - Используйте `MaxWidth` с привязкой к родительскому контейнеру
+
+2. **Адаптивные контейнеры**
+   - Используйте ScrollViewer для длинного контента
+   - Настраивайте видимость скроллбаров
+   - Используйте DockPanel для сложных layouts
+
+## Компоненты
+
+### 1. Базовые компоненты
+
+#### 1.1 TextBlock
+```xml
+<!-- Правильный подход к тексту -->
+<TextBlock TextWrapping="Wrap" 
+           TextTrimming="None"
+           MaxWidth="{Binding RelativeSource={RelativeSource AncestorType=Control}, Path=ActualWidth}">
+    <TextBlock.Text>
+        <MultiBinding StringFormat="{}{0} - {1}">
+            <Binding Path="Title" />
+            <Binding Path="Description" />
+        </MultiBinding>
+    </TextBlock.Text>
+</TextBlock>
+```
+
+#### 1.2 Image
+```xml
+<!-- Правильный подход к изображениям -->
+<Image Stretch="Uniform" 
+       StretchDirection="DownOnly"
+       MaxWidth="{Binding RelativeSource={RelativeSource AncestorType=Control}, Path=ActualWidth}">
+    <Image.Source>
+        <Binding Path="ImageSource" />
+    </Image.Source>
+</Image>
+```
+
+### 2. Контейнеры
+
+#### 2.1 Grid
+```xml
+<!-- Правильное использование Grid -->
+<Grid RowDefinitions="Auto,*,Auto" ColumnDefinitions="*,Auto">
+    <TextBlock Grid.Row="0" Grid.Column="0" Text="Header" />
+    <ScrollViewer Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2">
+        <StackPanel>
+            <!-- Content -->
+        </StackPanel>
+    </ScrollViewer>
+    <Button Grid.Row="2" Grid.Column="1" Content="Action" />
+</Grid>
+```
+
+#### 2.2 DockPanel
+```xml
+<!-- Правильное использование DockPanel -->
+<DockPanel>
+    <Menu DockPanel.Dock="Top">
+        <!-- Menu items -->
+    </Menu>
+    <ToolBar DockPanel.Dock="Top">
+        <!-- Toolbar items -->
+    </ToolBar>
+    <StatusBar DockPanel.Dock="Bottom">
+        <!-- Status items -->
+    </StatusBar>
+    <Grid>
+        <!-- Main content -->
+    </Grid>
+</DockPanel>
+```
+
+### 3. Списки и таблицы
+
+#### 3.1 ItemsControl
+```xml
+<!-- Правильный подход к спискам -->
+<ItemsControl Items="{Binding Items}">
+    <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+            <UniformGrid Columns="3" />
+        </ItemsPanelTemplate>
+    </ItemsControl.ItemsPanel>
+    <ItemsControl.ItemTemplate>
+        <DataTemplate>
+            <Border Margin="4" Padding="8">
+                <StackPanel>
+                    <TextBlock Text="{Binding Title}" 
+                             TextWrapping="Wrap" 
+                             TextTrimming="None" />
+                    <TextBlock Text="{Binding Description}" 
+                             TextWrapping="Wrap" 
+                             TextTrimming="None" />
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+    </ItemsControl.ItemTemplate>
+</ItemsControl>
+```
+
+#### 3.2 DataGrid
+```xml
+<!-- Правильный подход к таблицам -->
+<DataGrid AutoGenerateColumns="False"
+          CanUserResizeColumns="True"
+          CanUserReorderColumns="True"
+          HorizontalScrollBarVisibility="Auto"
+          VerticalScrollBarVisibility="Auto">
+    <DataGrid.Columns>
+        <DataGridTextColumn Header="Name" 
+                           Binding="{Binding Name}"
+                           Width="*" />
+        <DataGridTextColumn Header="Description" 
+                           Binding="{Binding Description}"
+                           Width="2*" />
+    </DataGrid.Columns>
+</DataGrid>
+```
+
+### 4. Пользовательские компоненты
+
+#### 4.1 Композиция
+```xml
+<!-- Правильный подход к композиции -->
+<StackPanel>
+    <local:HeaderView />
+    <local:ContentArea>
+        <local:DataGrid />
+    </local:ContentArea>
+    <local:StatusBar />
+</StackPanel>
+```
+
+#### 4.2 Стили
+```xml
+<!-- Правильный подход к стилям -->
+<Styles>
+    <Style Selector="TextBlock.header">
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Margin" Value="0,0,0,8" />
+    </Style>
+</Styles>
+```
+
+## Рекомендации по производительности
+
+1. Используйте виртуализацию для больших списков
+2. Применяйте ленивую загрузку для тяжелых компонентов
+3. Используйте кэширование для часто используемых данных
+4. Оптимизируйте привязки данных, избегая сложных преобразований
+
+## Отладка UI
+
+1. Используйте `Debug.WriteLine` для отслеживания изменений в привязках
+2. Применяйте временные границы для визуализации layout
+3. Используйте инструменты разработчика Avalonia для инспекции UI

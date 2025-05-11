@@ -72,6 +72,31 @@ ViridiscaUi.Desktop/
 3. Префикс `I` для интерфейсов (например, `IStudentRepository`)
 4. Префикс `_` для приватных полей (например, `private readonly IStudentService _studentService;`)
 
+### Namespace
+
+1. Используйте точку с запятой после namespace
+2. Группируйте связанные типы в соответствующих namespace
+3. Следуйте структуре проекта в namespace
+
+```csharp
+// Правильно
+namespace ViridiscaUi.Domain.Models;
+
+public class Student
+{
+    // Implementation
+}
+
+// Неправильно
+namespace ViridiscaUi.Domain.Models
+{
+    public class Student
+    {
+        // Implementation
+    }
+}
+```
+
 ### Идентификаторы и ключи
 
 1. Используйте `Guid` вместо `int` для идентификаторов
