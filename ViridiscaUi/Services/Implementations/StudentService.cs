@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using ViridiscaUi.Domain.Models.Education;
 using ViridiscaUi.Infrastructure;
 using ViridiscaUi.Services.Interfaces;
@@ -13,41 +14,56 @@ namespace ViridiscaUi.Services.Implementations
     /// </summary>
     public class StudentService : IStudentService
     {
-        private readonly LocalDbContext _dbContext;
+        private readonly ApplicationDbContext _dbContext;
 
-        public StudentService(LocalDbContext dbContext)
+        public StudentService(ApplicationDbContext dbContext)
         {
             _dbContext = dbContext;
         }
 
-        public Task<Student?> GetStudentAsync(Guid uid)
+        public async Task<Student?> GetStudentAsync(Guid uid)
         {
-            throw new NotImplementedException();
+            return await _dbContext.Students.FindAsync(uid);
         }
 
-        public Task<IEnumerable<Student>> GetAllStudentsAsync()
+        public async Task<IEnumerable<Student>> GetAllStudentsAsync()
         {
-            throw new NotImplementedException();
+            return await _dbContext.Students.ToListAsync();
         }
 
-        public Task<IEnumerable<Student>> GetStudentsByGroupAsync(Guid groupUid)
+        public async Task<IEnumerable<Student>> GetStudentsByGroupAsync(Guid groupUid)
         {
-            throw new NotImplementedException();
+            return await _dbContext.Students
+                .Where(s => s.GroupUid == groupUid)
+                .ToListAsync();
         }
 
-        public Task AddStudentAsync(Student student)
+        public async Task AddStudentAsync(Student student)
         {
-            throw new NotImplementedException();
+            await _dbContext.Students.AddAsync(student);
+            await _dbContext.SaveChangesAsync();
         }
 
-        public Task<bool> UpdateStudentAsync(Student student)
+        public async Task<bool> UpdateStudentAsync(Student student)
         {
-            throw new NotImplementedException();
+            var existingStudent = await _dbContext.Students.FindAsync(student.Uid);
+            if (existingStudent == null)
+                return false;
+
+            _dbContext.Entry(existingStudent).CurrentValues.SetValues(student);
+            await _dbContext.SaveChangesAsync();
+            return true;
         }
 
-        public Task<bool> DeleteStudentAsync(Guid uid)
+        public async Task<bool> DeleteStudentAsync(Guid uid)
         {
-            throw new NotImplementedException();
+            var student = await _dbContext.Students.FindAsync(uid);
+            if (student == null)
+                return false;
+
+            _dbContext.Students.Remove(student);
+            await _dbContext.SaveChangesAsync();
+            return true;
         }
     }
 } 

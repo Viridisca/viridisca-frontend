@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using ViridiscaUi.ViewModels;
 using ViridiscaUi.Infrastructure;
@@ -6,41 +7,57 @@ using ViridiscaUi.Services.Implementations;
 using ViridiscaUi.Services.Interfaces;
 using ViridiscaUi.ViewModels.Auth;
 using ViridiscaUi.ViewModels.Pages;
+using ViridiscaUi.ViewModels.Students;
+using ViridiscaUi.ViewModels.Profile;
+using ViridiscaUi.Windows;
+using ViridiscaUi.Services;
+using Microsoft.Extensions.Configuration;
+using ViridiscaUi.Configuration;
 
 namespace ViridiscaUi.DI;
 
 public static class DependencyInjectionExtensions
 {
-    public static IServiceCollection AddViridiscaServices(this IServiceCollection services)
+    public static IServiceCollection AddViridiscaServices(this IServiceCollection services, IConfiguration configuration)
     {
+        // Register logging
+        services.AddLogging(builder =>
+        {
+            builder.AddConsole();
+            builder.AddDebug();
+            builder.SetMinimumLevel(LogLevel.Information);
+        });
+
         // Register ReactiveUI ViewLocator
-        services.AddSingleton<IViewLocator, Infrastructure.AppViewLocator>();
+        services.AddSingleton<IViewLocator, AppViewLocator>();
          
-        // Register data services
-        services.AddSingleton<LocalDbContext>();
+        // Register PostgreSQL database context
+        services.AddPostgreSqlDatabase(configuration);
         
-        // Register education services
-        services.AddSingleton<IStudentService, StudentService>();
-        services.AddSingleton<IGroupService, GroupService>();
-        services.AddSingleton<ITeacherService, TeacherService>();
-        services.AddSingleton<ICourseService, CourseService>();
-        services.AddSingleton<IEnrollmentService, EnrollmentService>();
-        services.AddSingleton<IAssignmentService, AssignmentService>();
-        services.AddSingleton<ISubmissionService, SubmissionService>();
+        // Register education services (Scoped для работы с EF Core)
+        services.AddScoped<IStudentService, StudentService>();
+        services.AddScoped<IGroupService, GroupService>();
+        services.AddScoped<ITeacherService, TeacherService>();
+        services.AddScoped<ICourseService, CourseService>();
+        services.AddScoped<IEnrollmentService, EnrollmentService>();
+        services.AddScoped<IAssignmentService, AssignmentService>();
+        services.AddScoped<ISubmissionService, SubmissionService>();
         
-        // Register auth services
-        services.AddSingleton<IUserService, UserService>();
-        services.AddSingleton<IRoleService, RoleService>();
-        services.AddSingleton<IPermissionService, PermissionService>();
-        services.AddSingleton<IRolePermissionService, RolePermissionService>();
-         
-        // Сервисы
-        services.AddSingleton<IAuthService, AuthService>();
+        // Register auth services (Scoped для работы с EF Core)
+        services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IRoleService, RoleService>();
+        services.AddScoped<IPermissionService, PermissionService>();
+        services.AddScoped<IRolePermissionService, RolePermissionService>();
+        services.AddScoped<IAuthService, AuthService>();
+        
+        // Register user session service (Singleton для сохранения состояния)
+        services.AddSingleton<IUserSessionService, UserSessionService>();
         services.AddSingleton<INavigationService, NavigationService>();
-        services.AddSingleton<IRoleService, RoleService>();
-        services.AddSingleton<IUserService, UserService>();
-        services.AddSingleton<IPermissionService, PermissionService>();
-        services.AddSingleton<IRolePermissionService, RolePermissionService>();
+        services.AddSingleton<IDialogService>(sp =>
+        {
+            var mainWindow = sp.GetRequiredService<MainWindow>();
+            return new DialogService(mainWindow, sp);
+        });
 
         // ViewModels
         services.AddSingleton<MainViewModel>();
@@ -49,7 +66,9 @@ public static class DependencyInjectionExtensions
         services.AddTransient<UsersViewModel>();
         services.AddTransient<LoginViewModel>();
         services.AddTransient<RegisterViewModel>();
-
+        services.AddTransient<StudentsViewModel>();
+        services.AddTransient<ProfileViewModel>();
+ 
         return services;
     }
 } 

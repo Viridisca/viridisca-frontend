@@ -13,9 +13,7 @@ namespace ViridiscaUi.Services.Implementations
     /// </summary>
     public class EnrollmentService : IEnrollmentService
     {
-        private readonly LocalDbContext _dbContext;
-
-        public EnrollmentService(LocalDbContext dbContext)
+                private readonly ApplicationDbContext _dbContext;        public EnrollmentService(ApplicationDbContext dbContext)
         {
             _dbContext = dbContext;
         }

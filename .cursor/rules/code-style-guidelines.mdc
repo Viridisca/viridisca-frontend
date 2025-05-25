@@ -1,0 +1,248 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Правила стиля кода ViridiscaUi
+
+## C# Правила
+
+### 1. Namespace и организация файлов
+
+```csharp
+// Правильно
+namespace ViridiscaUi.Domain.Models;
+
+public class Student
+{
+    // Implementation
+}
+
+// Неправильно
+namespace ViridiscaUi.Domain.Models
+{
+    public class Student
+    {
+        // Implementation
+    }
+}
+```
+
+### 2. Структура файлов
+- Один публичный тип на файл
+- Имя файла должно точно соответствовать имени типа
+- Используйте PascalCase для имен файлов
+- Группируйте связанные типы в соответствующих namespace
+
+### 3. Именование
+- Используйте PascalCase для публичных членов
+- Используйте camelCase для приватных членов
+- Используйте префикс `_` для приватных полей
+- Используйте суффиксы для типов: `ViewModel`, `View`, `Service`, `Repository`
+
+## Avalonia UI Правила
+
+### 1. Адаптивная верстка
+
+#### 1.1 Запрещенные практики
+```xml
+<!-- НЕПРАВИЛЬНО - Фиксированные размеры -->
+<StackPanel Width="200" Height="100">
+    <TextBlock Text="Content" />
+</StackPanel>
+
+<!-- НЕПРАВИЛЬНО - Проценты -->
+<Grid ColumnDefinitions="50%, 50%">
+    <TextBlock Grid.Column="0" Text="Left" />
+    <TextBlock Grid.Column="1" Text="Right" />
+</Grid>
+```
+
+#### 1.2 Правильные подходы
+```xml
+<!-- ПРАВИЛЬНО - Использование Grid с * -->
+<Grid RowDefinitions="Auto,*,Auto" ColumnDefinitions="*,Auto">
+    <TextBlock Grid.Row="0" Grid.Column="0" Text="Header" />
+    <ScrollViewer Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2">
+        <StackPanel>
+            <!-- Content -->
+        </StackPanel>
+    </ScrollViewer>
+    <Button Grid.Row="2" Grid.Column="1" Content="Action" />
+</Grid>
+
+<!-- ПРАВИЛЬНО - Использование DockPanel -->
+<DockPanel>
+    <Menu DockPanel.Dock="Top">
+        <!-- Menu items -->
+    </Menu>
+    <ToolBar DockPanel.Dock="Top">
+        <!-- Toolbar items -->
+    </ToolBar>
+    <StatusBar DockPanel.Dock="Bottom">
+        <!-- Status items -->
+    </StatusBar>
+    <Grid>
+        <!-- Main content -->
+    </Grid>
+</DockPanel>
+```
+
+### 2. Обработка текста
+
+#### 2.1 Правильный подход к тексту
+```xml
+<!-- ПРАВИЛЬНО - Адаптивный текст с переносом -->
+<TextBlock TextWrapping="Wrap" 
+           TextTrimming="None"
+           MaxWidth="{Binding RelativeSource={RelativeSource AncestorType=Control}, Path=ActualWidth}">
+    <TextBlock.Text>
+        <MultiBinding StringFormat="{}{0} - {1}">
+            <Binding Path="Title" />
+            <Binding Path="Description" />
+        </MultiBinding>
+    </TextBlock.Text>
+</TextBlock>
+
+<!-- ПРАВИЛЬНО - Адаптивный текст в списке -->
+<ItemsControl Items="{Binding Items}">
+    <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+            <UniformGrid Columns="3" />
+        </ItemsPanelTemplate>
+    </ItemsControl.ItemsPanel>
+    <ItemsControl.ItemTemplate>
+        <DataTemplate>
+            <Border Margin="4" Padding="8">
+                <StackPanel>
+                    <TextBlock Text="{Binding Title}" 
+                             TextWrapping="Wrap" 
+                             TextTrimming="None" />
+                    <TextBlock Text="{Binding Description}" 
+                             TextWrapping="Wrap" 
+                             TextTrimming="None" />
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+    </ItemsControl.ItemTemplate>
+</ItemsControl>
+```
+
+### 3. Паттерны UI
+
+#### 3.1 Композиция компонентов
+```xml
+<!-- ПРАВИЛЬНО - Композиция через пользовательские контролы -->
+<StackPanel>
+    <local:HeaderView />
+    <local:ContentArea>
+        <local:DataGrid />
+    </local:ContentArea>
+    <local:StatusBar />
+</StackPanel>
+```
+
+#### 3.2 Использование стилей
+```xml
+<!-- ПРАВИЛЬНО - Определение стилей -->
+<Styles>
+    <Style Selector="TextBlock.header">
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Margin" Value="0,0,0,8" />
+    </Style>
+</Styles>
+```
+
+### 4. Масштабирование и адаптивность
+
+#### 4.1 Изображения
+```xml
+<!-- ПРАВИЛЬНО - Адаптивные изображения -->
+<Image Stretch="Uniform" 
+       StretchDirection="DownOnly"
+       MaxWidth="{Binding RelativeSource={RelativeSource AncestorType=Control}, Path=ActualWidth}">
+    <Image.Source>
+        <Binding Path="ImageSource" />
+    </Image.Source>
+</Image>
+```
+
+#### 4.2 Контейнеры
+```xml
+<!-- ПРАВИЛЬНО - Адаптивные контейнеры -->
+<ScrollViewer HorizontalScrollBarVisibility="Disabled" 
+              VerticalScrollBarVisibility="Auto">
+    <StackPanel>
+        <TextBlock TextWrapping="Wrap" />
+        <ItemsControl Items="{Binding Items}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <WrapPanel />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+        </ItemsControl>
+    </StackPanel>
+</ScrollViewer>
+```
+
+### 5. Рекомендации по производительности
+
+1. Используйте виртуализацию для больших списков
+2. Применяйте ленивую загрузку для тяжелых компонентов
+3. Используйте кэширование для часто используемых данных
+4. Оптимизируйте привязки данных, избегая сложных преобразований
+
+### 6. Отладка UI
+
+1. Используйте `Debug.WriteLine` для отслеживания изменений в привязках
+2. Применяйте временные границы для визуализации layout
+3. Используйте инструменты разработчика Avalonia для инспекции UI
+
+### 7. Специфические правила
+
+1. **ViewModels**: Суффикс `ViewModel` (например, `StudentViewModel`, `CourseViewModel`)
+2. **Views**:
+   - Для страниц: Суффикс `View` (например, `StudentView`, `CourseView`)
+   - Для окон: Суффикс `Window` (например, `MainWindow`, `SettingsWindow`)
+   - Для контролов: Суффикс `Control` (например, `StudentCardControl`)
+   - Для диалогов: Суффикс `Dialog` (например, `ConfirmationDialog`)
+3. **Models**: Без суффиксов (например, `Student`, `Course`)
+4. **Services**: Суффикс `Service` (например, `StudentService`, `AuthService`)
+5. **Repositories**: Суффикс `Repository` (например, `StudentRepository`)
+6. **Factories**: Суффикс `Factory` (например, `ViewModelFactory`, `DialogFactory`)
+7. **Components**: Для FuncUI компонентов используйте суффикс `Component` или группируйте в классах с суффиксом `Components` (например, `StudentCardComponent`, `StudentComponents`)
+
+## 8. Правила по ReactiveUI
+
+1. Используйте `ReactiveObject` в качестве базового класса для ViewModels
+2. Используйте `IObservable<T>` для реактивных свойств
+3. Используйте `ReactiveCommand<TParam, TResult>` вместо `ICommand`
+4. Используйте `this.WhenAnyValue()` для подписки на изменения свойств
+5. Используйте `ToProperty()` для создания выходных свойств
+6. Обеспечивайте очистку подписок при уничтожении объектов
+
+## 9. Правила по Avalonia
+
+1. Отделяйте логику представления от логики бизнеса
+2. Используйте привязку данных для взаимодействия View и ViewModel
+3. Избегайте использования кода в code-behind, кроме инициализации
+4. Используйте стили для консистентного внешнего вида
+5. Группируйте стили в ресурсных словарях
+6. Максимально используйте XAML для UI вместо создания UI в коде
+
+## 10. Работа с асинхронными операциями
+
+1. Используйте асинхронное программирование (`async/await`) для длительных операций
+2. Используйте `Task<T>` вместо `void` для асинхронных методов
+3. Используйте реактивные расширения для сложных асинхронных потоков
+4. Избегайте блокирующих вызовов в UI-потоке
+
+## 11. Рекомендации по коду
+
+1. Пишите небольшие, модульные и тестируемые функции
+2. Применяйте инъекцию зависимостей для слабой связанности компонентов
+3. Избегайте излишней вложенности кода (не более 3-4 уровней)
+4. Используйте nullable reference types (`string?`, `Student?`)
+5. Комментируйте сложные алгоритмы или неочевидные решения
+6. Следуйте принципу DRY (Don't Repeat Yourself) 

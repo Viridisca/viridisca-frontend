@@ -1,144 +1,36 @@
 using System;
 using System.Linq;
 using System.Reactive.Linq;
-using System.Reactive.Subjects;
 using System.Threading.Tasks;
 using BCrypt.Net;
 using ViridiscaUi.Domain.Models.Auth;
-using ViridiscaUi.Infrastructure;
 using ViridiscaUi.Services.Interfaces;
 
 namespace ViridiscaUi.Services.Implementations
 {
     /// <summary>
-    /// Реализация сервиса аутентификации
+    /// Сервис аутентификации
     /// </summary>
     public class AuthService : IAuthService
     {
-        private readonly LocalDbContext _context;
-        private readonly BehaviorSubject<User?> _currentUserSubject = new BehaviorSubject<User?>(null);
-        
+        private readonly IUserService _userService;
+        private readonly IPermissionService _permissionService;
+        private readonly IRoleService _roleService;
+        private readonly IUserSessionService _userSessionService;
+
         /// <summary>
         /// Создает новый экземпляр сервиса аутентификации
         /// </summary>
-        public AuthService(LocalDbContext context)
+        public AuthService(
+            IUserService userService,
+            IPermissionService permissionService,
+            IRoleService roleService,
+            IUserSessionService userSessionService)
         {
-            _context = context;
-        }
-
-        /// <summary>
-        /// Аутентифицирует пользователя по логину и паролю
-        /// </summary>
-        public async Task<bool> LoginAsync(string username, string password)
-        {
-            // Находим пользователя по имени
-            var user = _context.GetUserByUsername(username);
-            
-            if (user == null)
-            {
-                _currentUserSubject.OnNext(null);
-                return false;
-            }
-            
-            // Проверяем пароль
-            bool passwordValid = BCrypt.Net.BCrypt.Verify(password, user.PasswordHash);
-            
-            if (!passwordValid)
-            {
-                _currentUserSubject.OnNext(null);
-                return false;
-            }
-            
-            // Загружаем связанные данные - используем UserRoles для получения основной роли
-            if (user.UserRoles.Count > 0)
-            {
-                var primaryUserRole = user.UserRoles.FirstOrDefault(ur => ur.IsActive);
-                if (primaryUserRole != null)
-                {
-                    user.Role = _context.GetRoleByUid(primaryUserRole.RoleUid);
-                    user.RoleId = primaryUserRole.RoleUid;
-                }
-            }
-            
-            // Загружаем профиль пользователя в зависимости от роли
-            if (user.Role?.RoleType == RoleType.Student)
-            {
-                user.StudentProfile = _context.GetStudentByUid(user.Uid);
-            }
-            else if (user.Role?.RoleType == RoleType.Teacher)
-            {
-                user.TeacherProfile = _context.GetTeacherByUid(user.Uid);
-            }
-            
-            // Успешная аутентификация
-            _currentUserSubject.OnNext(user);
-            return true;
-        }
-        
-        /// <summary>
-        /// Выходит из системы
-        /// </summary>
-        public Task LogoutAsync()
-        {
-            _currentUserSubject.OnNext(null);
-            return Task.CompletedTask;
-        }
-        
-        /// <summary>
-        /// Получает текущего аутентифицированного пользователя
-        /// </summary>
-        public Task<User?> GetCurrentUserAsync()
-        {
-            return Task.FromResult(_currentUserSubject.Value);
-        }
-        
-        /// <summary>
-        /// Наблюдаемый объект, отражающий текущего пользователя
-        /// </summary>
-        public IObservable<User?> CurrentUserObservable => _currentUserSubject.AsObservable();
-        
-        /// <summary>
-        /// Проверяет наличие определенной роли у текущего пользователя
-        /// </summary>
-        public Task<bool> IsInRoleAsync(string roleName)
-        {
-            var currentUser = _currentUserSubject.Value;
-            
-            if (currentUser == null || currentUser.Role == null)
-                return Task.FromResult(false);
-                
-            return Task.FromResult(currentUser.Role.Name.Equals(roleName, StringComparison.OrdinalIgnoreCase));
-        }
-        
-        /// <summary>
-        /// Проверяет доступ текущего пользователя к определенному разрешению
-        /// </summary>
-        public async Task<bool> HasPermissionAsync(string permissionName)
-        {
-            var currentUser = _currentUserSubject.Value;
-            
-            if (currentUser == null || currentUser.Role == null)
-                return false;
-                
-            // Администраторы имеют все разрешения
-            if (currentUser.Role.Name.Equals("Administrator", StringComparison.OrdinalIgnoreCase))
-                return true;
-                
-            // Проверяем разрешения для роли пользователя
-            var rolePermissions = _context.RolePermissions.Items;
-            foreach (var rolePermission in rolePermissions)
-            {
-                if (rolePermission.RoleUid == currentUser.Role.Uid)
-                {
-                    var permission = _context.Permissions.Items.FirstOrDefault(p => p.Uid == rolePermission.PermissionUid);
-                    if (permission != null && permission.Name.Equals(permissionName, StringComparison.OrdinalIgnoreCase))
-                    {
-                        return true;
-                    }
-                }
-            }
-            
-            return false;
+            _userService = userService;
+            _permissionService = permissionService;
+            _roleService = roleService;
+            _userSessionService = userSessionService;
         }
 
         /// <summary>
@@ -146,185 +38,75 @@ namespace ViridiscaUi.Services.Implementations
         /// </summary>
         public async Task<(bool Success, User? User, string ErrorMessage)> AuthenticateAsync(string username, string password)
         {
-            // Находим пользователя по имени
-            var user = _context.GetUserByUsername(username);
+            // Попробуем найти пользователя сначала по username, затем по email
+            var user = await _userService.GetUserByUsernameAsync(username);
+            if (user == null)
+            {
+                // Если не нашли по username, попробуем найти по email
+                user = await _userService.GetUserByEmailAsync(username);
+            }
             
             if (user == null)
             {
+                _userSessionService.ClearSession();
                 return (false, null, "Пользователь не найден");
             }
-            
-            // Проверяем пароль
-            bool passwordValid = BCrypt.Net.BCrypt.Verify(password, user.PasswordHash);
-            
-            if (!passwordValid)
+
+            if (!BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
             {
+                _userSessionService.ClearSession();
                 return (false, null, "Неверный пароль");
             }
-            
-            // Загружаем связанные данные - используем UserRoles для получения основной роли
-            if (user.UserRoles.Count > 0)
+
+            if (!user.IsActive)
             {
-                var primaryUserRole = user.UserRoles.FirstOrDefault(ur => ur.IsActive);
-                if (primaryUserRole != null)
-                {
-                    user.Role = _context.GetRoleByUid(primaryUserRole.RoleUid);
-                    user.RoleId = primaryUserRole.RoleUid;
-                }
+                _userSessionService.ClearSession();
+                return (false, null, "Учетная запись заблокирована");
             }
-            
-            // Загружаем профиль пользователя в зависимости от роли
-            if (user.Role?.RoleType == RoleType.Student)
-            {
-                user.StudentProfile = _context.GetStudentByUid(user.Uid);
-            }
-            else if (user.Role?.RoleType == RoleType.Teacher)
-            {
-                user.TeacherProfile = _context.GetTeacherByUid(user.Uid);
-            }
-            
-            // Успешная аутентификация
-            _currentUserSubject.OnNext(user);
+
+            _userSessionService.SetCurrentUser(user);
             return (true, user, string.Empty);
-        }
-
-        /// <summary>
-        /// Проверяет доступ пользователя к определенному разрешению
-        /// </summary>
-        public Task<bool> HasPermissionAsync(Guid userUid, string permissionName)
-        {
-            // Если это текущий пользователь, то используем метод для текущего пользователя
-            if (_currentUserSubject.Value?.Uid == userUid)
-            {
-                return HasPermissionAsync(permissionName);
-            }
-            
-            // Находим пользователя
-            var user = _context.GetUserByUid(userUid);
-            if (user == null || user.Role == null)
-                return Task.FromResult(false);
-                
-            // Загружаем роль пользователя
-            if (user.UserRoles.Count > 0)
-            {
-                var primaryUserRole = user.UserRoles.FirstOrDefault(ur => ur.IsActive);
-                if (primaryUserRole != null)
-                {
-                    user.Role = _context.GetRoleByUid(primaryUserRole.RoleUid);
-                    user.RoleId = primaryUserRole.RoleUid;
-                }
-            }
-            
-            // Администраторы имеют все разрешения
-            if (user.Role?.Name.Equals("Administrator", StringComparison.OrdinalIgnoreCase) == true)
-                return Task.FromResult(true);
-                
-            // Проверяем разрешения для роли пользователя
-            var rolePermissions = _context.RolePermissions.Items;
-            foreach (var rolePermission in rolePermissions)
-            {
-                if (rolePermission.RoleUid == user.Role.Uid)
-                {
-                    var permission = _context.Permissions.Items.FirstOrDefault(p => p.Uid == rolePermission.PermissionUid);
-                    if (permission != null && permission.Name.Equals(permissionName, StringComparison.OrdinalIgnoreCase))
-                    {
-                        return Task.FromResult(true);
-                    }
-                }
-            }
-            
-            return Task.FromResult(false);
-        }
-
-        /// <summary>
-        /// Проверяет наличие определенной роли у пользователя
-        /// </summary>
-        public Task<bool> IsInRoleAsync(Guid userUid, string roleName)
-        {
-            // Если это текущий пользователь, то используем метод для текущего пользователя
-            if (_currentUserSubject.Value?.Uid == userUid)
-            {
-                return IsInRoleAsync(roleName);
-            }
-            
-            // Находим пользователя
-            var user = _context.GetUserByUid(userUid);
-            if (user == null)
-                return Task.FromResult(false);
-                
-            // Загружаем роль пользователя
-            if (user.UserRoles.Count > 0)
-            {
-                var primaryUserRole = user.UserRoles.FirstOrDefault(ur => ur.IsActive);
-                if (primaryUserRole != null)
-                {
-                    user.Role = _context.GetRoleByUid(primaryUserRole.RoleUid);
-                    user.RoleId = primaryUserRole.RoleUid;
-                }
-            }
-            
-            return Task.FromResult(user.Role?.Name.Equals(roleName, StringComparison.OrdinalIgnoreCase) == true);
-        }
-
-        /// <summary>
-        /// Изменяет пароль пользователя
-        /// </summary>
-        public Task<bool> ChangePasswordAsync(Guid userUid, string currentPassword, string newPassword)
-        {
-            // Находим пользователя
-            var user = _context.GetUserByUid(userUid);
-            if (user == null)
-                return Task.FromResult(false);
-                
-            // Проверяем текущий пароль
-            bool passwordValid = BCrypt.Net.BCrypt.Verify(currentPassword, user.PasswordHash);
-            
-            if (!passwordValid)
-                return Task.FromResult(false);
-                
-            // Обновляем пароль
-            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
-            user.LastModifiedAt = DateTime.UtcNow;
-            _context.UpdateUser(user);
-            
-            return Task.FromResult(true);
-        }
-
-        /// <summary>
-        /// Запрашивает сброс пароля пользователя
-        /// </summary>
-        public Task<bool> RequestPasswordResetAsync(string email)
-        {
-            // В реальном приложении здесь будет логика для создания токена сброса
-            // и отправки его на почту пользователю
-            
-            return Task.FromResult(true);
-        }
-
-        /// <summary>
-        /// Сбрасывает пароль пользователя
-        /// </summary>
-        public Task<bool> ResetPasswordAsync(string token, string newPassword)
-        {
-            // В реальном приложении здесь будет проверка токена
-            // и установка нового пароля для пользователя
-            
-            return Task.FromResult(true);
         }
 
         /// <summary>
         /// Регистрирует нового пользователя
         /// </summary>
-        public Task<(bool Success, User? User, string ErrorMessage)> RegisterAsync(string username, string email, string password, string firstName, string lastName)
+        public async Task<(bool Success, User? User, string ErrorMessage)> RegisterAsync(string username, string email, string password, string firstName, string lastName)
         {
-            // Проверяем, что пользователь с таким именем не существует
-            var existingUser = _context.GetUserByUsername(username);
+            // Используем роль студента по умолчанию
+            var studentRole = await _roleService.GetRoleByNameAsync("Student");
+            if (studentRole == null)
+            {
+                return (false, null, "Системная ошибка: роль студента не найдена");
+            }
+
+            return await RegisterAsync(username, email, password, firstName, lastName, studentRole.Uid);
+        }
+
+        /// <summary>
+        /// Регистрирует нового пользователя с указанной ролью
+        /// </summary>
+        public async Task<(bool Success, User? User, string ErrorMessage)> RegisterAsync(string username, string email, string password, string firstName, string lastName, Guid roleId)
+        {
+            var existingUser = await _userService.GetUserByUsernameAsync(username);
             if (existingUser != null)
             {
-                return Task.FromResult((false, (User?)null, "Пользователь с таким именем уже существует"));
+                return (false, null, "Пользователь с таким именем уже существует");
             }
-            
-            // Создаем нового пользователя
+
+            var existingEmail = await _userService.GetUserByEmailAsync(email);
+            if (existingEmail != null)
+            {
+                return (false, null, "Пользователь с таким email уже существует");
+            }
+
+            // Проверяем, что роль существует
+            var role = await _roleService.GetRoleAsync(roleId);
+            if (role == null)
+            {
+                return (false, null, "Указанная роль не найдена");
+            }
+
             var user = new User
             {
                 Uid = Guid.NewGuid(),
@@ -332,43 +114,118 @@ namespace ViridiscaUi.Services.Implementations
                 Email = email,
                 FirstName = firstName,
                 LastName = lastName,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
+                RoleId = roleId, // Устанавливаем выбранную роль
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
                 LastModifiedAt = DateTime.UtcNow
             };
-            
-            // Назначаем роль студента по умолчанию
-            var studentRole = _context.GetRoleByName("Student");
-            if (studentRole != null)
+
+            await _userService.AddUserAsync(user, password);
+            return (true, user, string.Empty);
+        }
+
+        /// <summary>
+        /// Выходит из системы
+        /// </summary>
+        public Task LogoutAsync()
+        {
+            _userSessionService.ClearSession();
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Получает текущего аутентифицированного пользователя
+        /// </summary>
+        public Task<User?> GetCurrentUserAsync()
+        {
+            return Task.FromResult(_userSessionService.CurrentUser);
+        }
+
+        /// <summary>
+        /// Наблюдаемый объект, отражающий текущего пользователя
+        /// </summary>
+        public IObservable<User?> CurrentUserObservable => _userSessionService.CurrentUserObservable;
+
+        /// <summary>
+        /// Проверяет доступ пользователя к определенному разрешению
+        /// </summary>
+        public async Task<bool> HasPermissionAsync(Guid userUid, string permissionName)
+        {
+            var user = await _userService.GetUserAsync(userUid);
+            if (user == null)
             {
-                user.RoleId = studentRole.Uid;
-                user.Role = studentRole;
-                
-                // Создаем связь пользователя с ролью
-                var userRole = new UserRole
-                {
-                    Uid = Guid.NewGuid(),
-                    UserUid = user.Uid,
-                    RoleUid = studentRole.Uid,
-                    Role = studentRole,
-                    User = user,
-                    IsActive = true,
-                    AssignedAt = DateTime.UtcNow,
-                    CreatedAt = DateTime.UtcNow,
-                    LastModifiedAt = DateTime.UtcNow
-                };
-                
-                user.UserRoles.Add(userRole);
-                
-                // Используем метод для добавления связи пользователя с ролью
-                _context.AddUserRole(userRole);
+                return false;
             }
-            
-            // Добавляем пользователя в базу
-            _context.AddUser(user);
-            
-            return Task.FromResult((true, user, string.Empty));
+
+            var roles = await _roleService.GetUserRolesAsync(userUid);
+            foreach (var role in roles)
+            {
+                var permissions = await _permissionService.GetRolePermissionsAsync(role.Uid);
+                foreach (var permission in permissions)
+                {
+                    if (permission.Name == permissionName)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Проверяет наличие определенной роли у пользователя
+        /// </summary>
+        public async Task<bool> IsInRoleAsync(Guid userUid, string roleName)
+        {
+            var roles = await _roleService.GetUserRolesAsync(userUid);
+            return roles.Any(r => r.Name == roleName);
+        }
+
+        /// <summary>
+        /// Изменяет пароль пользователя
+        /// </summary>
+        public async Task<bool> ChangePasswordAsync(Guid userUid, string currentPassword, string newPassword)
+        {
+            var user = await _userService.GetUserAsync(userUid);
+            if (user == null)
+            {
+                return false;
+            }
+
+            if (!BCrypt.Net.BCrypt.Verify(currentPassword, user.PasswordHash))
+            {
+                return false;
+            }
+
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+            user.LastModifiedAt = DateTime.UtcNow;
+
+            return await _userService.UpdateUserAsync(user);
+        }
+
+        /// <summary>
+        /// Запрашивает сброс пароля пользователя
+        /// </summary>
+        public async Task<bool> RequestPasswordResetAsync(string email)
+        {
+            var user = await _userService.GetUserByEmailAsync(email);
+            if (user == null)
+            {
+                return false;
+            }
+
+            // TODO: Реализовать генерацию токена и отправку email
+            return true;
+        }
+
+        /// <summary>
+        /// Сбрасывает пароль пользователя
+        /// </summary>
+        public async Task<bool> ResetPasswordAsync(string token, string newPassword)
+        {
+            // TODO: Реализовать проверку токена и сброс пароля
+            return true;
         }
     }
 } 

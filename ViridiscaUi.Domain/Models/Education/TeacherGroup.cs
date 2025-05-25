@@ -83,17 +83,17 @@ namespace ViridiscaUi.Domain.Models.Education
         /// <summary>
         /// Ссылка на объект преподавателя
         /// </summary>
-        public Teacher Teacher { get; set; }
+        public required Teacher Teacher { get; set; }
 
         /// <summary>
         /// Ссылка на объект группы
         /// </summary>
-        public Group Group { get; set; }
+        public required Group Group { get; set; }
 
         /// <summary>
         /// Ссылка на объект предмета
         /// </summary>
-        public Subject Subject { get; set; }
+        public required Subject Subject { get; set; }
 
         /// <summary>
         /// Создает новый экземпляр связи преподавателя с группой

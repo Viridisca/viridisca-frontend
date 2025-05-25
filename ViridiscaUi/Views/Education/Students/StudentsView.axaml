@@ -1,0 +1,70 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:ViridiscaUi.ViewModels.Students"
+             xmlns:models="using:ViridiscaUi.Domain.Models.Education"
+             xmlns:controls="using:Avalonia.Controls"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="ViridiscaUi.Views.Education.Students.StudentsView">
+    <Grid RowDefinitions="Auto,*">
+        <!-- Верхняя панель с поиском и кнопками -->
+        <Grid ColumnDefinitions="*,Auto" Margin="10">
+            <TextBox Grid.Column="0"
+                     Text="{Binding SearchTerm}"
+                     Watermark="Поиск по имени или фамилии..."
+                     Margin="0,0,10,0"/>
+            <Button Grid.Column="1"
+                    Command="{Binding AddStudentCommand}"
+                    IsEnabled="{Binding CanAddStudent}"
+                    IsVisible="{Binding CanAddStudent}">
+                <StackPanel Orientation="Horizontal">
+                    <PathIcon Data="{StaticResource add_regular}"/>
+                    <TextBlock Text="Добавить" Margin="5,0,0,0"/>
+                </StackPanel>
+            </Button>
+        </Grid>
+
+        <!-- Таблица студентов -->
+        <controls:DataGrid Grid.Row="1"
+                  ItemsSource="{Binding Students}"
+                  SelectedItem="{Binding SelectedStudent}"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="True"
+                  GridLinesVisibility="All"
+                  HeadersVisibility="All"
+                  CanUserResizeColumns="True"
+                  CanUserSortColumns="True"
+                  SelectionMode="Single">
+            <controls:DataGrid.Columns>
+                <controls:DataGridTextColumn Header="ФИО" Binding="{Binding FullName}" Width="*"/>
+                <controls:DataGridTextColumn Header="Email" Binding="{Binding Email}" Width="*"/>
+                <controls:DataGridTextColumn Header="Группа" Binding="{Binding GroupName}" Width="*"/>
+                <controls:DataGridTextColumn Header="Статус" Binding="{Binding Status}" Width="*"/>
+                <controls:DataGridTemplateColumn Width="Auto">
+                    <controls:DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                <Button Command="{Binding $parent[controls:DataGrid].DataContext.EditStudentCommand}"
+                                        IsEnabled="{Binding $parent[controls:DataGrid].DataContext.CanEditStudent}"
+                                        IsVisible="{Binding $parent[controls:DataGrid].DataContext.CanEditStudent}">
+                                    <PathIcon Data="{StaticResource edit_regular}"/>
+                                </Button>
+                                <Button Command="{Binding $parent[controls:DataGrid].DataContext.DeleteStudentCommand}"
+                                        IsEnabled="{Binding $parent[controls:DataGrid].DataContext.CanDeleteStudent}"
+                                        IsVisible="{Binding $parent[controls:DataGrid].DataContext.CanDeleteStudent}">
+                                    <PathIcon Data="{StaticResource delete_regular}"/>
+                                </Button>
+                            </StackPanel>
+                        </DataTemplate>
+                    </controls:DataGridTemplateColumn.CellTemplate>
+                </controls:DataGridTemplateColumn>
+            </controls:DataGrid.Columns>
+        </controls:DataGrid>
+
+        <!-- Индикатор загрузки -->
+        <ProgressBar Grid.Row="0" Grid.RowSpan="2"
+                     IsIndeterminate="True"
+                     IsVisible="{Binding IsLoading}"/>
+    </Grid>
+</UserControl> 

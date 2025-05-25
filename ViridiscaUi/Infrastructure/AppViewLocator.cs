@@ -5,8 +5,15 @@ using System;
 using ViridiscaUi.ViewModels;
 using ViridiscaUi.ViewModels.Auth;
 using ViridiscaUi.ViewModels.Pages;
+using ViridiscaUi.ViewModels.Students;
+using ViridiscaUi.ViewModels.Profile;
 using ViridiscaUi.Views.Auth;
-using ViridiscaUi.Views.Pages;
+using ViridiscaUi.Views.Common;
+using ViridiscaUi.Views.Education;
+using ViridiscaUi.Views.Education.Students;
+using ViridiscaUi.Views.Administration;
+using ViridiscaUi.Views.Common.Profile;
+using ViridiscaUi.Windows;
 
 namespace ViridiscaUi.Infrastructure;
 
@@ -23,9 +30,18 @@ public class AppViewLocator : IViewLocator, IDataTemplate
         if (viewModel == null)
             return null;
             
-        // Сопоставление ViewModel с соответствующей View
+        // Сопоставление ViewModel с соответствующей View согласно новой структуре
+        if (viewModel is MainViewModel mainVm)
+            return new MainView { DataContext = mainVm };
+            
+        if (viewModel is AuthenticationViewModel authVm)
+            return new AuthenticationView { DataContext = authVm };
+            
         if (viewModel is LoginViewModel loginVm)
             return new LoginView { DataContext = loginVm };
+            
+        if (viewModel is RegisterViewModel registerVm)
+            return new RegisterView { DataContext = registerVm };
             
         if (viewModel is HomeViewModel homeVm)
             return new HomeView { DataContext = homeVm };
@@ -36,51 +52,94 @@ public class AppViewLocator : IViewLocator, IDataTemplate
         if (viewModel is UsersViewModel usersVm)
             return new UsersView { DataContext = usersVm }; 
 
-        // Если нет явного сопоставления, пытаемся найти View по названию
+        if (viewModel is StudentsViewModel studentsVm)
+            return new StudentsView { DataContext = studentsVm };
+
+        if (viewModel is ProfileViewModel profileVm)
+            return new ProfileView { DataContext = profileVm };
+
+        // Если нет явного сопоставления, пытаемся найти View по модульной структуре
         var viewModelName = viewModel.GetType().FullName!;
-        var viewTypeName = viewModelName
-            .Replace("ViewModel", "View")
-            .Replace("ViridiscaUi.ViewModels", "ViridiscaUi.Views");
-            
-        var viewType = Type.GetType(viewTypeName);
+        var viewType = TryFindViewByModularStructure(viewModelName);
         
         if (viewType != null)
         {
-            return Activator.CreateInstance(viewType) as IViewFor;
+            var view = Activator.CreateInstance(viewType) as IViewFor;
+            if (view != null)
+            {
+                if (view is Control control)
+                {
+                    control.DataContext = viewModel;
+                }
+                return view;
+            }
         }
         
-        return null;
-         
         // Если View не найдено, выбрасываем исключение
         throw new ArgumentOutOfRangeException(
             nameof(viewModel),
             $"Не удалось найти представление для {viewModel.GetType().Name}"
         );
-    } 
+    }
+
+    /// <summary>
+    /// Попытка найти View по модульной структуре
+    /// </summary>
+    private Type? TryFindViewByModularStructure(string viewModelName)
+    {
+        var viewName = viewModelName.Replace("ViewModel", "View");
+        
+        // Определяем модуль и ищем в соответствующей папке
+        if (viewModelName.Contains(".Auth."))
+        {
+            return Type.GetType(viewName.Replace("ViridiscaUi.ViewModels.Auth", "ViridiscaUi.Views.Auth"));
+        }
+        else if (viewModelName.Contains(".Students."))
+        {
+            return Type.GetType(viewName.Replace("ViridiscaUi.ViewModels.Students", "ViridiscaUi.Views.Education.Students"));
+        }
+        else if (viewModelName.Contains(".Profile."))
+        {
+            return Type.GetType(viewName.Replace("ViridiscaUi.ViewModels.Profile", "ViridiscaUi.Views.Common.Profile"));
+        }
+        else if (viewModelName.Contains(".Pages."))
+        {
+            // Определяем специфическое местоположение для каждой страницы
+            if (viewName.Contains("Home"))
+                return Type.GetType(viewName.Replace("ViridiscaUi.ViewModels.Pages", "ViridiscaUi.Views.Common"));
+            else if (viewName.Contains("Courses"))
+                return Type.GetType(viewName.Replace("ViridiscaUi.ViewModels.Pages", "ViridiscaUi.Views.Education"));
+            else if (viewName.Contains("Users"))
+                return Type.GetType(viewName.Replace("ViridiscaUi.ViewModels.Pages", "ViridiscaUi.Views.Administration"));
+        }
+        
+        // Fallback: пытаемся найти в общих папках
+        return Type.GetType(viewName.Replace("ViridiscaUi.ViewModels", "ViridiscaUi.Views.Common"));
+    }
 
     /// <summary>
     /// Создает элемент управления для ViewModel
     /// </summary>
-    public Control Build(object data)
+    public Control? Build(object? data)
     {
-        var name = data.GetType().FullName!
-            .Replace("ViewModel", "View")
-            .Replace("ViridiscaUi.ViewModels", "ViridiscaUi.Views");
+        if (data == null)
+            return null;
 
-        var type = Type.GetType(name);
-
-        if (type != null)
+        try
         {
-            return (Control)Activator.CreateInstance(type)!;
+            var view = ResolveView(data);
+            return view as Control;
         }
-
-        return new TextBlock { Text = $"Не найдено представление для {data.GetType().Name}" };
+        catch
+        {
+            return new TextBlock { Text = $"Не найдено представление для {data.GetType().Name}" };
+        }
     }
 
     /// <summary>
     /// Проверяет, подходит ли шаблон для данного объекта
     /// </summary>
-    public bool Match(object data)
+    public bool Match(object? data)
     {
         return data is ViewModelBase;
     }

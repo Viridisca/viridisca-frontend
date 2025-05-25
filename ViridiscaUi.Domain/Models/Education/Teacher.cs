@@ -13,6 +13,7 @@ public class Teacher : ViewModelBase
 {
     private string _employeeCode = string.Empty;
     private Guid _userUid;
+    private Guid? _departmentUid;
     private DateTime _hireDate;
     private DateTime? _terminationDate;
     private TeacherStatus _status;
@@ -25,6 +26,7 @@ public class Teacher : ViewModelBase
     private string _firstName = string.Empty;
     private string _lastName = string.Empty;
     private string _middleName = string.Empty;
+    private Auth.User? _user;
 
     /// <summary>
     /// Код сотрудника
@@ -42,6 +44,15 @@ public class Teacher : ViewModelBase
     {
         get => _userUid;
         set => this.RaiseAndSetIfChanged(ref _userUid, value);
+    }
+
+    /// <summary>
+    /// Идентификатор департамента
+    /// </summary>
+    public Guid? DepartmentUid
+    {
+        get => _departmentUid;
+        set => this.RaiseAndSetIfChanged(ref _departmentUid, value);
     }
 
     /// <summary>
@@ -156,6 +167,35 @@ public class Teacher : ViewModelBase
     /// Отображаемый статус преподавателя
     /// </summary>
     public string StatusDisplayName => Status.GetDisplayName();
+
+    /// <summary>
+    /// Пользователь-преподаватель
+    /// </summary>
+    public Auth.User? User
+    {
+        get => _user;
+        set => this.RaiseAndSetIfChanged(ref _user, value);
+    }
+
+    /// <summary>
+    /// Email преподавателя (из связанного пользователя)
+    /// </summary>
+    public string Email => User?.Email ?? string.Empty;
+
+    /// <summary>
+    /// Номер телефона преподавателя (из связанного пользователя)
+    /// </summary>
+    public string PhoneNumber => User?.PhoneNumber ?? string.Empty;
+
+    /// <summary>
+    /// Кафедра/департамент (для совместимости)
+    /// </summary>
+    public string Department => Specialization;
+
+    /// <summary>
+    /// Должность (для совместимости)
+    /// </summary>
+    public string Position => AcademicTitle;
 
     /// <summary>
     /// Полное имя преподавателя (Фамилия Имя Отчество)

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using ViridiscaUi.Domain.Models.Education;
 using ViridiscaUi.Infrastructure;
 using ViridiscaUi.Services.Interfaces;
@@ -13,41 +14,78 @@ namespace ViridiscaUi.Services.Implementations
     /// </summary>
     public class GroupService : IGroupService
     {
-        private readonly LocalDbContext _dbContext;
+        private readonly ApplicationDbContext _dbContext;
 
-        public GroupService(LocalDbContext dbContext)
+        public GroupService(ApplicationDbContext dbContext)
         {
             _dbContext = dbContext;
         }
 
-        public Task<Group?> GetGroupAsync(Guid uid)
+        public async Task<Group?> GetGroupByIdAsync(Guid id)
         {
-            throw new NotImplementedException();
+            return await _dbContext.Groups
+                .Include(g => g.Students)
+                .Include(g => g.Curator)
+                .FirstOrDefaultAsync(g => g.Uid == id);
         }
 
-        public Task<IEnumerable<Group>> GetAllGroupsAsync()
+        public async Task<IEnumerable<Group>> GetGroupsAsync()
         {
-            throw new NotImplementedException();
+            return await _dbContext.Groups
+                .Include(g => g.Students)
+                .Include(g => g.Curator)
+                .OrderBy(g => g.Name)
+                .ToListAsync();
         }
 
-        public Task AddGroupAsync(Group group)
+        public async Task<Group> CreateGroupAsync(Group group)
         {
-            throw new NotImplementedException();
+            group.CreatedAt = DateTime.UtcNow;
+            group.LastModifiedAt = DateTime.UtcNow;
+            
+            await _dbContext.Groups.AddAsync(group);
+            await _dbContext.SaveChangesAsync();
+            return group;
         }
 
-        public Task<bool> UpdateGroupAsync(Group group)
+        public async Task<Group> UpdateGroupAsync(Group group)
         {
-            throw new NotImplementedException();
+            var existingGroup = await _dbContext.Groups.FindAsync(group.Uid);
+            if (existingGroup == null)
+                throw new ArgumentException($"Group with ID {group.Uid} not found");
+
+            existingGroup.Name = group.Name;
+            existingGroup.Description = group.Description;
+            existingGroup.CuratorUid = group.CuratorUid;
+            existingGroup.LastModifiedAt = DateTime.UtcNow;
+            
+            await _dbContext.SaveChangesAsync();
+            return existingGroup;
         }
 
-        public Task<bool> DeleteGroupAsync(Guid uid)
+        public async Task DeleteGroupAsync(Guid id)
         {
-            throw new NotImplementedException();
+            var group = await _dbContext.Groups.FindAsync(id);
+            if (group == null)
+                throw new ArgumentException($"Group with ID {id} not found");
+
+            _dbContext.Groups.Remove(group);
+            await _dbContext.SaveChangesAsync();
         }
 
-        public Task<bool> AssignCuratorAsync(Guid groupUid, Guid teacherUid)
+        public async Task<bool> AssignCuratorAsync(Guid groupUid, Guid teacherUid)
         {
-            throw new NotImplementedException();
+            var group = await _dbContext.Groups.FindAsync(groupUid);
+            var teacher = await _dbContext.Teachers.FindAsync(teacherUid);
+            
+            if (group == null || teacher == null)
+                return false;
+
+            group.CuratorUid = teacherUid;
+            group.LastModifiedAt = DateTime.UtcNow;
+            
+            await _dbContext.SaveChangesAsync();
+            return true;
         }
     }
 } 

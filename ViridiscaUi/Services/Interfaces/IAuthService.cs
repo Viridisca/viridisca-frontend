@@ -20,6 +20,11 @@ namespace ViridiscaUi.Services.Interfaces
         Task<(bool Success, User? User, string ErrorMessage)> RegisterAsync(string username, string email, string password, string firstName, string lastName);
         
         /// <summary>
+        /// Регистрирует нового пользователя с указанной ролью
+        /// </summary>
+        Task<(bool Success, User? User, string ErrorMessage)> RegisterAsync(string username, string email, string password, string firstName, string lastName, Guid roleId);
+        
+        /// <summary>
         /// Выходит из системы
         /// </summary>
         Task LogoutAsync();

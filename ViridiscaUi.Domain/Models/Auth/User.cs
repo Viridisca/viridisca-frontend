@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using ReactiveUI;
 using ViridiscaUi.Domain.Models.Base;
+using ViridiscaUi.Domain.Models.Education;
 
 namespace ViridiscaUi.Domain.Models.Auth;
 
@@ -18,11 +19,16 @@ public class User : ViewModelBase
     private string _middleName = string.Empty;
     private string _phoneNumber = string.Empty;
     private string _profileImageUrl = string.Empty;
+    private string _passwordHash = string.Empty;
     private DateTime _dateOfBirth;
     private bool _isEmailConfirmed;
     private bool _isActive;
     private DateTime? _lastLoginAt;
     private ObservableCollection<UserRole> _userRoles = new();
+    private Student? _studentProfile;
+    private Teacher? _teacherProfile;
+    private Guid _roleId;
+    private Role? _role;
 
     /// <summary>
     /// Электронная почта
@@ -88,6 +94,15 @@ public class User : ViewModelBase
     }
 
     /// <summary>
+    /// Хеш пароля пользователя
+    /// </summary>
+    public string PasswordHash
+    {
+        get => _passwordHash;
+        set => this.RaiseAndSetIfChanged(ref _passwordHash, value);
+    }
+
+    /// <summary>
     /// Дата рождения
     /// </summary>
     public DateTime DateOfBirth
@@ -124,6 +139,24 @@ public class User : ViewModelBase
     }
 
     /// <summary>
+    /// Идентификатор основной роли пользователя
+    /// </summary>
+    public Guid RoleId
+    {
+        get => _roleId;
+        set => this.RaiseAndSetIfChanged(ref _roleId, value);
+    }
+    
+    /// <summary>
+    /// Основная роль пользователя
+    /// </summary>
+    public Role? Role
+    {
+        get => _role;
+        set => this.RaiseAndSetIfChanged(ref _role, value);
+    }
+
+    /// <summary>
     /// Полное имя пользователя (Фамилия Имя Отчество)
     /// </summary>
     public string FullName => $"{LastName} {FirstName} {MiddleName}".Trim();
@@ -135,6 +168,24 @@ public class User : ViewModelBase
     {
         get => _userRoles;
         set => this.RaiseAndSetIfChanged(ref _userRoles, value);
+    }
+
+    /// <summary>
+    /// Профиль студента (если пользователь является студентом)
+    /// </summary>
+    public Student? StudentProfile
+    {
+        get => _studentProfile;
+        set => this.RaiseAndSetIfChanged(ref _studentProfile, value);
+    }
+
+    /// <summary>
+    /// Профиль преподавателя (если пользователь является преподавателем)
+    /// </summary>
+    public Teacher? TeacherProfile
+    {
+        get => _teacherProfile;
+        set => this.RaiseAndSetIfChanged(ref _teacherProfile, value);
     }
 
     /// <summary>
@@ -217,7 +268,7 @@ public class User : ViewModelBase
     }
 
     /// <summary>
-    /// Обновляет время последнего входа
+    /// Обновляет дату последнего входа
     /// </summary>
     public void UpdateLastLogin()
     {

@@ -26,6 +26,7 @@ public class Student : ViewModelBase
     private string _emergencyContactName = string.Empty;
     private string _emergencyContactPhone = string.Empty;
     private string _medicalInformation = string.Empty;
+    private string _address = string.Empty;
     private DateTime? _graduationDate;
     private ObservableCollection<StudentParent> _parents = new();
     private Group? _group;
@@ -172,6 +173,15 @@ public class Student : ViewModelBase
     {
         get => _medicalInformation;
         set => this.RaiseAndSetIfChanged(ref _medicalInformation, value);
+    }
+
+    /// <summary>
+    /// Адрес студента
+    /// </summary>
+    public string Address
+    {
+        get => _address;
+        set => this.RaiseAndSetIfChanged(ref _address, value);
     }
 
     /// <summary>

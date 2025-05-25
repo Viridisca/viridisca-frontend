@@ -37,6 +37,23 @@
                          Text="{Binding LastName}"
                          UseFloatingWatermark="True" />
                 
+                <!-- Выбор роли -->
+                <ComboBox ItemsSource="{Binding AvailableRoles}"
+                          SelectedItem="{Binding SelectedRole}"
+                          PlaceholderText="Выберите роль"
+                          IsEnabled="{Binding !IsLoadingRoles}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Name}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+                
+                <!-- Индикатор загрузки ролей -->
+                <ProgressBar IsIndeterminate="True"
+                             IsVisible="{Binding IsLoadingRoles}"
+                             Height="4" />
+                
                 <TextBox Watermark="Пароль"
                          Text="{Binding Password}"
                          PasswordChar="•"

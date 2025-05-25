@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using ViridiscaUi.Domain.Models.Education;
 
-namespace ViridiscaUi.Services.Interfaces
+namespace ViridiscaUi.Services
 {
     /// <summary>
     /// Сервис для работы с учебными группами
@@ -13,27 +13,27 @@ namespace ViridiscaUi.Services.Interfaces
         /// <summary>
         /// Получает группу по идентификатору
         /// </summary>
-        Task<Group?> GetGroupAsync(Guid uid);
+        Task<Group?> GetGroupByIdAsync(Guid id);
         
         /// <summary>
         /// Получает все группы
         /// </summary>
-        Task<IEnumerable<Group>> GetAllGroupsAsync();
+        Task<IEnumerable<Group>> GetGroupsAsync();
         
         /// <summary>
         /// Добавляет новую группу
         /// </summary>
-        Task AddGroupAsync(Group group);
+        Task<Group> CreateGroupAsync(Group group);
         
         /// <summary>
         /// Обновляет существующую группу
         /// </summary>
-        Task<bool> UpdateGroupAsync(Group group);
+        Task<Group> UpdateGroupAsync(Group group);
         
         /// <summary>
         /// Удаляет группу
         /// </summary>
-        Task<bool> DeleteGroupAsync(Guid uid);
+        Task DeleteGroupAsync(Guid id);
         
         /// <summary>
         /// Назначает куратора группе

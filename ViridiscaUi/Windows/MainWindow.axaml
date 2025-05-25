@@ -1,0 +1,161 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:ViridiscaUi.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:reactiveUi="http://reactiveui.net"
+        mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="750"
+        x:Class="ViridiscaUi.Windows.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="ViridiscaUi LMS"
+        WindowStartupLocation="CenterScreen"
+        MinWidth="900" MinHeight="600">
+
+    <Design.DataContext>
+        <vm:MainViewModel/>
+    </Design.DataContext>
+
+    <!-- Стили для скрытия встроенной навигации -->
+    <Window.Styles>
+        <Style Selector="reactiveUi|RoutedViewHost">
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <ContentPresenter Name="PART_CurrentView" Content="{TemplateBinding Content}" />
+                </ControlTemplate>
+            </Setter>
+        </Style>
+    </Window.Styles>
+
+    <Grid ColumnDefinitions="Auto,*">
+        <!-- Боковая панель -->
+        <Border Grid.Column="0" 
+                Background="{DynamicResource SystemAccentColorDark1}"
+                Width="240"
+                IsVisible="{Binding IsLoggedIn}">
+            <Grid RowDefinitions="Auto,*,Auto">
+                <!-- Заголовок приложения -->
+                <StackPanel Grid.Row="0" 
+                            Margin="16,24,16,32">
+                    <TextBlock Text="Viridisca LMS" 
+                               FontSize="22" 
+                               FontWeight="Bold" 
+                               Foreground="White"
+                               HorizontalAlignment="Center" />
+                    <TextBlock Text="Система обучения" 
+                               FontSize="14" 
+                               Foreground="White" 
+                               Opacity="0.8"
+                               HorizontalAlignment="Center" 
+                               Margin="0,4,0,0" />
+                </StackPanel>
+
+                <!-- Меню -->
+                <ScrollViewer Grid.Row="1" 
+                              VerticalScrollBarVisibility="Auto">
+                    <!-- Основное меню -->
+                    <ItemsControl ItemsSource="{Binding MenuItems}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Command="{Binding NavigateCommand}"
+                                        Classes="SidebarButton"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Left"
+                                        Margin="8,2"
+                                        Padding="12,9">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding IconKey}" 
+                                                   Width="24" 
+                                                   FontSize="16" 
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,12,0" />
+                                        <TextBlock Text="{Binding Label}" 
+                                                   FontSize="14" 
+                                                   VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <!-- Информация о пользователе -->
+                <Border Grid.Row="2" 
+                        BorderBrush="White" 
+                        BorderThickness="0,1,0,0" 
+                        Padding="16,12">
+                    <Grid RowDefinitions="Auto,Auto,Auto">
+                        <!-- Кнопка "Назад" -->
+                        <Button Grid.Row="0"
+                                Command="{Binding GoBackCommand}"
+                                Classes="SidebarButton"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Left"
+                                Margin="0,0,0,12"
+                                Padding="12,9"
+                                IsVisible="{Binding CanGoBack}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="🔙" 
+                                           Width="24" 
+                                           FontSize="16" 
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,12,0" />
+                                <TextBlock Text="Назад" 
+                                           FontSize="14" 
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        
+                        <!-- Разделитель -->
+                        <Border Grid.Row="1"
+                                Height="1" 
+                                Background="White" 
+                                Opacity="0.2" 
+                                Margin="0,0,0,12"
+                                IsVisible="{Binding CanGoBack}" />
+                        
+                        <!-- Информация о пользователе -->
+                        <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto">
+                            <!-- Аватар -->
+                            <Ellipse Grid.Column="0" 
+                                     Width="32" 
+                                     Height="32" 
+                                     Fill="White" />
+
+                            <!-- Информация -->
+                            <StackPanel Grid.Column="1" 
+                                        Margin="12,0" 
+                                        VerticalAlignment="Center">
+                                <TextBlock Text="{Binding CurrentUser}" 
+                                           Foreground="White" 
+                                           FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding UserRole}" 
+                                           FontSize="12" 
+                                           Foreground="White" 
+                                           Opacity="0.7" />
+                            </StackPanel>
+
+                            <!-- Кнопка выхода -->
+                            <Button Grid.Column="2" 
+                                    Command="{Binding LogoutCommand}"
+                                    Background="Transparent"
+                                    BorderThickness="0">
+                                <TextBlock Text="Выход" 
+                                           Foreground="White" 
+                                           FontSize="12" />
+                            </Button>
+                        </Grid>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- Область контента -->
+        <Grid Grid.Column="1">
+            <!-- RouterView для страниц -->
+            <reactiveUi:RoutedViewHost Router="{Binding Router}"
+                                       HorizontalContentAlignment="Stretch"
+                                       VerticalContentAlignment="Stretch" />
+        </Grid>
+    </Grid>
+</Window> 

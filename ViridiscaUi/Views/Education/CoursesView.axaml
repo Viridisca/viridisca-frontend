@@ -1,0 +1,32 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:ViridiscaUi.ViewModels.Pages"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="ViridiscaUi.Views.Education.CoursesView"
+             x:DataType="vm:CoursesViewModel">
+    <Grid RowDefinitions="Auto,*">
+        <!-- Заголовок -->
+        <TextBlock Grid.Row="0" 
+                   Text="{Binding Title}" 
+                   FontSize="24" 
+                   FontWeight="Bold" 
+                   HorizontalAlignment="Center"
+                   Margin="0,20"/>
+                   
+        <!-- Контент -->
+        <StackPanel Grid.Row="1" 
+                    VerticalAlignment="Center" 
+                    HorizontalAlignment="Center"
+                    Spacing="15">
+            <TextBlock Text="{Binding Description}" 
+                       FontSize="16" 
+                       HorizontalAlignment="Center"/>
+                       
+            <TextBlock Text="Здесь будет список курсов" 
+                       FontSize="14" 
+                       HorizontalAlignment="Center"/>
+        </StackPanel>
+    </Grid>
+</UserControl> 

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using ViridiscaUi.Domain.Models.Education;
 using ViridiscaUi.Infrastructure;
 using ViridiscaUi.Services.Interfaces;
@@ -13,51 +14,102 @@ namespace ViridiscaUi.Services.Implementations
     /// </summary>
     public class CourseService : ICourseService
     {
-        private readonly LocalDbContext _dbContext;
+        private readonly ApplicationDbContext _dbContext;
 
-        public CourseService(LocalDbContext dbContext)
+        public CourseService(ApplicationDbContext dbContext)
         {
             _dbContext = dbContext;
         }
 
-        public Task<Course?> GetCourseAsync(Guid uid)
+        public async Task<Course?> GetCourseAsync(Guid uid)
         {
-            throw new NotImplementedException();
+            return await _dbContext.Courses
+                .Include(c => c.Teacher)
+                .Include(c => c.Modules)
+                .Include(c => c.Enrollments)
+                .FirstOrDefaultAsync(c => c.Uid == uid);
         }
 
-        public Task<IEnumerable<Course>> GetAllCoursesAsync()
+        public async Task<IEnumerable<Course>> GetAllCoursesAsync()
         {
-            throw new NotImplementedException();
+            return await _dbContext.Courses
+                .Include(c => c.Teacher)
+                .OrderBy(c => c.Name)
+                .ToListAsync();
         }
 
-        public Task<IEnumerable<Course>> GetCoursesByTeacherAsync(Guid teacherUid)
+        public async Task<IEnumerable<Course>> GetCoursesByTeacherAsync(Guid teacherUid)
         {
-            throw new NotImplementedException();
+            return await _dbContext.Courses
+                .Include(c => c.Teacher)
+                .Where(c => c.TeacherUid == teacherUid)
+                .OrderBy(c => c.Name)
+                .ToListAsync();
         }
 
-        public Task AddCourseAsync(Course course)
+        public async Task AddCourseAsync(Course course)
         {
-            throw new NotImplementedException();
+            course.CreatedAt = DateTime.UtcNow;
+            course.LastModifiedAt = DateTime.UtcNow;
+            
+            await _dbContext.Courses.AddAsync(course);
+            await _dbContext.SaveChangesAsync();
         }
 
-        public Task<bool> UpdateCourseAsync(Course course)
+        public async Task<bool> UpdateCourseAsync(Course course)
         {
-            throw new NotImplementedException();
+            var existingCourse = await _dbContext.Courses.FindAsync(course.Uid);
+            if (existingCourse == null)
+                return false;
+
+            existingCourse.Name = course.Name;
+            existingCourse.Description = course.Description;
+            existingCourse.TeacherUid = course.TeacherUid;
+            existingCourse.StartDate = course.StartDate;
+            existingCourse.EndDate = course.EndDate;
+            existingCourse.Credits = course.Credits;
+            existingCourse.Status = course.Status;
+            existingCourse.LastModifiedAt = DateTime.UtcNow;
+            
+            await _dbContext.SaveChangesAsync();
+            return true;
         }
 
-        public Task<bool> DeleteCourseAsync(Guid uid)
+        public async Task<bool> DeleteCourseAsync(Guid uid)
         {
-            throw new NotImplementedException();
+            var course = await _dbContext.Courses.FindAsync(uid);
+            if (course == null)
+                return false;
+
+            _dbContext.Courses.Remove(course);
+            await _dbContext.SaveChangesAsync();
+            return true;
         }
 
-        public Task<bool> PublishCourseAsync(Guid uid)
+        public async Task<bool> PublishCourseAsync(Guid uid)
         {
-            throw new NotImplementedException();
+            var course = await _dbContext.Courses.FindAsync(uid);
+            if (course == null)
+                return false;
+
+            course.Status = CourseStatus.Active;
+            course.LastModifiedAt = DateTime.UtcNow;
+            
+            await _dbContext.SaveChangesAsync();
+            return true;
         }
 
-        public Task<bool> ArchiveCourseAsync(Guid uid)
+        public async Task<bool> ArchiveCourseAsync(Guid uid)
         {
-            throw new NotImplementedException();
+            var course = await _dbContext.Courses.FindAsync(uid);
+            if (course == null)
+                return false;
+
+            course.Status = CourseStatus.Archived;
+            course.LastModifiedAt = DateTime.UtcNow;
+            
+            await _dbContext.SaveChangesAsync();
+            return true;
         }
     }
 } 

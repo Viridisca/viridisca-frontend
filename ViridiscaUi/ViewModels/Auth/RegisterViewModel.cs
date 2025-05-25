@@ -1,4 +1,6 @@
 using System;
+using System.Collections.ObjectModel;
+using System.Linq;
 using System.Reactive;
 using System.Threading.Tasks;
 using ReactiveUI;
@@ -15,6 +17,7 @@ namespace ViridiscaUi.ViewModels.Auth
     {
         private readonly IAuthService _authService;
         private readonly INavigationService _navigationService;
+        private readonly IRoleService _roleService;
 
         /// <summary>
         /// URL-сегмент для навигации
@@ -58,6 +61,18 @@ namespace ViridiscaUi.ViewModels.Auth
         public string ConfirmPassword { get; set; } = string.Empty;
 
         /// <summary>
+        /// Выбранная роль пользователя
+        /// </summary>
+        [Reactive]
+        public Role? SelectedRole { get; set; }
+
+        /// <summary>
+        /// Список доступных ролей
+        /// </summary>
+        [Reactive]
+        public ObservableCollection<Role> AvailableRoles { get; set; } = new();
+
+        /// <summary>
         /// Сообщение об ошибке
         /// </summary>
         [Reactive]
@@ -68,6 +83,12 @@ namespace ViridiscaUi.ViewModels.Auth
         /// </summary>
         [Reactive]
         public bool IsRegistering { get; set; } = false;
+
+        /// <summary>
+        /// Флаг загрузки ролей
+        /// </summary>
+        [Reactive]
+        public bool IsLoadingRoles { get; set; } = false;
 
         /// <summary>
         /// Команда для регистрации пользователя
@@ -84,12 +105,14 @@ namespace ViridiscaUi.ViewModels.Auth
         /// </summary>
         /// <param name="authService">Сервис аутентификации</param>
         /// <param name="navigationService">Сервис навигации</param>
+        /// <param name="roleService">Сервис ролей</param>
         /// <param name="hostScreen">Родительский экран</param>
-        public RegisterViewModel(IAuthService authService, INavigationService navigationService, IScreen hostScreen) 
+        public RegisterViewModel(IAuthService authService, INavigationService navigationService, IRoleService roleService, IScreen hostScreen) 
             : base(hostScreen)
         {
             _authService = authService ?? throw new ArgumentNullException(nameof(authService));
             _navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
+            _roleService = roleService ?? throw new ArgumentNullException(nameof(roleService));
 
             // Проверка возможности выполнения команды регистрации
             var canRegister = this.WhenAnyValue(
@@ -99,14 +122,16 @@ namespace ViridiscaUi.ViewModels.Auth
                 x => x.LastName,
                 x => x.Password,
                 x => x.ConfirmPassword,
+                x => x.SelectedRole,
                 x => x.IsRegistering,
-                (username, email, firstName, lastName, password, confirmPassword, isRegistering) =>
+                (username, email, firstName, lastName, password, confirmPassword, selectedRole, isRegistering) =>
                     !string.IsNullOrWhiteSpace(username) &&
                     !string.IsNullOrWhiteSpace(email) &&
                     !string.IsNullOrWhiteSpace(firstName) &&
                     !string.IsNullOrWhiteSpace(lastName) &&
                     !string.IsNullOrWhiteSpace(password) &&
                     password == confirmPassword &&
+                    selectedRole != null &&
                     !isRegistering
             );
 
@@ -118,6 +143,38 @@ namespace ViridiscaUi.ViewModels.Auth
             {
                 await _navigationService.NavigateToAsync("login");
             });
+
+            // Загружаем роли при создании ViewModel
+            _ = LoadRolesAsync();
+        }
+
+        /// <summary>
+        /// Загружает список доступных ролей
+        /// </summary>
+        private async Task LoadRolesAsync()
+        {
+            try
+            {
+                IsLoadingRoles = true;
+                var roles = await _roleService.GetAllRolesAsync();
+                
+                AvailableRoles.Clear();
+                foreach (var role in roles)
+                {
+                    AvailableRoles.Add(role);
+                }
+
+                // Устанавливаем роль студента по умолчанию
+                SelectedRole = AvailableRoles.FirstOrDefault(r => r.Name == "Student");
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage = $"Ошибка загрузки ролей: {ex.Message}";
+            }
+            finally
+            {
+                IsLoadingRoles = false;
+            }
         }
 
         /// <summary>
@@ -137,12 +194,19 @@ namespace ViridiscaUi.ViewModels.Auth
                     return;
                 }
 
+                if (SelectedRole == null)
+                {
+                    ErrorMessage = "Выберите роль";
+                    return;
+                }
+
                 var result = await _authService.RegisterAsync(
                     Username, 
                     Email, 
                     Password, 
                     FirstName, 
-                    LastName);
+                    LastName,
+                    SelectedRole.Uid);
 
                 if (result.Success)
                 {

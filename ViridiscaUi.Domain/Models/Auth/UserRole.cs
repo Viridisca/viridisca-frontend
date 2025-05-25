@@ -11,7 +11,7 @@ public class UserRole : ViewModelBase
 {
     private Guid _userUid;
     private Guid _roleUid;
-    private Role _role;
+    private Role _role = null!;
     private bool _isActive;
     private DateTime _assignedAt;
     private DateTime? _expiresAt;
@@ -71,6 +71,11 @@ public class UserRole : ViewModelBase
     }
 
     /// <summary>
+    /// Пользователь
+    /// </summary>
+    public User? User { get; set; }
+
+    /// <summary>
     /// Создает новый экземпляр связи пользователя с ролью
     /// </summary>
     public UserRole()
@@ -82,11 +87,12 @@ public class UserRole : ViewModelBase
     /// <summary>
     /// Создает новый экземпляр связи пользователя с ролью с указанными параметрами
     /// </summary>
-    public UserRole(Guid userUid, Guid roleUid)
+    public UserRole(Guid userUid, Guid roleUid, Role role)
     {
         Uid = Guid.NewGuid();
         _userUid = userUid;
         _roleUid = roleUid;
+        _role = role;
         _assignedAt = DateTime.UtcNow;
         _isActive = true;
     }

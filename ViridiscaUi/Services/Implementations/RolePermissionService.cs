@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using ViridiscaUi.Domain.Models.Auth;
 using ViridiscaUi.Infrastructure;
 using ViridiscaUi.Services.Interfaces;
@@ -13,61 +14,131 @@ namespace ViridiscaUi.Services.Implementations
     /// </summary>
     public class RolePermissionService : IRolePermissionService
     {
-        private readonly LocalDbContext _dbContext;
+        private readonly ApplicationDbContext _dbContext;
 
-        public RolePermissionService(LocalDbContext dbContext)
+        public RolePermissionService(ApplicationDbContext dbContext)
         {
             _dbContext = dbContext;
         }
 
-        public Task<RolePermission?> GetRolePermissionAsync(Guid uid)
+        public async Task<RolePermission?> GetRolePermissionAsync(Guid uid)
         {
-            throw new NotImplementedException();
+            return await _dbContext.RolePermissions
+                .Include(rp => rp.Role)
+                .Include(rp => rp.Permission)
+                .FirstOrDefaultAsync(rp => rp.Uid == uid);
         }
 
-        public Task<IEnumerable<RolePermission>> GetAllRolePermissionsAsync()
+        public async Task<IEnumerable<RolePermission>> GetAllRolePermissionsAsync()
         {
-            throw new NotImplementedException();
+            return await _dbContext.RolePermissions
+                .Include(rp => rp.Role)
+                .Include(rp => rp.Permission)
+                .ToListAsync();
         }
 
-        public Task<RolePermission?> GetRolePermissionByRoleAndPermissionAsync(Guid roleUid, Guid permissionUid)
+        public async Task<RolePermission?> GetRolePermissionByRoleAndPermissionAsync(Guid roleUid, Guid permissionUid)
         {
-            throw new NotImplementedException();
+            return await _dbContext.RolePermissions
+                .Include(rp => rp.Role)
+                .Include(rp => rp.Permission)
+                .FirstOrDefaultAsync(rp => rp.RoleUid == roleUid && rp.PermissionUid == permissionUid);
         }
 
-        public Task<IEnumerable<RolePermission>> GetRolePermissionsByRoleAsync(Guid roleUid)
+        public async Task<IEnumerable<RolePermission>> GetRolePermissionsByRoleAsync(Guid roleUid)
         {
-            throw new NotImplementedException();
+            return await _dbContext.RolePermissions
+                .Where(rp => rp.RoleUid == roleUid)
+                .Include(rp => rp.Role)
+                .Include(rp => rp.Permission)
+                .ToListAsync();
         }
 
-        public Task<IEnumerable<RolePermission>> GetRolePermissionsByPermissionAsync(Guid permissionUid)
+        public async Task<IEnumerable<RolePermission>> GetRolePermissionsByPermissionAsync(Guid permissionUid)
         {
-            throw new NotImplementedException();
+            return await _dbContext.RolePermissions
+                .Where(rp => rp.PermissionUid == permissionUid)
+                .Include(rp => rp.Role)
+                .Include(rp => rp.Permission)
+                .ToListAsync();
         }
 
-        public Task AddRolePermissionAsync(RolePermission rolePermission)
+        public async Task AddRolePermissionAsync(RolePermission rolePermission)
         {
-            throw new NotImplementedException();
+            rolePermission.CreatedAt = DateTime.UtcNow;
+            rolePermission.LastModifiedAt = DateTime.UtcNow;
+            
+            await _dbContext.RolePermissions.AddAsync(rolePermission);
+            await _dbContext.SaveChangesAsync();
         }
 
-        public Task<bool> AddPermissionToRoleAsync(Guid roleUid, Guid permissionUid)
+        public async Task<bool> AddPermissionToRoleAsync(Guid roleUid, Guid permissionUid)
         {
-            throw new NotImplementedException();
+            // Проверяем существование роли и разрешения
+            var role = await _dbContext.Roles.FindAsync(roleUid);
+            var permission = await _dbContext.Permissions.FindAsync(permissionUid);
+            
+            if (role == null || permission == null)
+                return false;
+
+            // Проверяем, не назначено ли уже разрешение
+            var existingAssignment = await _dbContext.RolePermissions
+                .FirstOrDefaultAsync(rp => rp.RoleUid == roleUid && rp.PermissionUid == permissionUid);
+                
+            if (existingAssignment != null)
+                return true; // Разрешение уже назначено
+
+            // Создаем новую связь
+            var rolePermission = new RolePermission
+            {
+                Uid = Guid.NewGuid(),
+                RoleUid = roleUid,
+                PermissionUid = permissionUid,
+                CreatedAt = DateTime.UtcNow,
+                LastModifiedAt = DateTime.UtcNow
+            };
+
+            await _dbContext.RolePermissions.AddAsync(rolePermission);
+            await _dbContext.SaveChangesAsync();
+            return true;
         }
 
-        public Task<bool> UpdateRolePermissionAsync(RolePermission rolePermission)
+        public async Task<bool> UpdateRolePermissionAsync(RolePermission rolePermission)
         {
-            throw new NotImplementedException();
+            var existingRolePermission = await _dbContext.RolePermissions.FindAsync(rolePermission.Uid);
+            if (existingRolePermission == null)
+                return false;
+
+            existingRolePermission.RoleUid = rolePermission.RoleUid;
+            existingRolePermission.PermissionUid = rolePermission.PermissionUid;
+            existingRolePermission.LastModifiedAt = DateTime.UtcNow;
+            
+            await _dbContext.SaveChangesAsync();
+            return true;
         }
 
-        public Task<bool> DeleteRolePermissionAsync(Guid uid)
+        public async Task<bool> DeleteRolePermissionAsync(Guid uid)
         {
-            throw new NotImplementedException();
+            var rolePermission = await _dbContext.RolePermissions.FindAsync(uid);
+            if (rolePermission == null)
+                return false;
+
+            _dbContext.RolePermissions.Remove(rolePermission);
+            await _dbContext.SaveChangesAsync();
+            return true;
         }
 
-        public Task<bool> RemovePermissionFromRoleAsync(Guid roleUid, Guid permissionUid)
+        public async Task<bool> RemovePermissionFromRoleAsync(Guid roleUid, Guid permissionUid)
         {
-            throw new NotImplementedException();
+            var rolePermission = await _dbContext.RolePermissions
+                .FirstOrDefaultAsync(rp => rp.RoleUid == roleUid && rp.PermissionUid == permissionUid);
+                
+            if (rolePermission == null)
+                return false;
+
+            _dbContext.RolePermissions.Remove(rolePermission);
+            await _dbContext.SaveChangesAsync();
+            return true;
         }
     }
 } 

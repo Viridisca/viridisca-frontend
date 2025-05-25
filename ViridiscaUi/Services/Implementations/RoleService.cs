@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using ViridiscaUi.Domain.Models.Auth;
 using ViridiscaUi.Infrastructure;
 using ViridiscaUi.Services.Interfaces;
@@ -13,160 +14,132 @@ namespace ViridiscaUi.Services.Implementations
     /// </summary>
     public class RoleService : IRoleService
     {
-        private readonly LocalDbContext _dbContext;
+        private readonly ApplicationDbContext _dbContext;
 
-        public RoleService(LocalDbContext dbContext)
+        public RoleService(ApplicationDbContext dbContext)
         {
             _dbContext = dbContext;
         }
 
-        public Task<Role?> GetRoleAsync(Guid uid)
+        public async Task<Role?> GetRoleAsync(Guid uid)
         {
-            var role = _dbContext.GetRoleByUid(uid);
-            return Task.FromResult(role);
+            return await _dbContext.Roles.FindAsync(uid);
         }
 
-        public Task<Role?> GetRoleByNameAsync(string name)
+        public async Task<Role?> GetRoleByNameAsync(string name)
         {
-            var role = _dbContext.GetRoleByName(name);
-            return Task.FromResult(role);
+            return await _dbContext.Roles
+                .FirstOrDefaultAsync(r => r.Name == name);
         }
 
-        public Task<IEnumerable<Role>> GetAllRolesAsync()
+        public async Task<IEnumerable<Role>> GetAllRolesAsync()
         {
-            return Task.FromResult(_dbContext.GetAllRoles());
+            return await _dbContext.Roles
+                .OrderBy(r => r.Name)
+                .ToListAsync();
         }
 
-        public Task<IEnumerable<Role>> GetUserRolesAsync(Guid userUid)
+        public async Task<IEnumerable<Role>> GetUserRolesAsync(Guid userUid)
         {
-            // Получаем связи пользователя с ролями
-            var userRoles = _dbContext.GetUserRolesByUserUid(userUid);
+            return await _dbContext.UserRoles
+                .Where(ur => ur.UserUid == userUid && ur.IsActive)
+                .Include(ur => ur.Role)
+                .Select(ur => ur.Role!)
+                .ToListAsync();
+        }
+
+        public async Task AddRoleAsync(Role role)
+        {
+            role.CreatedAt = DateTime.UtcNow;
+            role.LastModifiedAt = DateTime.UtcNow;
             
-            // Получаем роли на основе связей
-            var roles = userRoles
-                .Select(ur => _dbContext.GetRoleByUid(ur.RoleUid))
-                .Where(r => r != null)
-                .Cast<Role>();
-                
-            return Task.FromResult(roles);
+            await _dbContext.Roles.AddAsync(role);
+            await _dbContext.SaveChangesAsync();
         }
 
-        public Task AddRoleAsync(Role role)
+        public async Task<bool> UpdateRoleAsync(Role role)
         {
-            _dbContext.AddRole(role);
-            return Task.CompletedTask;
-        }
-
-        public Task<bool> UpdateRoleAsync(Role role)
-        {
-            var existingRole = _dbContext.GetRoleByUid(role.Uid);
+            var existingRole = await _dbContext.Roles.FindAsync(role.Uid);
             if (existingRole == null)
-                return Task.FromResult(false);
-                
-            _dbContext.UpdateRole(role);
-            return Task.FromResult(true);
+                return false;
+
+            existingRole.Name = role.Name;
+            existingRole.Description = role.Description;
+            existingRole.RoleType = role.RoleType;
+            existingRole.LastModifiedAt = DateTime.UtcNow;
+            
+            await _dbContext.SaveChangesAsync();
+            return true;
         }
 
-        public Task<bool> DeleteRoleAsync(Guid uid)
+        public async Task<bool> DeleteRoleAsync(Guid uid)
         {
-            var existingRole = _dbContext.GetRoleByUid(uid);
-            if (existingRole == null)
-                return Task.FromResult(false);
-                
             // Проверяем, есть ли пользователи с этой ролью
-            var usersWithRole = _dbContext.GetUserRolesByRoleUid(uid);
-            if (usersWithRole.Any())
-                return Task.FromResult(false); // Нельзя удалить роль, используемую пользователями
+            var usersWithRole = await _dbContext.UserRoles
+                .Where(ur => ur.RoleUid == uid && ur.IsActive)
+                .AnyAsync();
                 
-            _dbContext.DeleteRole(uid);
-            return Task.FromResult(true);
+            if (usersWithRole)
+                return false; // Нельзя удалить роль, используемую пользователями
+
+            var role = await _dbContext.Roles.FindAsync(uid);
+            if (role == null)
+                return false;
+
+            _dbContext.Roles.Remove(role);
+            await _dbContext.SaveChangesAsync();
+            return true;
         }
 
-        public Task<bool> AssignRoleToUserAsync(Guid roleUid, Guid userUid)
+        public async Task<bool> AssignRoleToUserAsync(Guid roleUid, Guid userUid)
         {
             // Проверяем существование роли и пользователя
-            var role = _dbContext.GetRoleByUid(roleUid);
-            var user = _dbContext.GetUserByUid(userUid);
+            var role = await _dbContext.Roles.FindAsync(roleUid);
+            var user = await _dbContext.Users.FindAsync(userUid);
             
             if (role == null || user == null)
-                return Task.FromResult(false);
+                return false;
                 
             // Проверяем, не назначена ли уже роль
-            var existingUserRole = _dbContext.GetUserRolesByUserUid(userUid)
-                .FirstOrDefault(ur => ur.RoleUid == roleUid && ur.IsActive);
+            var existingUserRole = await _dbContext.UserRoles
+                .FirstOrDefaultAsync(ur => ur.UserUid == userUid && ur.RoleUid == roleUid && ur.IsActive);
                 
             if (existingUserRole != null)
-                return Task.FromResult(true); // Роль уже назначена
+                return true; // Роль уже назначена
                 
             // Создаем новую связь
             var userRole = new UserRole
             {
                 Uid = Guid.NewGuid(),
                 UserUid = userUid,
-                User = user,
                 RoleUid = roleUid,
-                Role = role,
                 IsActive = true,
                 AssignedAt = DateTime.UtcNow,
                 CreatedAt = DateTime.UtcNow,
                 LastModifiedAt = DateTime.UtcNow
             };
             
-            // Добавляем связь в базу и в коллекцию пользователя
-            _dbContext.AddUserRole(userRole);
-            user.UserRoles.Add(userRole);
+            await _dbContext.UserRoles.AddAsync(userRole);
+            await _dbContext.SaveChangesAsync();
             
-            // Если это первая роль пользователя, устанавливаем её как основную
-            if (user.Role == null)
-            {
-                user.Role = role;
-                user.RoleId = roleUid;
-                _dbContext.UpdateUser(user);
-            }
-            
-            return Task.FromResult(true);
+            return true;
         }
 
-        public Task<bool> RemoveRoleFromUserAsync(Guid roleUid, Guid userUid)
+        public async Task<bool> RemoveRoleFromUserAsync(Guid roleUid, Guid userUid)
         {
-            // Проверяем существование пользователя
-            var user = _dbContext.GetUserByUid(userUid);
-            if (user == null)
-                return Task.FromResult(false);
-                
             // Ищем активную связь пользователя с указанной ролью
-            var userRole = _dbContext.GetUserRolesByUserUid(userUid)
-                .FirstOrDefault(ur => ur.RoleUid == roleUid && ur.IsActive);
+            var userRole = await _dbContext.UserRoles
+                .FirstOrDefaultAsync(ur => ur.UserUid == userUid && ur.RoleUid == roleUid && ur.IsActive);
                 
             if (userRole == null)
-                return Task.FromResult(false); // Роль не назначена
+                return false; // Роль не назначена
                 
-            // Деактивируем связь, но не удаляем
+            // Деактивируем связь
             userRole.IsActive = false;
             userRole.LastModifiedAt = DateTime.UtcNow;
-            _dbContext.UpdateUserRole(userRole);
             
-            // Если это была основная роль пользователя, ищем другую активную роль
-            if (user.RoleId == roleUid)
-            {
-                var otherActiveRole = _dbContext.GetUserRolesByUserUid(userUid)
-                    .FirstOrDefault(ur => ur.RoleUid != roleUid && ur.IsActive);
-                    
-                if (otherActiveRole != null)
-                {
-                    user.Role = _dbContext.GetRoleByUid(otherActiveRole.RoleUid);
-                    user.RoleId = otherActiveRole.RoleUid;
-                }
-                else
-                {
-                    user.Role = null;
-                    user.RoleId = Guid.Empty;
-                }
-                
-                _dbContext.UpdateUser(user);
-            }
-            
-            return Task.FromResult(true);
+            await _dbContext.SaveChangesAsync();
+            return true;
         }
     }
 } 

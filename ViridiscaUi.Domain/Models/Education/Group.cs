@@ -22,6 +22,7 @@ public class Group : ViewModelBase
     private Guid? _curatorUid;
     private Guid _departmentUid;
     private ObservableCollection<Student> _students = new();
+    private Teacher? _curator;
 
     /// <summary>
     /// Код группы
@@ -111,6 +112,15 @@ public class Group : ViewModelBase
     {
         get => _departmentUid;
         set => this.RaiseAndSetIfChanged(ref _departmentUid, value);
+    }
+
+    /// <summary>
+    /// Куратор группы
+    /// </summary>
+    public Teacher? Curator
+    {
+        get => _curator;
+        set => this.RaiseAndSetIfChanged(ref _curator, value);
     }
 
     /// <summary>

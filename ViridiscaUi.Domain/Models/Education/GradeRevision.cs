@@ -12,9 +12,9 @@ public class GradeRevision : ViewModelBase
     private Guid _teacherUid;
     private decimal _previousValue;
     private decimal _newValue;
-    private string _previousDescription;
-    private string _newDescription;
-    private string _revisionReason;
+    private string _previousDescription = string.Empty;
+    private string _newDescription = string.Empty;
+    private string _revisionReason = string.Empty;
     private DateTime _createdAt;
 
     /// <summary>
@@ -83,7 +83,7 @@ public class GradeRevision : ViewModelBase
     /// <summary>
     /// Дата создания ревизии
     /// </summary>
-    public DateTime CreatedAt
+    public new DateTime CreatedAt
     {
         get => _createdAt;
         set => this.RaiseAndSetIfChanged(ref _createdAt, value);

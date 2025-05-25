@@ -1,5 +1,8 @@
 using System;
 using System.Threading.Tasks;
+using ReactiveUI;
+using ViridiscaUi.Domain.Models.Education;
+using ViridiscaUi.ViewModels;
 
 namespace ViridiscaUi.Services.Interfaces
 {
@@ -37,5 +40,8 @@ namespace ViridiscaUi.Services.Interfaces
         /// Показывает диалог с выбором из списка
         /// </summary>
         Task<T?> ShowSelectionDialogAsync<T>(string title, string message, T[] items);
+
+        Task<TResult?> ShowDialogAsync<TResult>(ViewModelBase viewModel);
+        Task<Student?> ShowStudentEditorDialogAsync(Student? student = null);
     }
 } 

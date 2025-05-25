@@ -13,9 +13,7 @@ namespace ViridiscaUi.Services.Implementations
     /// </summary>
     public class AssignmentService : IAssignmentService
     {
-        private readonly LocalDbContext _dbContext;
-
-        public AssignmentService(LocalDbContext dbContext)
+                private readonly ApplicationDbContext _dbContext;        public AssignmentService(ApplicationDbContext dbContext)
         {
             _dbContext = dbContext;
         }

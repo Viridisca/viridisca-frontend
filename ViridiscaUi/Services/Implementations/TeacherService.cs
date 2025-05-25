@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using ViridiscaUi.Domain.Models.Education;
 using ViridiscaUi.Infrastructure;
 using ViridiscaUi.Services.Interfaces;
@@ -13,41 +14,82 @@ namespace ViridiscaUi.Services.Implementations
     /// </summary>
     public class TeacherService : ITeacherService
     {
-        private readonly LocalDbContext _dbContext;
+        private readonly ApplicationDbContext _dbContext;
 
-        public TeacherService(LocalDbContext dbContext)
+        public TeacherService(ApplicationDbContext dbContext)
         {
             _dbContext = dbContext;
         }
 
-        public Task<Teacher?> GetTeacherAsync(Guid uid)
+        public async Task<Teacher?> GetTeacherAsync(Guid uid)
         {
-            throw new NotImplementedException();
+            return await _dbContext.Teachers
+                .Include(t => t.User)
+                .FirstOrDefaultAsync(t => t.Uid == uid);
         }
 
-        public Task<IEnumerable<Teacher>> GetAllTeachersAsync()
+        public async Task<IEnumerable<Teacher>> GetAllTeachersAsync()
         {
-            throw new NotImplementedException();
+            return await _dbContext.Teachers
+                .Include(t => t.User)
+                .OrderBy(t => t.LastName)
+                .ThenBy(t => t.FirstName)
+                .ToListAsync();
         }
 
-        public Task AddTeacherAsync(Teacher teacher)
+        public async Task AddTeacherAsync(Teacher teacher)
         {
-            throw new NotImplementedException();
+            teacher.CreatedAt = DateTime.UtcNow;
+            teacher.LastModifiedAt = DateTime.UtcNow;
+            
+            await _dbContext.Teachers.AddAsync(teacher);
+            await _dbContext.SaveChangesAsync();
         }
 
-        public Task<bool> UpdateTeacherAsync(Teacher teacher)
+        public async Task<bool> UpdateTeacherAsync(Teacher teacher)
         {
-            throw new NotImplementedException();
+            var existingTeacher = await _dbContext.Teachers.FindAsync(teacher.Uid);
+            if (existingTeacher == null)
+                return false;
+
+            existingTeacher.FirstName = teacher.FirstName;
+            existingTeacher.LastName = teacher.LastName;
+            existingTeacher.MiddleName = teacher.MiddleName;
+            existingTeacher.Specialization = teacher.Specialization;
+            existingTeacher.AcademicTitle = teacher.AcademicTitle;
+            existingTeacher.AcademicDegree = teacher.AcademicDegree;
+            existingTeacher.HourlyRate = teacher.HourlyRate;
+            existingTeacher.Bio = teacher.Bio;
+            existingTeacher.LastModifiedAt = DateTime.UtcNow;
+            
+            await _dbContext.SaveChangesAsync();
+            return true;
         }
 
-        public Task<bool> DeleteTeacherAsync(Guid uid)
+        public async Task<bool> DeleteTeacherAsync(Guid uid)
         {
-            throw new NotImplementedException();
+            var teacher = await _dbContext.Teachers.FindAsync(uid);
+            if (teacher == null)
+                return false;
+
+            _dbContext.Teachers.Remove(teacher);
+            await _dbContext.SaveChangesAsync();
+            return true;
         }
 
-        public Task<bool> AssignToCourseAsync(Guid teacherUid, Guid courseUid)
+        public async Task<bool> AssignToCourseAsync(Guid teacherUid, Guid courseUid)
         {
-            throw new NotImplementedException();
+            var teacher = await _dbContext.Teachers.FindAsync(teacherUid);
+            var course = await _dbContext.Courses.FindAsync(courseUid);
+            
+            if (teacher == null || course == null)
+                return false;
+
+            course.TeacherUid = teacherUid;
+            course.LastModifiedAt = DateTime.UtcNow;
+            
+            await _dbContext.SaveChangesAsync();
+            return true;
         }
     }
 } 

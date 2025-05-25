@@ -13,14 +13,8 @@ public class UsersViewModel : RoutableViewModelBase
     public string Title => "Пользователи";
     public string Description => "Управление пользователями системы";
 
-    /// <summary>
-    /// Команда для возврата назад
-    /// </summary>
-    public ReactiveCommand<Unit, IRoutableViewModel> GoBackCommand { get; }
-
     public UsersViewModel(IScreen hostScreen) : base(hostScreen)
     {
-        // Команда для возврата на предыдущую страницу
-        GoBackCommand = hostScreen.Router.NavigateBack;
+        // Инициализация без навигационных команд
     }
 } 

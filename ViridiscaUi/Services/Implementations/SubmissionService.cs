@@ -13,9 +13,7 @@ namespace ViridiscaUi.Services.Implementations
     /// </summary>
     public class SubmissionService : ISubmissionService
     {
-        private readonly LocalDbContext _dbContext;
-
-        public SubmissionService(LocalDbContext dbContext)
+                private readonly ApplicationDbContext _dbContext;        public SubmissionService(ApplicationDbContext dbContext)
         {
             _dbContext = dbContext;
         }
