@@ -10,6 +10,7 @@ using ViridiscaUi.ViewModels.Auth;
 using ViridiscaUi.ViewModels.Pages;
 using ViridiscaUi.ViewModels.Students;
 using ViridiscaUi.ViewModels.Profile;
+using ViridiscaUi.ViewModels.Components;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using ViridiscaUi.Infrastructure;
@@ -29,6 +30,7 @@ public class MainViewModel : ViewModelBase, IScreen
     private readonly IUserService _userService;
     private readonly IRoleService _roleService;
     private readonly IUserSessionService _userSessionService;
+    private readonly IStatusService _statusService;
     private bool _isLoggedIn;
     private string? _currentUser;
     private string? _userRole;
@@ -38,6 +40,11 @@ public class MainViewModel : ViewModelBase, IScreen
     /// RoutingState для управления навигацией
     /// </summary>
     public RoutingState Router { get; } = new RoutingState();
+    
+    /// <summary>
+    /// StatusBar ViewModel
+    /// </summary>
+    public StatusBarViewModel StatusBar { get; }
     
     /// <summary>
     /// Текущий аутентифицированный пользователь
@@ -130,7 +137,8 @@ public class MainViewModel : ViewModelBase, IScreen
         IDialogService dialogService,
         IUserService userService,
         IRoleService roleService,
-        IUserSessionService userSessionService)
+        IUserSessionService userSessionService,
+        IStatusService statusService)
     {
         _authService = authService ?? throw new ArgumentNullException(nameof(authService));
         _navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
@@ -139,6 +147,13 @@ public class MainViewModel : ViewModelBase, IScreen
         _userService = userService ?? throw new ArgumentNullException(nameof(userService));
         _roleService = roleService ?? throw new ArgumentNullException(nameof(roleService));
         _userSessionService = userSessionService ?? throw new ArgumentNullException(nameof(userSessionService));
+        _statusService = statusService ?? throw new ArgumentNullException(nameof(statusService));
+        
+        // Инициализация StatusBar
+        StatusBar = new StatusBarViewModel(_statusService);
+        
+        // Приветственное сообщение
+        _statusService.ShowInfo("Добро пожаловать в Viridisca LMS!", "Система");
         
         // Подписка на изменения текущего пользователя
         _authService.CurrentUserObservable.Subscribe(user =>
@@ -151,14 +166,14 @@ public class MainViewModel : ViewModelBase, IScreen
             // Если пользователь только что вошел в систему
             if (!wasLoggedIn && user != null)
             {
-                Console.WriteLine($"MainViewModel: Пользователь вошел в систему: {user.Email}");
+                StatusLogger.LogInfo($"Пользователь вошел в систему: {user.Email}", "MainViewModel");
                 UpdateMenuItems(user);
                 NavigateToDefaultPage(user);
             }
             // Если пользователь вышел из системы
             else if (wasLoggedIn && user == null)
             {
-                Console.WriteLine("MainViewModel: Пользователь вышел из системы");
+                StatusLogger.LogInfo("Пользователь вышел из системы", "MainViewModel");
                 MenuItems.Clear();
                 Router.Navigate.Execute(new AuthenticationViewModel(_authService, _navigationService, _roleService, this)).Subscribe();
             }
@@ -197,18 +212,18 @@ public class MainViewModel : ViewModelBase, IScreen
     /// </summary>
     private async void CheckCurrentUserAndNavigate()
     {
-        Console.WriteLine("MainViewModel: Проверяем текущего пользователя...");
+        StatusLogger.LogInfo("Проверяем текущего пользователя...", "MainViewModel");
         var currentUser = await _authService.GetCurrentUserAsync();
         
         if (currentUser == null)
         {
-            Console.WriteLine("MainViewModel: Пользователь не авторизован, показываем экран авторизации");
+            StatusLogger.LogInfo("Пользователь не авторизован, показываем экран авторизации", "MainViewModel");
             // Если пользователь не авторизован, показываем экран авторизации
             Router.Navigate.Execute(new AuthenticationViewModel(_authService, _navigationService, _roleService, this)).Subscribe();
         }
         else
         {
-            Console.WriteLine($"MainViewModel: Пользователь уже авторизован: {currentUser.Email}");
+            StatusLogger.LogInfo($"Пользователь уже авторизован: {currentUser.Email}", "MainViewModel");
             // Если пользователь авторизован, принудительно обновляем состояние через UserSessionService
             // чтобы сработала подписка на CurrentUserObservable
             _userSessionService.SetCurrentUser(currentUser);
@@ -220,44 +235,44 @@ public class MainViewModel : ViewModelBase, IScreen
     /// </summary>
     private void UpdateMenuItems(User? user)
     {
-        Console.WriteLine($"MainViewModel.UpdateMenuItems: Начинаем обновление меню для пользователя: {user?.Email ?? "null"}");
+        StatusLogger.LogInfo($"Начинаем обновление меню для пользователя: {user?.Email ?? "null"}", "MainViewModel");
         
         var menuItems = new List<NavigationItemViewModel>();
         
         if (user == null)
         {
-            Console.WriteLine("MainViewModel.UpdateMenuItems: Пользователь null, меню не создается");
+            StatusLogger.LogInfo("Пользователь null, меню не создается", "MainViewModel");
             return;
         }
 
-        Console.WriteLine($"MainViewModel.UpdateMenuItems: Роль пользователя: {user.Role?.Name ?? "null"}");
-        Console.WriteLine($"MainViewModel.UpdateMenuItems: RoleId: {user.RoleId}");
+        StatusLogger.LogInfo($"Роль пользователя: {user.Role?.Name ?? "null"}", "MainViewModel");
+        StatusLogger.LogInfo($"RoleId: {user.RoleId}", "MainViewModel");
         
         // Общие пункты меню для всех пользователей
         menuItems.Add(new NavigationItemViewModel("Главная", "🏠", NavigateToHomeCommand));
         menuItems.Add(new NavigationItemViewModel("Курсы", "📚", NavigateToCoursesCommand));
         menuItems.Add(new NavigationItemViewModel("Мой профиль", "👤", NavigateToProfileCommand));
         
-        Console.WriteLine("MainViewModel.UpdateMenuItems: Добавлены базовые пункты меню: Главная, Курсы, Профиль");
+        StatusLogger.LogInfo("Добавлены базовые пункты меню: Главная, Курсы, Профиль", "MainViewModel");
         
         // Пункты меню для Администраторов и Преподавателей
         if (user.Role?.Name == "Administrator" || user.Role?.Name == "Teacher")
         {
             menuItems.Add(new NavigationItemViewModel("Студенты", "🎓", NavigateToStudentsCommand));
-            Console.WriteLine($"MainViewModel.UpdateMenuItems: Добавлен пункт 'Студенты' для роли: {user.Role.Name}");
+            StatusLogger.LogInfo($"Добавлен пункт 'Студенты' для роли: {user.Role.Name}", "MainViewModel");
         }
         
         // Пункты меню только для администраторов
         if (user.Role?.Name == "Administrator")
         {
             menuItems.Add(new NavigationItemViewModel("Пользователи", "👥", NavigateToUsersCommand));
-            Console.WriteLine("MainViewModel.UpdateMenuItems: Добавлен пункт 'Пользователи' для Администратора");
+            StatusLogger.LogInfo("Добавлен пункт 'Пользователи' для Администратора", "MainViewModel");
         }
         
-        Console.WriteLine($"MainViewModel.UpdateMenuItems: Итого создано пунктов меню: {menuItems.Count}");
+        StatusLogger.LogInfo($"Итого создано пунктов меню: {menuItems.Count}", "MainViewModel");
         foreach (var item in menuItems)
         {
-            Console.WriteLine($"  - {item.Label}");
+            StatusLogger.LogInfo($"  - {item.Label}", "MainViewModel");
         }
         
         MenuItems = new ObservableCollection<NavigationItemViewModel>(menuItems);
@@ -271,7 +286,7 @@ public class MainViewModel : ViewModelBase, IScreen
         if (user == null)
             return;
         
-        Console.WriteLine($"MainViewModel.NavigateToDefaultPage: Выполняем начальную навигацию для {user.Role?.Name}");
+        StatusLogger.LogInfo($"Выполняем начальную навигацию для {user.Role?.Name}", "MainViewModel");
         
         // ВАЖНО: Очищаем стек навигации после авторизации
         // чтобы страница авторизации не оставалась в истории
@@ -294,7 +309,7 @@ public class MainViewModel : ViewModelBase, IScreen
         // Обновляем состояние кнопки "Назад"
         UpdateCanGoBack();
         
-        Console.WriteLine($"MainViewModel.NavigateToDefaultPage: Стек навигации очищен, размер: {Router.NavigationStack.Count}");
+        StatusLogger.LogInfo($"Стек навигации очищен, размер: {Router.NavigationStack.Count}", "MainViewModel");
     }
     
     private async Task Logout()
@@ -321,11 +336,11 @@ public class MainViewModel : ViewModelBase, IScreen
             // Проверяем чтобы не возвращаться на страницу авторизации если пользователь авторизован
             if (previousViewModel is AuthenticationViewModel && IsLoggedIn)
             {
-                Console.WriteLine("MainViewModel.GoBack: Блокируем возврат на страницу авторизации для авторизованного пользователя");
+                StatusLogger.LogInfo("Блокируем возврат на страницу авторизации для авторизованного пользователя", "MainViewModel");
                 return;
             }
             
-            Console.WriteLine($"MainViewModel.GoBack: Возвращаемся назад от {currentViewModel?.GetType().Name} к {previousViewModel?.GetType().Name}");
+            StatusLogger.LogInfo($"Возвращаемся назад от {currentViewModel?.GetType().Name} к {previousViewModel?.GetType().Name}", "MainViewModel");
             Router.NavigateBack.Execute().Subscribe(_ => UpdateCanGoBack());
         }
     }
@@ -345,6 +360,6 @@ public class MainViewModel : ViewModelBase, IScreen
         }
         
         CanGoBack = canGoBack;
-        Console.WriteLine($"MainViewModel.UpdateCanGoBack: CanGoBack={CanGoBack}, стек размер={Router.NavigationStack.Count}, авторизован={IsLoggedIn}");
+        StatusLogger.LogInfo($"CanGoBack={CanGoBack}, стек размер={Router.NavigationStack.Count}, авторизован={IsLoggedIn}", "MainViewModel");
     }
 }

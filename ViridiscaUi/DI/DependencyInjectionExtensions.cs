@@ -53,6 +53,7 @@ public static class DependencyInjectionExtensions
         // Register user session service (Singleton для сохранения состояния)
         services.AddSingleton<IUserSessionService, UserSessionService>();
         services.AddSingleton<INavigationService, NavigationService>();
+        services.AddSingleton<IStatusService, StatusService>();
         services.AddSingleton<IDialogService>(sp =>
         {
             var mainWindow = sp.GetRequiredService<MainWindow>();

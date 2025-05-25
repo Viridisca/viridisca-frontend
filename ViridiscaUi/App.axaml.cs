@@ -54,6 +54,9 @@ public partial class App : Application
             // Register other services with configuration
             services.AddViridiscaServices(configuration);
             Services = services.BuildServiceProvider();
+            
+            // Инициализация StatusLogger
+            StatusLogger.Initialize(Services);
               
             mainWindow.DataContext = Services.GetRequiredService<MainViewModel>();
         }
@@ -65,6 +68,9 @@ public partial class App : Application
             var services = new ServiceCollection();
             services.AddViridiscaServices(configuration);
             Services = services.BuildServiceProvider();
+            
+            // Инициализация StatusLogger
+            StatusLogger.Initialize(Services);
              
             singleViewPlatform.MainView = new MainView
             {

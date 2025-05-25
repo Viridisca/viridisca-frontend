@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using ViridiscaUi.Domain.Models.Auth;
+using ViridiscaUi.Infrastructure;
 using ViridiscaUi.Services.Interfaces;
 using ViridiscaUi.ViewModels;
 
@@ -190,31 +191,31 @@ namespace ViridiscaUi.ViewModels.Auth
             try
             {
                 IsLoadingRoles = true;
-                Console.WriteLine("AuthenticationViewModel: Начинаем загрузку ролей...");
+                StatusLogger.LogInfo("Начинаем загрузку ролей...", "AuthenticationViewModel");
                 
                 var roles = await _roleService.GetAllRolesAsync();
-                Console.WriteLine($"AuthenticationViewModel: Получено ролей: {roles.Count()}");
+                StatusLogger.LogInfo($"Получено ролей: {roles.Count()}", "AuthenticationViewModel");
                 
                 AvailableRoles.Clear();
                 foreach (var role in roles)
                 {
                     AvailableRoles.Add(role);
-                    Console.WriteLine($"AuthenticationViewModel: Добавлена роль: {role.Name}");
+                    StatusLogger.LogInfo($"Добавлена роль: {role.Name}", "AuthenticationViewModel");
                 }
 
                 // Устанавливаем роль студента по умолчанию
                 SelectedRole = AvailableRoles.FirstOrDefault(r => r.Name == "Student");
-                Console.WriteLine($"AuthenticationViewModel: Роль по умолчанию: {SelectedRole?.Name ?? "null"}");
+                StatusLogger.LogInfo($"Роль по умолчанию: {SelectedRole?.Name ?? "null"}", "AuthenticationViewModel");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"AuthenticationViewModel: Ошибка загрузки ролей: {ex.Message}");
+                StatusLogger.LogError($"Ошибка загрузки ролей: {ex.Message}", "AuthenticationViewModel");
                 ErrorMessage = $"Ошибка загрузки ролей: {ex.Message}";
             }
             finally
             {
                 IsLoadingRoles = false;
-                Console.WriteLine("AuthenticationViewModel: Загрузка ролей завершена");
+                StatusLogger.LogInfo("Загрузка ролей завершена", "AuthenticationViewModel");
             }
         }
 
@@ -256,7 +257,7 @@ namespace ViridiscaUi.ViewModels.Auth
 
             if (result.Success)
             {
-                Console.WriteLine($"AuthenticationViewModel: Успешная авторизация пользователя: {result.User?.Email}");
+                StatusLogger.LogSuccess($"Успешная авторизация пользователя: {result.User?.Email}", "AuthenticationViewModel");
                 // Навигация теперь происходит автоматически через MainViewModel при изменении CurrentUserObservable
                 // await _navigationService.NavigateToAsync("home"); - убираем эту строку
             }
