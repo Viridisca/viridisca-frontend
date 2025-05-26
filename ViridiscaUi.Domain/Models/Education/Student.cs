@@ -30,6 +30,7 @@ public class Student : ViewModelBase
     private string _address = string.Empty;
     private DateTime? _graduationDate;
     private ObservableCollection<StudentParent> _parents = new();
+    private ObservableCollection<Grade> _grades = new();
     private Group? _group;
     private User? _user;
 
@@ -214,12 +215,21 @@ public class Student : ViewModelBase
     }
 
     /// <summary>
-    /// Родители/опекуны студента
+    /// Родители студента
     /// </summary>
     public ObservableCollection<StudentParent> Parents
     {
         get => _parents;
         set => this.RaiseAndSetIfChanged(ref _parents, value);
+    }
+
+    /// <summary>
+    /// Оценки студента
+    /// </summary>
+    public ObservableCollection<Grade> Grades
+    {
+        get => _grades;
+        set => this.RaiseAndSetIfChanged(ref _grades, value);
     }
 
     /// <summary>

@@ -6,9 +6,13 @@ using System.Reactive.Linq;
 using System.Threading.Tasks;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
+using Splat;
 using ViridiscaUi.Domain.Models.Education;
 using ViridiscaUi.Services.Interfaces;
 using ViridiscaUi.ViewModels;
+using ViridiscaUi.ViewModels.Education;
+using Avalonia.Media;
+using Avalonia.Media.Immutable;
 using CourseStatus = ViridiscaUi.Domain.Models.Education.CourseStatus;
 using NotificationType = ViridiscaUi.Domain.Models.System.NotificationType;
 
@@ -30,6 +34,8 @@ namespace ViridiscaUi.ViewModels.Education
         private readonly IStatusService _statusService;
         private readonly INotificationService _notificationService;
         private readonly IServiceProvider _serviceProvider;
+        private readonly IExportService _exportService;
+        private readonly IImportService _importService;
 
         // === СВОЙСТВА ===
         
@@ -41,7 +47,9 @@ namespace ViridiscaUi.ViewModels.Education
         [Reactive] public CourseStatistics? SelectedCourseStatistics { get; set; }
         
         // Фильтры
-        [Reactive] public CourseStatus? StatusFilter { get; set; }
+        [Reactive] public string? CategoryFilter { get; set; }
+        [Reactive] public string? StatusFilter { get; set; }
+        [Reactive] public string? DifficultyFilter { get; set; }
         [Reactive] public ObservableCollection<TeacherViewModel> Teachers { get; set; } = new();
         [Reactive] public TeacherViewModel? SelectedTeacherFilter { get; set; }
         
@@ -50,10 +58,13 @@ namespace ViridiscaUi.ViewModels.Education
         [Reactive] public int PageSize { get; set; } = 15;
         [Reactive] public int TotalPages { get; set; }
         [Reactive] public int TotalCourses { get; set; }
+        [Reactive] public int ActiveCourses { get; set; }
 
         // Computed properties for UI binding
         public bool HasSelectedCourse => SelectedCourse != null;
         public bool HasSelectedCourseStatistics => SelectedCourseStatistics != null;
+        public bool CanGoToPreviousPage => CurrentPage > 1;
+        public bool CanGoToNextPage => CurrentPage < TotalPages;
 
         // === КОМАНДЫ ===
         
@@ -74,6 +85,12 @@ namespace ViridiscaUi.ViewModels.Education
         public ReactiveCommand<int, Unit> GoToPageCommand { get; }
         public ReactiveCommand<Unit, Unit> NextPageCommand { get; }
         public ReactiveCommand<Unit, Unit> PreviousPageCommand { get; }
+        public ReactiveCommand<CourseViewModel, Unit> ManageContentCommand { get; }
+        public ReactiveCommand<CourseViewModel, Unit> ManageStudentsCommand { get; }
+        public ReactiveCommand<CourseViewModel, Unit> ViewStatisticsCommand { get; }
+        public ReactiveCommand<CourseViewModel, Unit> CloneCourseCommand { get; }
+        public ReactiveCommand<Unit, Unit> ImportCoursesCommand { get; }
+        public ReactiveCommand<Unit, Unit> ExportReportCommand { get; }
 
         /// <summary>
         /// Конструктор
@@ -87,6 +104,8 @@ namespace ViridiscaUi.ViewModels.Education
             IStatusService statusService,
             INotificationService notificationService,
             IServiceProvider serviceProvider,
+            IExportService exportService,
+            IImportService importService,
             IScreen hostScreen)
         {
             _courseService = courseService;
@@ -97,6 +116,8 @@ namespace ViridiscaUi.ViewModels.Education
             _statusService = statusService;
             _notificationService = notificationService;
             _serviceProvider = serviceProvider;
+            _exportService = exportService;
+            _importService = importService;
             HostScreen = hostScreen;
 
             // === ИНИЦИАЛИЗАЦИЯ КОМАНД ===
@@ -118,6 +139,12 @@ namespace ViridiscaUi.ViewModels.Education
             GoToPageCommand = ReactiveCommand.CreateFromTask<int>(GoToPageAsync);
             NextPageCommand = ReactiveCommand.CreateFromTask(NextPageAsync, this.WhenAnyValue(x => x.CurrentPage, x => x.TotalPages, (current, total) => current < total));
             PreviousPageCommand = ReactiveCommand.CreateFromTask(PreviousPageAsync, this.WhenAnyValue(x => x.CurrentPage, current => current > 1));
+            ManageContentCommand = ReactiveCommand.CreateFromTask<CourseViewModel>(ManageContentAsync);
+            ManageStudentsCommand = ReactiveCommand.CreateFromTask<CourseViewModel>(ManageStudentsAsync);
+            ViewStatisticsCommand = ReactiveCommand.CreateFromTask<CourseViewModel>(ViewStatisticsAsync);
+            CloneCourseCommand = ReactiveCommand.CreateFromTask<CourseViewModel>(CloneCourseAsync);
+            ImportCoursesCommand = ReactiveCommand.CreateFromTask(ImportCoursesAsync);
+            ExportReportCommand = ReactiveCommand.CreateFromTask(ExportReportAsync);
 
             // === ПОДПИСКИ ===
 
@@ -134,10 +161,11 @@ namespace ViridiscaUi.ViewModels.Education
                 .InvokeCommand(LoadCourseStatisticsCommand);
 
             // Применение фильтров при изменении
-            this.WhenAnyValue(x => x.StatusFilter, x => x.SelectedTeacherFilter)
+            this.WhenAnyValue(x => x.CategoryFilter, x => x.StatusFilter, x => x.DifficultyFilter)
                 .Throttle(TimeSpan.FromMilliseconds(300))
                 .ObserveOn(RxApp.MainThreadScheduler)
-                .Subscribe(_ => ApplyFiltersCommand.Execute().Subscribe());
+                .Select(_ => Unit.Default)
+                .InvokeCommand(ApplyFiltersCommand);
 
             // Уведомления об изменении computed properties
             this.WhenAnyValue(x => x.SelectedCourse)
@@ -145,6 +173,13 @@ namespace ViridiscaUi.ViewModels.Education
                 
             this.WhenAnyValue(x => x.SelectedCourseStatistics)
                 .Subscribe(_ => this.RaisePropertyChanged(nameof(HasSelectedCourseStatistics)));
+
+            this.WhenAnyValue(x => x.CurrentPage, x => x.TotalPages)
+                .Subscribe(_ => 
+                {
+                    this.RaisePropertyChanged(nameof(CanGoToPreviousPage));
+                    this.RaisePropertyChanged(nameof(CanGoToNextPage));
+                });
 
             // Первоначальная загрузка
             LoadTeachersAsync();
@@ -162,7 +197,7 @@ namespace ViridiscaUi.ViewModels.Education
 
                 var teacherFilter = SelectedTeacherFilter?.Uid;
                 var (courses, totalCount) = await _courseService.GetCoursesPagedAsync(
-                    CurrentPage, PageSize, SearchText, StatusFilter, teacherFilter);
+                    CurrentPage, PageSize, SearchText, CategoryFilter, StatusFilter, DifficultyFilter, teacherFilter);
                 
                 Courses.Clear();
                 foreach (var course in courses)
@@ -172,6 +207,7 @@ namespace ViridiscaUi.ViewModels.Education
 
                 TotalCourses = totalCount;
                 TotalPages = (int)Math.Ceiling((double)totalCount / PageSize);
+                ActiveCourses = courses.Count(c => c.Status == CourseStatus.Active);
 
                 _statusService.ShowSuccess($"Загружено {Courses.Count} курсов", "Курсы");
             }
@@ -465,7 +501,9 @@ namespace ViridiscaUi.ViewModels.Education
 
         private async Task ClearFiltersAsync()
         {
+            CategoryFilter = null;
             StatusFilter = null;
+            DifficultyFilter = null;
             SelectedTeacherFilter = null;
             SearchText = string.Empty;
             CurrentPage = 1;
@@ -496,6 +534,166 @@ namespace ViridiscaUi.ViewModels.Education
                 await GoToPageAsync(CurrentPage - 1);
             }
         }
+
+        private async Task ManageContentAsync(CourseViewModel courseViewModel)
+        {
+            try
+            {
+                var course = await _courseService.GetCourseAsync(courseViewModel.Uid);
+                if (course == null)
+                {
+                    _statusService.ShowError("Курс не найден", "Курсы");
+                    return;
+                }
+
+                var result = await _dialogService.ShowCourseContentManagementDialogAsync(course);
+                if (result != null)
+                {
+                    await RefreshAsync();
+                    _statusService.ShowSuccess("Контент курса обновлен", "Курсы");
+                }
+            }
+            catch (Exception ex)
+            {
+                _statusService.ShowError($"Ошибка управления контентом: {ex.Message}", "Курсы");
+            }
+        }
+
+        private async Task ManageStudentsAsync(CourseViewModel courseViewModel)
+        {
+            try
+            {
+                var course = await _courseService.GetCourseAsync(courseViewModel.Uid);
+                if (course == null)
+                {
+                    _statusService.ShowError("Курс не найден", "Курсы");
+                    return;
+                }
+
+                var allStudents = await _studentService.GetAllStudentsAsync();
+                var result = await _dialogService.ShowCourseStudentsManagementDialogAsync(course, allStudents);
+                
+                if (result != null)
+                {
+                    await RefreshAsync();
+                    _statusService.ShowSuccess("Список студентов курса обновлен", "Курсы");
+                }
+            }
+            catch (Exception ex)
+            {
+                _statusService.ShowError($"Ошибка управления студентами: {ex.Message}", "Курсы");
+            }
+        }
+
+        private async Task ViewStatisticsAsync(CourseViewModel courseViewModel)
+        {
+            try
+            {
+                var statistics = await _courseService.GetCourseStatisticsAsync(courseViewModel.Uid);
+                await _dialogService.ShowCourseStatisticsDialogAsync(courseViewModel.Name, statistics);
+            }
+            catch (Exception ex)
+            {
+                _statusService.ShowError($"Ошибка загрузки статистики: {ex.Message}", "Курсы");
+            }
+        }
+
+        private async Task CloneCourseAsync(CourseViewModel courseViewModel)
+        {
+            try
+            {
+                var confirmation = await _dialogService.ShowConfirmationDialogAsync(
+                    "Клонирование курса",
+                    $"Создать копию курса '{courseViewModel.Name}'?\n\nБудет создан новый курс со всем содержимым, но без записанных студентов.",
+                    "Клонировать",
+                    "Отмена");
+
+                if (confirmation)
+                {
+                    var newCourseName = await _dialogService.ShowTextInputDialogAsync(
+                        "Название нового курса",
+                        "Введите название для копии курса:",
+                        $"{courseViewModel.Name} (копия)");
+
+                    if (!string.IsNullOrEmpty(newCourseName))
+                    {
+                        var clonedCourse = await _courseService.CloneCourseAsync(courseViewModel.Uid, newCourseName);
+                        if (clonedCourse != null)
+                        {
+                            await RefreshAsync();
+                            _statusService.ShowSuccess($"Курс '{newCourseName}' создан как копия", "Курсы");
+                            
+                            await _notificationService.SendNotificationAsync(
+                                "Курс клонирован",
+                                $"Создана копия курса: {newCourseName}",
+                                Domain.Models.System.NotificationType.Info);
+                        }
+                        else
+                        {
+                            _statusService.ShowError("Не удалось клонировать курс", "Курсы");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _statusService.ShowError($"Ошибка клонирования курса: {ex.Message}", "Курсы");
+            }
+        }
+
+        private async Task ImportCoursesAsync()
+        {
+            try
+            {
+                var filePath = await _dialogService.ShowFileOpenDialogAsync(
+                    "Импорт курсов",
+                    new[] { "*.xlsx", "*.csv", "*.json" });
+
+                if (!string.IsNullOrEmpty(filePath))
+                {
+                    var importedCourses = await _importService.ImportCoursesAsync(filePath);
+                    if (importedCourses?.Any() == true)
+                    {
+                        await RefreshAsync();
+                        _statusService.ShowSuccess($"Импортировано {importedCourses.Count()} курсов", "Импорт");
+                        
+                        await _notificationService.SendNotificationAsync(
+                            "Курсы импортированы",
+                            $"Успешно импортировано {importedCourses.Count()} курсов",
+                            Domain.Models.System.NotificationType.Info);
+                    }
+                    else
+                    {
+                        _statusService.ShowWarning("Не удалось импортировать курсы", "Импорт");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _statusService.ShowError($"Ошибка импорта курсов: {ex.Message}", "Импорт");
+            }
+        }
+
+        private async Task ExportReportAsync()
+        {
+            try
+            {
+                var courses = await _courseService.GetAllCoursesAsync(
+                    CategoryFilter,
+                    StatusFilter,
+                    DifficultyFilter);
+
+                var filePath = await _exportService.ExportCoursesToExcelAsync(courses, "Отчет по курсам");
+                if (!string.IsNullOrEmpty(filePath))
+                {
+                    _statusService.ShowSuccess($"Отчет экспортирован: {filePath}", "Экспорт");
+                }
+            }
+            catch (Exception ex)
+            {
+                _statusService.ShowError($"Ошибка экспорта отчета: {ex.Message}", "Экспорт");
+            }
+        }
     }
 
     /// <summary>
@@ -505,43 +703,81 @@ namespace ViridiscaUi.ViewModels.Education
     {
         public Guid Uid { get; }
         [Reactive] public string Name { get; set; } = string.Empty;
+        [Reactive] public string Code { get; set; } = string.Empty;
         [Reactive] public string? Description { get; set; }
-        [Reactive] public string? TeacherName { get; set; }
-        [Reactive] public Guid? TeacherUid { get; set; }
+        [Reactive] public string Category { get; set; } = string.Empty;
+        [Reactive] public string TeacherName { get; set; } = string.Empty;
         [Reactive] public CourseStatus Status { get; set; }
-        [Reactive] public DateTime StartDate { get; set; }
-        [Reactive] public DateTime EndDate { get; set; }
-        [Reactive] public int Credits { get; set; }
-        [Reactive] public int EnrolledStudents { get; set; }
+        [Reactive] public int StudentsCount { get; set; }
+        [Reactive] public int AssignmentsCount { get; set; }
+        [Reactive] public double CompletionRate { get; set; }
+        [Reactive] public double AverageGrade { get; set; }
         [Reactive] public DateTime CreatedAt { get; set; }
         [Reactive] public DateTime LastModifiedAt { get; set; }
 
-        // Computed properties
-        public string StatusText => Status switch
+        public string StatusDisplay => Status switch
         {
-            CourseStatus.Draft => "📝 Черновик",
-            CourseStatus.Published => "✅ Опубликован",
-            CourseStatus.Archived => "📦 Архивирован",
-            CourseStatus.Suspended => "⏸️ Приостановлен",
-            _ => Status.ToString()
+            CourseStatus.Draft => "Черновик",
+            CourseStatus.Active => "Активный",
+            CourseStatus.Published => "Опубликован",
+            CourseStatus.Archived => "Архивирован",
+            CourseStatus.Suspended => "Приостановлен",
+            _ => "Неизвестно"
         };
 
-        public string DurationText => $"{StartDate:dd.MM.yyyy} - {EndDate:dd.MM.yyyy}";
+        public IBrush StatusColor => Status switch
+        {
+            CourseStatus.Draft => new SolidColorBrush(Color.FromRgb(158, 158, 158)),      // Серый
+            CourseStatus.Active => new SolidColorBrush(Color.FromRgb(76, 175, 80)),       // Зеленый
+            CourseStatus.Published => new SolidColorBrush(Color.FromRgb(33, 150, 243)),   // Синий
+            CourseStatus.Archived => new SolidColorBrush(Color.FromRgb(96, 125, 139)),    // Серо-синий
+            CourseStatus.Suspended => new SolidColorBrush(Color.FromRgb(255, 152, 0)),    // Оранжевый
+            _ => new SolidColorBrush(Colors.Gray)
+        };
 
         public CourseViewModel(Course course)
         {
             Uid = course.Uid;
             Name = course.Name;
+            Code = course.Code ?? string.Empty;
             Description = course.Description;
-            TeacherName = course.Teacher != null ? $"{course.Teacher.FirstName} {course.Teacher.LastName}" : null;
-            TeacherUid = course.TeacherUid;
+            Category = course.Category ?? "Общее";
+            TeacherName = course.Teacher?.FullName ?? "Не назначен";
             Status = course.Status;
-            StartDate = course.StartDate ?? DateTime.MinValue;
-            EndDate = course.EndDate ?? DateTime.MinValue;
-            Credits = course.Credits;
-            EnrolledStudents = course.Enrollments?.Count ?? 0;
+            StudentsCount = course.Enrollments?.Count ?? 0;
+            AssignmentsCount = course.Assignments?.Count ?? 0;
+            CompletionRate = CalculateCompletionRate(course);
+            AverageGrade = CalculateAverageGrade(course);
             CreatedAt = course.CreatedAt;
             LastModifiedAt = course.LastModifiedAt ?? DateTime.UtcNow;
+        }
+
+        private static double CalculateCompletionRate(Course course)
+        {
+            if (course.Enrollments?.Any() != true || course.Assignments?.Any() != true)
+                return 0;
+
+            var totalAssignments = course.Assignments.Count;
+            var completedAssignments = course.Enrollments
+                .SelectMany(e => e.Student?.Grades ?? Enumerable.Empty<Grade>())
+                .Where(g => course.Assignments.Any(a => a.Uid == g.AssignmentUid))
+                .Count();
+
+            var totalPossibleCompletions = course.Enrollments.Count * totalAssignments;
+            return totalPossibleCompletions > 0 ? (double)completedAssignments / totalPossibleCompletions * 100 : 0;
+        }
+
+        private static double CalculateAverageGrade(Course course)
+        {
+            if (course.Enrollments?.Any() != true)
+                return 0;
+
+            var grades = course.Enrollments
+                .SelectMany(e => e.Student?.Grades ?? Enumerable.Empty<Grade>())
+                .Where(g => course.Assignments.Any(a => a.Uid == g.AssignmentUid))
+                .Select(g => (double)g.Value);
+
+            return grades.Any() ? grades.Average() : 0;
         }
 
         public Course ToCourse()
@@ -550,30 +786,18 @@ namespace ViridiscaUi.ViewModels.Education
             {
                 Uid = Uid,
                 Name = Name,
+                Code = Code,
                 Description = Description,
-                TeacherUid = TeacherUid,
+                Category = Category,
+                TeacherUid = null, // This should be set from the actual course data
                 Status = Status,
-                StartDate = StartDate,
-                EndDate = EndDate,
-                Credits = Credits,
+                StartDate = DateTime.UtcNow, // Default value
+                EndDate = DateTime.UtcNow.AddMonths(6), // Default value
+                Credits = 0, // This should be set from the actual course data
                 CreatedAt = CreatedAt,
                 LastModifiedAt = LastModifiedAt
             };
         }
     }
 
-    /// <summary>
-    /// ViewModel для отображения преподавателя в фильтре
-    /// </summary>
-    public class TeacherViewModel : ReactiveObject
-    {
-        public Guid Uid { get; }
-        public string FullName { get; }
-
-        public TeacherViewModel(Teacher teacher)
-        {
-            Uid = teacher.Uid;
-            FullName = $"{teacher.FirstName} {teacher.LastName}";
-        }
-    }
-} 
+}

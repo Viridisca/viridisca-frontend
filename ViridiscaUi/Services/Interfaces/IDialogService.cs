@@ -34,9 +34,24 @@ namespace ViridiscaUi.Services.Interfaces
         Task<bool> ShowConfirmationAsync(string title, string message);
         
         /// <summary>
+        /// Показывает запрос подтверждения с кастомными кнопками
+        /// </summary>
+        Task<bool> ShowConfirmationDialogAsync(string title, string message, string confirmText = "Да", string cancelText = "Нет");
+        
+        /// <summary>
         /// Показывает диалог с вводом текста
         /// </summary>
         Task<string?> ShowInputDialogAsync(string title, string message, string defaultValue = "");
+        
+        /// <summary>
+        /// Показывает диалог с вводом текста (альтернативное название)
+        /// </summary>
+        Task<string?> ShowTextInputDialogAsync(string title, string message, string defaultValue = "");
+        
+        /// <summary>
+        /// Показывает диалог выбора файла для открытия
+        /// </summary>
+        Task<string?> ShowFileOpenDialogAsync(string title, string[] filters);
         
         /// <summary>
         /// Показывает диалог с выбором из списка
@@ -54,12 +69,25 @@ namespace ViridiscaUi.Services.Interfaces
         // Диалоги для курсов
         Task<Course?> ShowCourseEditDialogAsync(Course course);
         Task<object?> ShowCourseEnrollmentDialogAsync(Course course, IEnumerable<Student> allStudents);
+        Task<object?> ShowCourseContentManagementDialogAsync(Course course);
+        Task<object?> ShowCourseStudentsManagementDialogAsync(Course course, IEnumerable<Student> allStudents);
+        Task<object?> ShowCourseStatisticsDialogAsync(string courseName, CourseStatistics statistics);
         Task<Group?> ShowGroupSelectionDialogAsync(IEnumerable<Group> groups);
         
         // Диалоги для заданий
         Task<Assignment?> ShowAssignmentEditDialogAsync(Assignment assignment);
         Task<object?> ShowSubmissionsViewDialogAsync(Assignment assignment, IEnumerable<Submission> submissions);
         Task<IEnumerable<object>?> ShowBulkGradingDialogAsync(IEnumerable<Submission> submissions);
+        
+        // Диалоги для оценок
+        Task<Grade?> ShowGradeEditDialogAsync(Grade grade, IEnumerable<Student> students, IEnumerable<Assignment> assignments);
+        Task<IEnumerable<Grade>?> ShowBulkGradingDialogAsync(IEnumerable<Course> courses, IEnumerable<Assignment> assignments);
+        
+        // Диалоги для преподавателей
+        Task<Teacher?> ShowTeacherEditDialogAsync(Teacher teacher);
+        Task<object?> ShowTeacherCoursesManagementDialogAsync(Teacher teacher, IEnumerable<Course> allCourses);
+        Task<object?> ShowTeacherGroupsManagementDialogAsync(Teacher teacher, IEnumerable<Group> allGroups);
+        Task<object?> ShowTeacherStatisticsDialogAsync(string teacherName, object statistics);
         
         // Диалоги для уведомлений
         Task<NotificationTemplate?> ShowNotificationTemplateEditDialogAsync(NotificationTemplate template);

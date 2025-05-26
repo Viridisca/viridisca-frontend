@@ -35,6 +35,15 @@ namespace ViridiscaUi.Domain.Models.Education
         }
 
         /// <summary>
+        /// Идентификатор родителя (алиас для ParentUserUid)
+        /// </summary>
+        public Guid ParentUid
+        {
+            get => _parentUserUid;
+            set => this.RaiseAndSetIfChanged(ref _parentUserUid, value);
+        }
+
+        /// <summary>
         /// Тип родственного отношения
         /// </summary>
         public ParentRelationType RelationType

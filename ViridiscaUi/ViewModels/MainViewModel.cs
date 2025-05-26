@@ -125,6 +125,16 @@ public class MainViewModel : ViewModelBase, IDisposable
     public ReactiveCommand<Unit, IRoutableViewModel> NavigateToStudentsCommand { get; }
     
     /// <summary>
+    /// Команда для перехода на страницу преподавателей
+    /// </summary>
+    public ReactiveCommand<Unit, IRoutableViewModel> NavigateToTeachersCommand { get; }
+    
+    /// <summary>
+    /// Команда для перехода на страницу оценок
+    /// </summary>
+    public ReactiveCommand<Unit, IRoutableViewModel> NavigateToGradesCommand { get; }
+    
+    /// <summary>
     /// Команда для возврата назад
     /// </summary>
     public ReactiveCommand<Unit, Unit> GoBackCommand { get; }
@@ -173,6 +183,14 @@ public class MainViewModel : ViewModelBase, IDisposable
         NavigateToStudentsCommand = ReactiveCommand.CreateFromObservable(() => {
             var studentsViewModel = _serviceProvider.GetRequiredService<StudentsViewModel>();
             return Router.Navigate.Execute(studentsViewModel);
+        });
+        NavigateToTeachersCommand = ReactiveCommand.CreateFromObservable(() => {
+            var teachersViewModel = _serviceProvider.GetRequiredService<TeachersViewModel>();
+            return Router.Navigate.Execute(teachersViewModel);
+        });
+        NavigateToGradesCommand = ReactiveCommand.CreateFromObservable(() => {
+            var gradesViewModel = _serviceProvider.GetRequiredService<GradesViewModel>();
+            return Router.Navigate.Execute(gradesViewModel);
         });
         NavigateToProfileCommand = ReactiveCommand.CreateFromObservable(() => {
             var profileViewModel = _serviceProvider.GetRequiredService<ProfileViewModel>();
@@ -260,6 +278,8 @@ public class MainViewModel : ViewModelBase, IDisposable
         if (user.Role?.Name == "Administrator" || user.Role?.Name == "Teacher")
         {
             menuItems.Add(new NavigationItemViewModel("Студенты", "🎓", NavigateToStudentsCommand));
+            menuItems.Add(new NavigationItemViewModel("Преподаватели", "👨‍🏫", NavigateToTeachersCommand));
+            menuItems.Add(new NavigationItemViewModel("Оценки", "📊", NavigateToGradesCommand));
         }
         
         // Пункты меню только для администраторов

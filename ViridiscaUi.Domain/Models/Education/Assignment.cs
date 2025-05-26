@@ -61,6 +61,15 @@ public class Assignment : ViewModelBase
     }
 
     /// <summary>
+    /// Максимальная оценка за задание (синоним для MaxScore)
+    /// </summary>
+    public double MaxGrade
+    {
+        get => _maxScore;
+        set => this.RaiseAndSetIfChanged(ref _maxScore, value);
+    }
+
+    /// <summary>
     /// Тип задания
     /// </summary>
     public AssignmentType Type

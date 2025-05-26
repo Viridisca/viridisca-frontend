@@ -22,7 +22,10 @@ public class Teacher : ViewModelBase
     private string _specialization = string.Empty;
     private decimal _hourlyRate;
     private string _bio = string.Empty;
+    private string _phone = string.Empty;
     private ObservableCollection<TeacherSubject> _subjects = new();
+    private ObservableCollection<Course> _courses = new();
+    private ObservableCollection<Group> _curatedGroups = new();
     private string _firstName = string.Empty;
     private string _lastName = string.Empty;
     private string _middleName = string.Empty;
@@ -155,12 +158,39 @@ public class Teacher : ViewModelBase
     }
 
     /// <summary>
+    /// Номер телефона
+    /// </summary>
+    public string Phone
+    {
+        get => _phone;
+        set => this.RaiseAndSetIfChanged(ref _phone, value);
+    }
+
+    /// <summary>
     /// Предметы, которые ведет преподаватель
     /// </summary>
     public ObservableCollection<TeacherSubject> Subjects
     {
         get => _subjects;
         set => this.RaiseAndSetIfChanged(ref _subjects, value);
+    }
+
+    /// <summary>
+    /// Курсы, которые ведет преподаватель
+    /// </summary>
+    public ObservableCollection<Course> Courses
+    {
+        get => _courses;
+        set => this.RaiseAndSetIfChanged(ref _courses, value);
+    }
+
+    /// <summary>
+    /// Группы, которые курирует преподаватель
+    /// </summary>
+    public ObservableCollection<Group> CuratedGroups
+    {
+        get => _curatedGroups;
+        set => this.RaiseAndSetIfChanged(ref _curatedGroups, value);
     }
 
     /// <summary>

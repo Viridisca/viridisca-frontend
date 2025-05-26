@@ -38,6 +38,11 @@ namespace ViridiscaUi.Services.Implementations
                 .ToListAsync();
         }
 
+        public async Task<IEnumerable<Group>> GetAllGroupsAsync()
+        {
+            return await GetGroupsAsync();
+        }
+
         public async Task<Group> CreateGroupAsync(Group group)
         {
             group.CreatedAt = DateTime.UtcNow;

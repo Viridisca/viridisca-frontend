@@ -11,7 +11,9 @@ namespace ViridiscaUi.Domain.Models.Education;
 public class Course : ViewModelBase
 {
     private string _name = string.Empty;
+    private string _code = string.Empty;
     private string _description = string.Empty;
+    private string _category = string.Empty;
     private Guid? _teacherUid;
     private Teacher? _teacher;
     private DateTime? _startDate;
@@ -38,12 +40,30 @@ public class Course : ViewModelBase
     }
 
     /// <summary>
+    /// Код курса
+    /// </summary>
+    public string Code
+    {
+        get => _code;
+        set => this.RaiseAndSetIfChanged(ref _code, value);
+    }
+
+    /// <summary>
     /// Описание курса
     /// </summary>
     public string Description
     {
         get => _description;
         set => this.RaiseAndSetIfChanged(ref _description, value);
+    }
+
+    /// <summary>
+    /// Категория курса
+    /// </summary>
+    public string Category
+    {
+        get => _category;
+        set => this.RaiseAndSetIfChanged(ref _category, value);
     }
 
     /// <summary>

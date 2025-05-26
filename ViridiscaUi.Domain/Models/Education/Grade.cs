@@ -15,10 +15,13 @@ public class Grade : ViewModelBase
     private Guid _subjectUid;
     private Guid _teacherUid;
     private Guid? _lessonUid;
+    private Guid? _assignmentUid;
     private decimal _value;
     private string _description = string.Empty;
+    private string _comment = string.Empty;
     private GradeType _type;
     private DateTime _issuedAt;
+    private DateTime _gradedAt;
     private bool _isPublished;
     private DateTime? _publishedAt;
     private ObservableCollection<GradeComment> _comments = new();
@@ -26,6 +29,7 @@ public class Grade : ViewModelBase
     private Student? _student;
     private Subject? _subject;
     private Teacher? _teacher;
+    private Teacher? _gradedBy;
     private Assignment? _assignment;
 
     /// <summary>
@@ -92,6 +96,15 @@ public class Grade : ViewModelBase
     }
 
     /// <summary>
+    /// Идентификатор задания (если оценка связана с конкретным заданием)
+    /// </summary>
+    public Guid? AssignmentUid
+    {
+        get => _assignmentUid;
+        set => this.RaiseAndSetIfChanged(ref _assignmentUid, value);
+    }
+
+    /// <summary>
     /// Значение оценки
     /// </summary>
     public decimal Value
@@ -110,6 +123,15 @@ public class Grade : ViewModelBase
     }
 
     /// <summary>
+    /// Комментарий к оценке
+    /// </summary>
+    public string Comment
+    {
+        get => _comment;
+        set => this.RaiseAndSetIfChanged(ref _comment, value);
+    }
+
+    /// <summary>
     /// Тип оценки
     /// </summary>
     public GradeType Type
@@ -125,6 +147,15 @@ public class Grade : ViewModelBase
     {
         get => _issuedAt;
         set => this.RaiseAndSetIfChanged(ref _issuedAt, value);
+    }
+
+    /// <summary>
+    /// Дата выставления оценки
+    /// </summary>
+    public DateTime GradedAt
+    {
+        get => _gradedAt;
+        set => this.RaiseAndSetIfChanged(ref _gradedAt, value);
     }
 
     /// <summary>
@@ -188,11 +219,21 @@ public class Grade : ViewModelBase
     }
 
     /// <summary>
+    /// Преподаватель, выставивший оценку
+    /// </summary>
+    public Teacher? GradedBy
+    {
+        get => _gradedBy;
+        set => this.RaiseAndSetIfChanged(ref _gradedBy, value);
+    }
+
+    /// <summary>
     /// Создает новый экземпляр оценки
     /// </summary>
     public Grade()
     {
         _issuedAt = DateTime.UtcNow;
+        _gradedAt = DateTime.UtcNow;
     }
 
     /// <summary>
@@ -216,6 +257,7 @@ public class Grade : ViewModelBase
         _description = description ?? string.Empty;
         _lessonUid = lessonUid;
         _issuedAt = DateTime.UtcNow;
+        _gradedAt = DateTime.UtcNow;
         _isPublished = false;
     }
 

@@ -96,5 +96,147 @@ namespace ViridiscaUi.Services.Implementations
             await _dbContext.SaveChangesAsync();
             return true;
         }
+
+        /// <summary>
+        /// Получает преподавателей с пагинацией
+        /// </summary>
+        public async Task<(IEnumerable<Teacher> Teachers, int TotalCount)> GetTeachersPagedAsync(
+            int page,
+            int pageSize,
+            string? searchTerm = null,
+            string? specializationFilter = null,
+            string? statusFilter = null)
+        {
+            var query = _dbContext.Teachers
+                .Include(t => t.User)
+                .AsQueryable();
+
+            // Применяем фильтры
+            if (!string.IsNullOrEmpty(searchTerm))
+            {
+                query = query.Where(t => t.FirstName.Contains(searchTerm) || 
+                                        t.LastName.Contains(searchTerm) ||
+                                        t.MiddleName.Contains(searchTerm) ||
+                                        t.Specialization.Contains(searchTerm));
+            }
+
+            if (!string.IsNullOrEmpty(specializationFilter))
+            {
+                query = query.Where(t => t.Specialization == specializationFilter);
+            }
+
+            var totalCount = await query.CountAsync();
+            var teachers = await query
+                .OrderBy(t => t.LastName)
+                .ThenBy(t => t.FirstName)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (teachers, totalCount);
+        }
+
+        /// <summary>
+        /// Получает статистику преподавателя
+        /// </summary>
+        public async Task<object> GetTeacherStatisticsAsync(Guid teacherUid)
+        {
+            var coursesCount = await _dbContext.Courses
+                .Where(c => c.TeacherUid == teacherUid)
+                .CountAsync();
+
+            var studentsCount = await _dbContext.Enrollments
+                .Where(e => e.Course.TeacherUid == teacherUid)
+                .Select(e => e.StudentUid)
+                .Distinct()
+                .CountAsync();
+
+            var averageGrade = await _dbContext.Grades
+                .Where(g => g.TeacherUid == teacherUid)
+                .AverageAsync(g => (double?)g.Value) ?? 0;
+
+            return new
+            {
+                CoursesCount = coursesCount,
+                StudentsCount = studentsCount,
+                AverageGrade = averageGrade,
+                TotalGrades = await _dbContext.Grades.Where(g => g.TeacherUid == teacherUid).CountAsync()
+            };
+        }
+
+        /// <summary>
+        /// Получает курсы преподавателя
+        /// </summary>
+        public async Task<IEnumerable<Course>> GetTeacherCoursesAsync(Guid teacherUid)
+        {
+            return await _dbContext.Courses
+                .Include(c => c.Enrollments)
+                .Where(c => c.TeacherUid == teacherUid)
+                .OrderBy(c => c.Name)
+                .ToListAsync();
+        }
+
+        /// <summary>
+        /// Получает группы преподавателя
+        /// </summary>
+        public async Task<IEnumerable<Group>> GetTeacherGroupsAsync(Guid teacherUid)
+        {
+            return await _dbContext.Groups
+                .Where(g => g.CuratorUid == teacherUid)
+                .OrderBy(g => g.Name)
+                .ToListAsync();
+        }
+
+        /// <summary>
+        /// Назначает преподавателя на группу
+        /// </summary>
+        public async Task<bool> AssignToGroupAsync(Guid teacherUid, Guid groupUid)
+        {
+            var teacher = await _dbContext.Teachers.FindAsync(teacherUid);
+            var group = await _dbContext.Groups.FindAsync(groupUid);
+            
+            if (teacher == null || group == null)
+                return false;
+
+            group.CuratorUid = teacherUid;
+            group.LastModifiedAt = DateTime.UtcNow;
+            
+            await _dbContext.SaveChangesAsync();
+            return true;
+        }
+
+        /// <summary>
+        /// Отменяет назначение преподавателя на группу
+        /// </summary>
+        public async Task<bool> UnassignFromGroupAsync(Guid teacherUid, Guid groupUid)
+        {
+            var group = await _dbContext.Groups.FindAsync(groupUid);
+            
+            if (group == null || group.CuratorUid != teacherUid)
+                return false;
+
+            group.CuratorUid = null;
+            group.LastModifiedAt = DateTime.UtcNow;
+            
+            await _dbContext.SaveChangesAsync();
+            return true;
+        }
+
+        /// <summary>
+        /// Отменяет назначение преподавателя на курс
+        /// </summary>
+        public async Task<bool> UnassignFromCourseAsync(Guid teacherUid, Guid courseUid)
+        {
+            var course = await _dbContext.Courses.FindAsync(courseUid);
+            
+            if (course == null || course.TeacherUid != teacherUid)
+                return false;
+
+            course.TeacherUid = null;
+            course.LastModifiedAt = DateTime.UtcNow;
+            
+            await _dbContext.SaveChangesAsync();
+            return true;
+        }
     }
 } 

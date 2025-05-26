@@ -21,6 +21,11 @@ namespace ViridiscaUi.Services.Interfaces
         Task<IEnumerable<Group>> GetGroupsAsync();
         
         /// <summary>
+        /// Получает все группы (алиас для GetGroupsAsync)
+        /// </summary>
+        Task<IEnumerable<Group>> GetAllGroupsAsync();
+        
+        /// <summary>
         /// Добавляет новую группу
         /// </summary>
         Task<Group> CreateGroupAsync(Group group);

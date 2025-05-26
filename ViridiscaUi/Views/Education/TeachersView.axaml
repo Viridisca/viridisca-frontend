@@ -4,18 +4,17 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:ViridiscaUi.ViewModels.Education"
              xmlns:domain="clr-namespace:ViridiscaUi.Domain.Models.Education;assembly=ViridiscaUi.Domain"
-             xmlns:converters="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
              xmlns:local="clr-namespace:ViridiscaUi.Converters"
              mc:Ignorable="d" d:DesignWidth="1800" d:DesignHeight="1200"
-             x:Class="ViridiscaUi.Views.Education.CoursesView"
-             x:DataType="vm:CoursesViewModel">
+             x:Class="ViridiscaUi.Views.Education.TeachersView"
+             x:DataType="vm:TeachersViewModel">
 
     <UserControl.Resources>
         <local:EnumEqualityConverter x:Key="EnumEqualityConverter" />
     </UserControl.Resources>
 
     <Design.DataContext>
-        <vm:CoursesViewModel />
+        <vm:TeachersViewModel />
     </Design.DataContext>
 
     <Grid RowDefinitions="Auto,*" ColumnDefinitions="2*,*" Margin="16">
@@ -28,93 +27,72 @@
                 
                 <!-- Заголовок -->
                 <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="12">
-                    <TextBlock Text="📚" FontSize="24" VerticalAlignment="Center"/>
-                    <TextBlock Text="Управление курсами" 
+                    <TextBlock Text="👨‍🏫" FontSize="24" VerticalAlignment="Center"/>
+                    <TextBlock Text="Управление преподавателями" 
                                FontSize="24" FontWeight="Bold" 
                                VerticalAlignment="Center"/>
                     <Border Background="{DynamicResource SystemAccentColor}" 
                             CornerRadius="12" Padding="8,4">
-                        <TextBlock Text="{Binding TotalCourses, StringFormat='{}{0} курсов'}" 
+                        <TextBlock Text="{Binding TotalTeachers, StringFormat='{}{0} преподавателей'}" 
                                    Foreground="White" FontSize="12" FontWeight="SemiBold"/>
-                    </Border>
-                    <Border Background="{DynamicResource SystemControlBackgroundAltMediumBrush}" 
-                            CornerRadius="12" Padding="8,4">
-                        <TextBlock Text="{Binding ActiveCourses, StringFormat='{}{0} активных'}" 
-                                   FontSize="12" FontWeight="SemiBold"/>
                     </Border>
                 </StackPanel>
 
                 <!-- Кнопки действий -->
                 <StackPanel Grid.Row="0" Grid.Column="1" 
                             Orientation="Horizontal" Spacing="8">
-                    <Button Content="➕ Создать курс" 
-                            Command="{Binding CreateCourseCommand}"
+                    <Button Content="➕ Добавить преподавателя" 
+                            Command="{Binding CreateTeacherCommand}"
                             Classes="accent" Padding="12,8"/>
-                    <Button Content="📋 Импорт курсов" 
-                            Command="{Binding ImportCoursesCommand}"
-                            Padding="12,8"/>
-                    <Button Content="📊 Экспорт отчета" 
-                            Command="{Binding ExportReportCommand}"
-                            Padding="12,8"/>
                     <Button Content="🔄 Обновить" 
                             Command="{Binding RefreshCommand}"
+                            Padding="12,8"/>
+                    <Button Content="🧹 Очистить фильтры" 
+                            Command="{Binding ClearFiltersCommand}"
                             Padding="12,8"/>
                 </StackPanel>
 
                 <!-- Поиск -->
                 <Grid Grid.Row="1" Grid.ColumnSpan="2" Margin="0,12,0,0">
                     <TextBox Text="{Binding SearchText}" 
-                             Watermark="🔍 Поиск курсов по названию, описанию или преподавателю..."
+                             Watermark="🔍 Поиск преподавателей по имени, email или специализации..."
                              MinWidth="400"/>
                 </Grid>
 
                 <!-- Фильтры -->
                 <Grid Grid.Row="2" Grid.ColumnSpan="2" Margin="0,12,0,0"
-                      ColumnDefinitions="Auto,*,Auto,*,Auto,*,Auto,*">
+                      ColumnDefinitions="Auto,*,Auto,*,Auto,*">
                     
-                    <!-- Категория -->
-                    <TextBlock Grid.Column="0" Text="Категория:" 
+                    <!-- Специализация -->
+                    <TextBlock Grid.Column="0" Text="Специализация:" 
                                VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <ComboBox Grid.Column="1" SelectedItem="{Binding CategoryFilter}" 
-                              MinWidth="180" Margin="0,0,16,0">
-                        <ComboBoxItem Content="Все категории"/>
+                    <ComboBox Grid.Column="1" SelectedItem="{Binding SpecializationFilter}" 
+                              MinWidth="200" Margin="0,0,16,0">
+                        <ComboBoxItem Content="Все специализации"/>
                         <ComboBoxItem Content="Математика"/>
-                        <ComboBoxItem Content="Естественные науки"/>
-                        <ComboBoxItem Content="Гуманитарные науки"/>
+                        <ComboBoxItem Content="Физика"/>
                         <ComboBoxItem Content="Информатика"/>
-                        <ComboBoxItem Content="Языки"/>
-                        <ComboBoxItem Content="Искусство"/>
-                        <ComboBoxItem Content="Спорт"/>
+                        <ComboBoxItem Content="Химия"/>
+                        <ComboBoxItem Content="Биология"/>
+                        <ComboBoxItem Content="История"/>
+                        <ComboBoxItem Content="Литература"/>
+                        <ComboBoxItem Content="Иностранные языки"/>
                     </ComboBox>
                     
-                    <!-- Статус -->
+                    <!-- Статус активности -->
                     <TextBlock Grid.Column="2" Text="Статус:" 
                                VerticalAlignment="Center" Margin="0,0,8,0"/>
                     <ComboBox Grid.Column="3" SelectedItem="{Binding StatusFilter}" 
                               MinWidth="150" Margin="0,0,16,0">
                         <ComboBoxItem Content="Все"/>
                         <ComboBoxItem Content="✅ Активные"/>
-                        <ComboBoxItem Content="⏸️ Приостановленные"/>
-                        <ComboBoxItem Content="📝 Черновики"/>
-                        <ComboBoxItem Content="🏁 Завершенные"/>
-                    </ComboBox>
-                    
-                    <!-- Уровень сложности -->
-                    <TextBlock Grid.Column="4" Text="Уровень:" 
-                               VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <ComboBox Grid.Column="5" SelectedItem="{Binding DifficultyFilter}" 
-                              MinWidth="120" Margin="0,0,16,0">
-                        <ComboBoxItem Content="Все"/>
-                        <ComboBoxItem Content="🟢 Начальный"/>
-                        <ComboBoxItem Content="🟡 Средний"/>
-                        <ComboBoxItem Content="🟠 Продвинутый"/>
-                        <ComboBoxItem Content="🔴 Экспертный"/>
+                        <ComboBoxItem Content="⏸️ Неактивные"/>
                     </ComboBox>
                     
                     <!-- Размер страницы -->
-                    <TextBlock Grid.Column="6" Text="Размер страницы:" 
+                    <TextBlock Grid.Column="4" Text="Размер страницы:" 
                                VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <ComboBox Grid.Column="7" SelectedItem="{Binding PageSize}" 
+                    <ComboBox Grid.Column="5" SelectedItem="{Binding PageSize}" 
                               Width="80">
                         <ComboBoxItem Content="10"/>
                         <ComboBoxItem Content="15"/>
@@ -125,49 +103,49 @@
             </Grid>
         </Border>
 
-        <!-- Список курсов -->
+        <!-- Список преподавателей -->
         <Border Grid.Row="1" Grid.Column="0" 
                 Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
                 CornerRadius="8" Padding="0" Margin="0,0,8,0">
             <Grid RowDefinitions="*,Auto">
                 
-                <!-- DataGrid с курсами -->
-                <DataGrid Grid.Row="0" ItemsSource="{Binding Courses}" 
-                          SelectedItem="{Binding SelectedCourse}"
+                <!-- DataGrid с преподавателями -->
+                <DataGrid Grid.Row="0" ItemsSource="{Binding Teachers}" 
+                          SelectedItem="{Binding SelectedTeacher}"
                           IsReadOnly="True" GridLinesVisibility="Horizontal"
                           AutoGenerateColumns="False" CanUserReorderColumns="True"
                           CanUserResizeColumns="True" CanUserSortColumns="True">
                     
                     <DataGrid.Columns>
-                        <!-- Название курса -->
-                        <DataGridTextColumn Header="Название курса" 
-                                            Binding="{Binding Name}" 
+                        <!-- ФИО -->
+                        <DataGridTextColumn Header="ФИО" 
+                                            Binding="{Binding FullName}" 
                                             Width="250" FontWeight="SemiBold"/>
                         
-                        <!-- Код курса -->
-                        <DataGridTextColumn Header="Код" 
-                                            Binding="{Binding Code}" 
-                                            Width="100"/>
+                        <!-- Email -->
+                        <DataGridTextColumn Header="Email" 
+                                            Binding="{Binding Email}" 
+                                            Width="200"/>
                         
-                        <!-- Категория -->
-                        <DataGridTextColumn Header="Категория" 
-                                            Binding="{Binding Category}" 
+                        <!-- Телефон -->
+                        <DataGridTextColumn Header="Телефон" 
+                                            Binding="{Binding Phone}" 
                                             Width="140"/>
                         
-                        <!-- Преподаватель -->
-                        <DataGridTextColumn Header="Преподаватель" 
-                                            Binding="{Binding TeacherName}" 
-                                            Width="180"/>
+                        <!-- Специализация -->
+                        <DataGridTextColumn Header="Специализация" 
+                                            Binding="{Binding Specialization}" 
+                                            Width="160"/>
                         
-                        <!-- Студентов -->
-                        <DataGridTemplateColumn Header="Студентов" 
-                                                Width="90">
+                        <!-- Курсов ведет -->
+                        <DataGridTemplateColumn Header="Курсов" 
+                                                Width="80">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <Border Background="{DynamicResource SystemAccentColorLight3}" 
                                             CornerRadius="12" Padding="8,4"
                                             HorizontalAlignment="Center">
-                                        <TextBlock Text="{Binding StudentsCount}" 
+                                        <TextBlock Text="{Binding CoursesCount}" 
                                                    Foreground="{DynamicResource SystemAccentColorDark1}"
                                                    FontWeight="SemiBold" HorizontalAlignment="Center"/>
                                     </Border>
@@ -175,61 +153,43 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
                         
-                        <!-- Заданий -->
-                        <DataGridTemplateColumn Header="Заданий" 
+                        <!-- Групп курирует -->
+                        <DataGridTemplateColumn Header="Групп" 
                                                 Width="80">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}" 
                                             CornerRadius="12" Padding="8,4"
                                             HorizontalAlignment="Center">
-                                        <TextBlock Text="{Binding AssignmentsCount}" 
+                                        <TextBlock Text="{Binding CuratedGroupsCount}" 
                                                    FontWeight="SemiBold" HorizontalAlignment="Center"/>
                                     </Border>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
                         
-                        <!-- Статус -->
-                        <DataGridTemplateColumn Header="Статус" Width="100">
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
-                                    <Border Background="{Binding StatusColor}" 
-                                            CornerRadius="12" Padding="8,4"
-                                            HorizontalAlignment="Center">
-                                        <TextBlock Text="{Binding StatusDisplay}" 
-                                                   Foreground="White" FontWeight="SemiBold" 
-                                                   FontSize="11" HorizontalAlignment="Center"/>
-                                    </Border>
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
-                        
                         <!-- Действия -->
-                        <DataGridTemplateColumn Header="Действия" Width="320">
+                        <DataGridTemplateColumn Header="Действия" Width="300">
                             <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate DataType="vm:CourseViewModel">
+                                <DataTemplate DataType="vm:TeacherViewModel">
                                     <StackPanel Orientation="Horizontal" Spacing="4">
-                                        <Button Content="👁" ToolTip.Tip="Просмотр курса"
-                                                Command="{Binding $parent[DataGrid].DataContext.ViewCourseDetailsCommand}"
+                                        <Button Content="👁" ToolTip.Tip="Просмотр профиля"
+                                                Command="{Binding $parent[DataGrid].DataContext.ViewTeacherDetailsCommand}"
                                                 CommandParameter="{Binding}" Padding="8,4" FontSize="12"/>
                                         <Button Content="✏️" ToolTip.Tip="Редактировать"
-                                                Command="{Binding $parent[DataGrid].DataContext.EditCourseCommand}"
+                                                Command="{Binding $parent[DataGrid].DataContext.EditTeacherCommand}"
                                                 CommandParameter="{Binding}" Padding="8,4" FontSize="12"/>
-                                        <Button Content="📝" ToolTip.Tip="Управление контентом"
-                                                Command="{Binding $parent[DataGrid].DataContext.ManageContentCommand}"
+                                        <Button Content="📚" ToolTip.Tip="Управление курсами"
+                                                Command="{Binding $parent[DataGrid].DataContext.ManageCoursesCommand}"
                                                 CommandParameter="{Binding}" Padding="8,4" FontSize="12"/>
-                                        <Button Content="👥" ToolTip.Tip="Управление студентами"
-                                                Command="{Binding $parent[DataGrid].DataContext.ManageStudentsCommand}"
+                                        <Button Content="👥" ToolTip.Tip="Управление группами"
+                                                Command="{Binding $parent[DataGrid].DataContext.ManageGroupsCommand}"
                                                 CommandParameter="{Binding}" Padding="8,4" FontSize="12"/>
                                         <Button Content="📊" ToolTip.Tip="Статистика"
                                                 Command="{Binding $parent[DataGrid].DataContext.ViewStatisticsCommand}"
                                                 CommandParameter="{Binding}" Padding="8,4" FontSize="12"/>
-                                        <Button Content="📋" ToolTip.Tip="Клонировать"
-                                                Command="{Binding $parent[DataGrid].DataContext.CloneCourseCommand}"
-                                                CommandParameter="{Binding}" Padding="8,4" FontSize="12"/>
                                         <Button Content="🗑️" ToolTip.Tip="Удалить"
-                                                Command="{Binding $parent[DataGrid].DataContext.DeleteCourseCommand}"
+                                                Command="{Binding $parent[DataGrid].DataContext.DeleteTeacherCommand}"
                                                 CommandParameter="{Binding}" Padding="8,4" FontSize="12"
                                                 Classes="danger"/>
                                     </StackPanel>
@@ -270,40 +230,39 @@
             </Grid>
         </Border>
 
-        <!-- Панель деталей курса -->
+        <!-- Панель деталей преподавателя -->
         <Border Grid.Row="1" Grid.Column="1" 
                 Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
                 CornerRadius="8" Padding="16"
-                IsVisible="{Binding HasSelectedCourse}">
+                IsVisible="{Binding HasSelectedTeacher}">
             <ScrollViewer>
                 <StackPanel Spacing="16">
                     <!-- Заголовок панели деталей -->
-                    <TextBlock Text="📋 Детали курса" 
+                    <TextBlock Text="📋 Детали преподавателя" 
                                FontSize="18" FontWeight="Bold"/>
                     
                     <!-- Основная информация -->
                     <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}" 
                             CornerRadius="8" Padding="12">
                         <StackPanel Spacing="8">
-                            <TextBlock Text="📚 Основная информация" 
+                            <TextBlock Text="👤 Основная информация" 
                                        FontWeight="SemiBold" FontSize="14"/>
-                            <TextBlock Text="{Binding SelectedCourse.Name}" 
+                            <TextBlock Text="{Binding SelectedTeacher.FullName}" 
                                        FontSize="16" FontWeight="Bold"/>
-                            <TextBlock Text="{Binding SelectedCourse.Code}" 
-                                       FontStyle="Italic"/>
-                            <TextBlock Text="{Binding SelectedCourse.Category}"/>
-                            <TextBlock Text="{Binding SelectedCourse.TeacherName}"/>
+                            <TextBlock Text="{Binding SelectedTeacher.Email}"/>
+                            <TextBlock Text="{Binding SelectedTeacher.Phone}"/>
+                            <TextBlock Text="{Binding SelectedTeacher.Specialization}"/>
                         </StackPanel>
                     </Border>
                     
-                    <!-- Описание -->
+                    <!-- Биография -->
                     <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}" 
                             CornerRadius="8" Padding="12"
-                            IsVisible="{Binding SelectedCourse.Description, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                            IsVisible="{Binding SelectedTeacher.Bio, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                         <StackPanel Spacing="8">
-                            <TextBlock Text="📝 Описание" 
+                            <TextBlock Text="📝 Биография" 
                                        FontWeight="SemiBold" FontSize="14"/>
-                            <TextBlock Text="{Binding SelectedCourse.Description}" 
+                            <TextBlock Text="{Binding SelectedTeacher.Bio}" 
                                        TextWrapping="Wrap"/>
                         </StackPanel>
                     </Border>
@@ -314,15 +273,15 @@
                         <StackPanel Spacing="8">
                             <TextBlock Text="📊 Статистика" 
                                        FontWeight="SemiBold" FontSize="14"/>
-                            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto">
+                            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto">
                                 <Border Grid.Row="0" Grid.Column="0" 
                                         Background="{DynamicResource SystemAccentColorLight3}" 
                                         CornerRadius="8" Padding="12">
                                     <StackPanel HorizontalAlignment="Center">
-                                        <TextBlock Text="{Binding SelectedCourse.StudentsCount}" 
-                                                   FontSize="20" FontWeight="Bold" 
+                                        <TextBlock Text="{Binding SelectedTeacher.CoursesCount}" 
+                                                   FontSize="24" FontWeight="Bold" 
                                                    HorizontalAlignment="Center"/>
-                                        <TextBlock Text="Студентов" FontSize="10" 
+                                        <TextBlock Text="Курсов" FontSize="12" 
                                                    HorizontalAlignment="Center"/>
                                     </StackPanel>
                                 </Border>
@@ -330,33 +289,11 @@
                                         Background="{DynamicResource SystemControlBackgroundAltMediumBrush}" 
                                         CornerRadius="8" Padding="12">
                                     <StackPanel HorizontalAlignment="Center">
-                                        <TextBlock Text="{Binding SelectedCourse.AssignmentsCount}" 
-                                                   FontSize="20" FontWeight="Bold" 
+                                        <TextBlock Text="{Binding SelectedTeacher.CuratedGroupsCount}" 
+                                                   FontSize="24" FontWeight="Bold" 
                                                    HorizontalAlignment="Center"/>
-                                        <TextBlock Text="Заданий" FontSize="10" 
+                                        <TextBlock Text="Групп" FontSize="12" 
                                                    HorizontalAlignment="Center"/>
-                                    </StackPanel>
-                                </Border>
-                                <Border Grid.Row="1" Grid.Column="0" 
-                                        Background="#4CAF50" 
-                                        CornerRadius="8" Padding="12">
-                                    <StackPanel HorizontalAlignment="Center">
-                                        <TextBlock Text="{Binding SelectedCourse.CompletionRate, StringFormat='{}{0:F0}%'}" 
-                                                   FontSize="16" FontWeight="Bold" 
-                                                   Foreground="White" HorizontalAlignment="Center"/>
-                                        <TextBlock Text="Завершено" FontSize="10" 
-                                                   Foreground="White" HorizontalAlignment="Center"/>
-                                    </StackPanel>
-                                </Border>
-                                <Border Grid.Row="1" Grid.Column="1" 
-                                        Background="#2196F3" 
-                                        CornerRadius="8" Padding="12">
-                                    <StackPanel HorizontalAlignment="Center">
-                                        <TextBlock Text="{Binding SelectedCourse.AverageGrade, StringFormat='{}{0:F1}'}" 
-                                                   FontSize="16" FontWeight="Bold" 
-                                                   Foreground="White" HorizontalAlignment="Center"/>
-                                        <TextBlock Text="Средний балл" FontSize="10" 
-                                                   Foreground="White" HorizontalAlignment="Center"/>
                                     </StackPanel>
                                 </Border>
                             </Grid>
@@ -370,25 +307,21 @@
                             <TextBlock Text="⚡ Быстрые действия" 
                                        FontWeight="SemiBold" FontSize="14"/>
                             <StackPanel Spacing="4">
-                                <Button Content="✏️ Редактировать курс" 
-                                        Command="{Binding EditCourseCommand}"
-                                        CommandParameter="{Binding SelectedCourse}"
+                                <Button Content="✏️ Редактировать профиль" 
+                                        Command="{Binding EditTeacherCommand}"
+                                        CommandParameter="{Binding SelectedTeacher}"
                                         HorizontalAlignment="Stretch"/>
-                                <Button Content="📝 Управление контентом" 
-                                        Command="{Binding ManageContentCommand}"
-                                        CommandParameter="{Binding SelectedCourse}"
+                                <Button Content="📚 Управление курсами" 
+                                        Command="{Binding ManageCoursesCommand}"
+                                        CommandParameter="{Binding SelectedTeacher}"
                                         HorizontalAlignment="Stretch"/>
-                                <Button Content="👥 Управление студентами" 
-                                        Command="{Binding ManageStudentsCommand}"
-                                        CommandParameter="{Binding SelectedCourse}"
+                                <Button Content="👥 Управление группами" 
+                                        Command="{Binding ManageGroupsCommand}"
+                                        CommandParameter="{Binding SelectedTeacher}"
                                         HorizontalAlignment="Stretch"/>
                                 <Button Content="📊 Подробная статистика" 
                                         Command="{Binding ViewStatisticsCommand}"
-                                        CommandParameter="{Binding SelectedCourse}"
-                                        HorizontalAlignment="Stretch"/>
-                                <Button Content="📋 Клонировать курс" 
-                                        Command="{Binding CloneCourseCommand}"
-                                        CommandParameter="{Binding SelectedCourse}"
+                                        CommandParameter="{Binding SelectedTeacher}"
                                         HorizontalAlignment="Stretch"/>
                             </StackPanel>
                         </StackPanel>
@@ -403,42 +336,9 @@
                 Opacity="0.8" IsVisible="{Binding IsLoading}">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="16">
                 <ProgressBar IsIndeterminate="True" Width="200"/>
-                <TextBlock Text="Загрузка курсов..." 
+                <TextBlock Text="Загрузка преподавателей..." 
                            HorizontalAlignment="Center" FontSize="14"/>
             </StackPanel>
         </Border>
     </Grid>
-
-    <!-- Стили -->
-    <UserControl.Styles>
-        <Style Selector="Border.statistic-card">
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeMediumBrush}"/>
-            <Setter Property="CornerRadius" Value="6"/>
-            <Setter Property="Padding" Value="8"/>
-            <Setter Property="Margin" Value="2"/>
-        </Style>
-        
-        <Style Selector="Button.danger">
-            <Setter Property="Background" Value="#FF4444"/>
-            <Setter Property="Foreground" Value="White"/>
-        </Style>
-        
-        <Style Selector="Button.danger:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#FF6666"/>
-        </Style>
-        
-        <Style Selector="Button.warning">
-            <Setter Property="Background" Value="#FF9500"/>
-            <Setter Property="Foreground" Value="White"/>
-        </Style>
-        
-        <Style Selector="Button.warning:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#FFB84D"/>
-        </Style>
-        
-        <Style Selector="Button.accent">
-            <Setter Property="Background" Value="{DynamicResource SystemAccentColor}"/>
-            <Setter Property="Foreground" Value="White"/>
-        </Style>
-    </UserControl.Styles>
 </UserControl> 

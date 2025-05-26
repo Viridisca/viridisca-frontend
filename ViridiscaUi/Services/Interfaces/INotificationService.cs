@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using ViridiscaUi.Domain.Models.System;
 using NotificationPriority = ViridiscaUi.Domain.Models.System.NotificationPriority;
+using ViridiscaUi.Domain.Models.Education;
 
 namespace ViridiscaUi.Services.Interfaces
 {
@@ -241,6 +242,20 @@ namespace ViridiscaUi.Services.Interfaces
             string message,
             NotificationType type = NotificationType.Info,
             NotificationPriority priority = NotificationPriority.Normal);
+        
+        /// <summary>
+        /// Отправляет системное уведомление
+        /// </summary>
+        Task SendNotificationAsync(
+            string title,
+            string message,
+            NotificationType type = NotificationType.Info,
+            NotificationPriority priority = NotificationPriority.Normal);
+
+        /// <summary>
+        /// Уведомляет родителей об оценках студентов
+        /// </summary>
+        Task NotifyParentsAboutGradesAsync(IEnumerable<Grade> grades);
     }
 
     /// <summary>

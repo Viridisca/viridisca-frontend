@@ -85,11 +85,26 @@ namespace ViridiscaUi.Services.Interfaces
             int page, 
             int pageSize, 
             string? searchTerm = null,
-            CourseStatus? statusFilter = null,
+            string? categoryFilter = null,
+            string? statusFilter = null,
+            string? difficultyFilter = null,
             Guid? teacherFilter = null);
         
         /// <summary>
-        /// Получает доступные курсы для регистрации студента
+        /// Получает все курсы с фильтрами
+        /// </summary>
+        Task<IEnumerable<Course>> GetAllCoursesAsync(
+            string? categoryFilter = null,
+            string? statusFilter = null,
+            string? difficultyFilter = null);
+        
+        /// <summary>
+        /// Клонирует курс
+        /// </summary>
+        Task<Course?> CloneCourseAsync(Guid courseUid, string newName);
+        
+        /// <summary>
+        /// Доступные курсы для регистрации студента
         /// </summary>
         Task<IEnumerable<Course>> GetAvailableCoursesForStudentAsync(Guid studentUid);
         

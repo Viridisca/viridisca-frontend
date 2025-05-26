@@ -61,6 +61,12 @@ public class AppViewLocator : IViewLocator, IDataTemplate
         if (viewModel is StudentsViewModel studentsVm)
             return new StudentsView { DataContext = studentsVm };
 
+        if (viewModel is TeachersViewModel teachersVm)
+            return new TeachersView { DataContext = teachersVm };
+
+        if (viewModel is GradesViewModel gradesVm)
+            return new GradesView { DataContext = gradesVm };
+
         if (viewModel is ProfileViewModel profileVm)
             return new ProfileView { DataContext = profileVm };
 

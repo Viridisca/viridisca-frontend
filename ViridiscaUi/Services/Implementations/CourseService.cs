@@ -306,23 +306,33 @@ namespace ViridiscaUi.Services.Implementations
             int page, 
             int pageSize, 
             string? searchTerm = null,
-            CourseStatus? statusFilter = null,
+            string? categoryFilter = null,
+            string? statusFilter = null,
+            string? difficultyFilter = null,
             Guid? teacherFilter = null)
         {
             var query = _dbContext.Courses
                 .Include(c => c.Teacher)
                 .Include(c => c.Enrollments)
+                .Include(c => c.Assignments)
                 .AsQueryable();
 
+            // Применяем фильтры
             if (!string.IsNullOrEmpty(searchTerm))
             {
                 query = query.Where(c => c.Name.Contains(searchTerm) || 
-                                       (c.Description != null && c.Description.Contains(searchTerm)));
+                                        c.Description.Contains(searchTerm) ||
+                                        c.Code.Contains(searchTerm));
             }
 
-            if (statusFilter.HasValue)
+            if (!string.IsNullOrEmpty(categoryFilter))
             {
-                query = query.Where(c => c.Status == statusFilter.Value);
+                query = query.Where(c => c.Category == categoryFilter);
+            }
+
+            if (!string.IsNullOrEmpty(statusFilter) && Enum.TryParse<CourseStatus>(statusFilter, out var status))
+            {
+                query = query.Where(c => c.Status == status);
             }
 
             if (teacherFilter.HasValue)
@@ -331,7 +341,6 @@ namespace ViridiscaUi.Services.Implementations
             }
 
             var totalCount = await query.CountAsync();
-            
             var courses = await query
                 .OrderBy(c => c.Name)
                 .Skip((page - 1) * pageSize)
@@ -391,26 +400,79 @@ namespace ViridiscaUi.Services.Implementations
 
         public async Task<IEnumerable<Course>> GetRecommendedCoursesAsync(Guid studentUid)
         {
-            // Простая логика рекомендаций: курсы той же специальности
-            var student = await _dbContext.Students
-                .Include(s => s.Group)
-                .FirstOrDefaultAsync(s => s.Uid == studentUid);
+            // Простая логика рекомендаций - курсы того же уровня, что и уже изучаемые
+            var enrolledCourses = await GetCoursesByStudentAsync(studentUid);
+            var enrolledCategories = enrolledCourses.Select(c => c.Category).Distinct();
 
-            if (student?.Group == null)
-                return new List<Course>();
-
-            var enrolledCourseUids = await _dbContext.Enrollments
-                .Where(e => e.StudentUid == studentUid)
-                .Select(e => e.CourseUid)
-                .ToListAsync();
-
-            // TODO: Добавить логику по специальности, когда будет реализована модель Speciality
             return await _dbContext.Courses
                 .Include(c => c.Teacher)
-                .Where(c => c.Status == CourseStatus.Published && !enrolledCourseUids.Contains(c.Uid))
-                .OrderBy(c => c.Name)
+                .Where(c => c.Status == CourseStatus.Published && 
+                           enrolledCategories.Contains(c.Category) &&
+                           !enrolledCourses.Select(ec => ec.Uid).Contains(c.Uid))
                 .Take(5)
                 .ToListAsync();
+        }
+
+        /// <summary>
+        /// Получает все курсы с фильтрами
+        /// </summary>
+        public async Task<IEnumerable<Course>> GetAllCoursesAsync(
+            string? categoryFilter = null,
+            string? statusFilter = null,
+            string? difficultyFilter = null)
+        {
+            var query = _dbContext.Courses
+                .Include(c => c.Teacher)
+                .Include(c => c.Enrollments)
+                .AsQueryable();
+
+            if (!string.IsNullOrEmpty(categoryFilter))
+            {
+                query = query.Where(c => c.Category == categoryFilter);
+            }
+
+            if (!string.IsNullOrEmpty(statusFilter) && Enum.TryParse<CourseStatus>(statusFilter, out var status))
+            {
+                query = query.Where(c => c.Status == status);
+            }
+
+            return await query.OrderBy(c => c.Name).ToListAsync();
+        }
+
+        /// <summary>
+        /// Клонирует курс
+        /// </summary>
+        public async Task<Course?> CloneCourseAsync(Guid courseUid, string newCourseName)
+        {
+            var originalCourse = await _dbContext.Courses
+                .Include(c => c.Modules)
+                .ThenInclude(m => m.Lessons)
+                .Include(c => c.Assignments)
+                .FirstOrDefaultAsync(c => c.Uid == courseUid);
+
+            if (originalCourse == null)
+                return null;
+
+            var clonedCourse = new Course
+            {
+                Uid = Guid.NewGuid(),
+                Name = newCourseName,
+                Code = $"{originalCourse.Code}_COPY",
+                Description = originalCourse.Description,
+                Category = originalCourse.Category,
+                TeacherUid = originalCourse.TeacherUid,
+                Credits = originalCourse.Credits,
+                Status = CourseStatus.Draft,
+                StartDate = null,
+                EndDate = null,
+                CreatedAt = DateTime.UtcNow,
+                LastModifiedAt = DateTime.UtcNow
+            };
+
+            await _dbContext.Courses.AddAsync(clonedCourse);
+            await _dbContext.SaveChangesAsync();
+
+            return clonedCourse;
         }
     }
 } 

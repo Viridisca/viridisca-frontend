@@ -44,5 +44,45 @@ namespace ViridiscaUi.Services.Interfaces
         /// Назначает преподавателя на курс
         /// </summary>
         Task<bool> AssignToCourseAsync(Guid teacherUid, Guid courseUid);
+        
+        /// <summary>
+        /// Получает преподавателей с пагинацией
+        /// </summary>
+        Task<(IEnumerable<Teacher> Teachers, int TotalCount)> GetTeachersPagedAsync(
+            int page,
+            int pageSize,
+            string? searchTerm = null,
+            string? specializationFilter = null,
+            string? statusFilter = null);
+        
+        /// <summary>
+        /// Получает статистику преподавателя
+        /// </summary>
+        Task<object> GetTeacherStatisticsAsync(Guid teacherUid);
+        
+        /// <summary>
+        /// Получает курсы преподавателя
+        /// </summary>
+        Task<IEnumerable<Course>> GetTeacherCoursesAsync(Guid teacherUid);
+        
+        /// <summary>
+        /// Получает группы преподавателя
+        /// </summary>
+        Task<IEnumerable<Group>> GetTeacherGroupsAsync(Guid teacherUid);
+        
+        /// <summary>
+        /// Назначает преподавателя на группу
+        /// </summary>
+        Task<bool> AssignToGroupAsync(Guid teacherUid, Guid groupUid);
+        
+        /// <summary>
+        /// Отменяет назначение преподавателя на группу
+        /// </summary>
+        Task<bool> UnassignFromGroupAsync(Guid teacherUid, Guid groupUid);
+        
+        /// <summary>
+        /// Отменяет назначение преподавателя на курс
+        /// </summary>
+        Task<bool> UnassignFromCourseAsync(Guid teacherUid, Guid courseUid);
     }
 } 

@@ -323,7 +323,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         {
             entity.HasKey(e => e.Uid);
             entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Code).IsRequired().HasMaxLength(20);
             entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.Category).IsRequired().HasMaxLength(50);
             
             // Связь с преподавателем
             entity.HasOne<Teacher>()

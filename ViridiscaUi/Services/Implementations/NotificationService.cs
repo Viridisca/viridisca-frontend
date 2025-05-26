@@ -1138,25 +1138,56 @@ namespace ViridiscaUi.Services.Implementations
         
         public async Task<IEnumerable<NotificationTemplate>> GetTemplatesAsync()
         {
-            var domainTemplates = await _dbContext.NotificationTemplates
-                .Where(t => t.IsActive)
+            return await _dbContext.NotificationTemplates
                 .OrderBy(t => t.Name)
                 .ToListAsync();
-            
-            return domainTemplates.Select(t => new NotificationTemplate
+        }
+
+        /// <summary>
+        /// Отправляет системное уведомление
+        /// </summary>
+        public async Task SendNotificationAsync(
+            string title,
+            string message,
+            NotificationType type = NotificationType.Info,
+            NotificationPriority priority = NotificationPriority.Normal)
+        {
+            // Отправляем системное уведомление всем администраторам
+            var adminUsers = await _dbContext.Users
+                .Where(u => u.Role.ToString() == "Admin" || u.Role.ToString() == "SystemAdmin")
+                .ToListAsync();
+
+            foreach (var admin in adminUsers)
             {
-                Uid = t.Uid,
-                Name = t.Name,
-                Description = t.Description,
-                TitleTemplate = t.TitleTemplate,
-                MessageTemplate = t.MessageTemplate,
-                Type = t.Type,
-                Priority = t.Priority,
-                Category = t.Category,
-                IsActive = t.IsActive,
-                CreatedAt = t.CreatedAt,
-                LastModifiedAt = t.LastModifiedAt
-            });
+                await CreateNotificationAsync(
+                    admin.Uid,
+                    title,
+                    message,
+                    type,
+                    priority);
+            }
+        }
+
+        /// <summary>
+        /// Уведомляет родителей об оценках студентов
+        /// </summary>
+        public async Task NotifyParentsAboutGradesAsync(IEnumerable<Grade> grades)
+        {
+            foreach (var grade in grades)
+            {
+                if (grade.Student?.Parents?.Any() == true)
+                {
+                    foreach (var parent in grade.Student.Parents)
+                    {
+                        await CreateNotificationAsync(
+                            parent.ParentUid,
+                            "Новая оценка",
+                            $"Студент {grade.Student.FullName} получил оценку {grade.Value} по предмету {grade.Subject?.Name ?? "Неизвестный предмет"}",
+                            NotificationType.Info,
+                            NotificationPriority.Normal);
+                    }
+                }
+            }
         }
     }
 } 

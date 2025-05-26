@@ -494,12 +494,208 @@ public class DialogService(IServiceProvider serviceProvider) : IDialogService
     public async Task<ReminderData?> ShowCreateReminderDialogAsync()
     {
         // TODO: Реализовать диалог создания напоминания
-        await Task.Delay(100);
-        return new ReminderData
+        await Task.Delay(1);
+        return null;
+    }
+
+    /// <summary>
+    /// Показывает запрос подтверждения с кастомными кнопками
+    /// </summary>
+    public async Task<bool> ShowConfirmationDialogAsync(string title, string message, string confirmText = "Да", string cancelText = "Нет")
+    {
+        var tcs = new TaskCompletionSource<bool>();
+        var dialog = new Window
         {
-            Title = "Напоминание",
-            Message = "Текст напоминания",
-            RemindAt = DateTime.Now.AddHours(1)
+            Title = title,
+            Content = new StackPanel
+            {
+                Children =
+                {
+                    new TextBlock { Text = message },
+                    new StackPanel
+                    {
+                        Orientation = Orientation.Horizontal,
+                        Children =
+                        {
+                            new Button { Content = confirmText },
+                            new Button { Content = cancelText }
+                        }
+                    }
+                }
+            },
+            SizeToContent = SizeToContent.WidthAndHeight
         };
+
+        ConfigureDialog(dialog);
+
+        var buttonPanel = ((dialog.Content as StackPanel)?.Children[1]) as StackPanel;
+        var confirmButton = buttonPanel?.Children[0] as Button;
+        var cancelButton = buttonPanel?.Children[1] as Button;
+
+        if (confirmButton != null)
+        {
+            void OnConfirmClick(object? sender, RoutedEventArgs args)
+            {
+                tcs.SetResult(true);
+                dialog.Close();
+                confirmButton.Click -= OnConfirmClick;
+            }
+            confirmButton.Click += OnConfirmClick;
+        }
+
+        if (cancelButton != null)
+        {
+            void OnCancelClick(object? sender, RoutedEventArgs args)
+            {
+                tcs.SetResult(false);
+                dialog.Close();
+                cancelButton.Click -= OnCancelClick;
+            }
+            cancelButton.Click += OnCancelClick;
+        }
+
+        await dialog.ShowDialog(GetOwnerWindow());
+        return await tcs.Task;
+    }
+
+    /// <summary>
+    /// Показывает диалог с вводом текста (альтернативное название)
+    /// </summary>
+    public async Task<string?> ShowTextInputDialogAsync(string title, string message, string defaultValue = "")
+    {
+        return await ShowInputDialogAsync(title, message, defaultValue);
+    }
+
+    /// <summary>
+    /// Показывает диалог выбора файла для открытия
+    /// </summary>
+    public async Task<string?> ShowFileOpenDialogAsync(string title, string[] filters)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = title,
+            AllowMultiple = false
+        };
+
+        if (filters?.Length > 0)
+        {
+            var fileTypeFilters = new List<FileDialogFilter>();
+            foreach (var filter in filters)
+            {
+                var parts = filter.Split('|');
+                if (parts.Length == 2)
+                {
+                    fileTypeFilters.Add(new FileDialogFilter
+                    {
+                        Name = parts[0],
+                        Extensions = parts[1].Split(',').Select(ext => ext.Trim().TrimStart('*', '.')).ToList()
+                    });
+                }
+                else
+                {
+                    // Простой формат типа "*.xlsx"
+                    var extension = filter.TrimStart('*', '.');
+                    fileTypeFilters.Add(new FileDialogFilter
+                    {
+                        Name = $"{extension.ToUpper()} files",
+                        Extensions = new List<string> { extension }
+                    });
+                }
+            }
+            dialog.Filters = fileTypeFilters;
+        }
+
+        var result = await dialog.ShowAsync(GetOwnerWindow());
+        return result?.FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Показывает диалог управления содержимым курса
+    /// </summary>
+    public async Task<object?> ShowCourseContentManagementDialogAsync(Course course)
+    {
+        // TODO: Реализовать диалог управления содержимым курса
+        await Task.Delay(1);
+        return null;
+    }
+
+    /// <summary>
+    /// Показывает диалог управления студентами курса
+    /// </summary>
+    public async Task<object?> ShowCourseStudentsManagementDialogAsync(Course course, IEnumerable<Student> students)
+    {
+        // TODO: Реализовать диалог управления студентами курса
+        await Task.Delay(1);
+        return null;
+    }
+
+    /// <summary>
+    /// Показывает диалог статистики курса
+    /// </summary>
+    public async Task<object?> ShowCourseStatisticsDialogAsync(string title, CourseStatistics statistics)
+    {
+        // TODO: Реализовать диалог статистики курса
+        await Task.Delay(1);
+        return null;
+    }
+
+    /// <summary>
+    /// Показывает диалог редактирования оценки
+    /// </summary>
+    public async Task<Grade?> ShowGradeEditDialogAsync(Grade grade, IEnumerable<Student> students, IEnumerable<Assignment> assignments)
+    {
+        // TODO: Реализовать диалог редактирования оценки
+        await Task.Delay(1);
+        return null;
+    }
+
+    /// <summary>
+    /// Показывает диалог массового выставления оценок
+    /// </summary>
+    public async Task<IEnumerable<Grade>?> ShowBulkGradingDialogAsync(IEnumerable<Course> courses, IEnumerable<Assignment> assignments)
+    {
+        // TODO: Реализовать диалог массового выставления оценок
+        await Task.Delay(1);
+        return null;
+    }
+
+    /// <summary>
+    /// Показывает диалог редактирования преподавателя
+    /// </summary>
+    public async Task<Teacher?> ShowTeacherEditDialogAsync(Teacher teacher)
+    {
+        // TODO: Реализовать диалог редактирования преподавателя
+        await Task.Delay(1);
+        return null;
+    }
+
+    /// <summary>
+    /// Показывает диалог управления курсами преподавателя
+    /// </summary>
+    public async Task<object?> ShowTeacherCoursesManagementDialogAsync(Teacher teacher, IEnumerable<Course> courses)
+    {
+        // TODO: Реализовать диалог управления курсами преподавателя
+        await Task.Delay(1);
+        return null;
+    }
+
+    /// <summary>
+    /// Показывает диалог управления группами преподавателя
+    /// </summary>
+    public async Task<object?> ShowTeacherGroupsManagementDialogAsync(Teacher teacher, IEnumerable<Group> groups)
+    {
+        // TODO: Реализовать диалог управления группами преподавателя
+        await Task.Delay(1);
+        return null;
+    }
+
+    /// <summary>
+    /// Показывает диалог статистики преподавателя
+    /// </summary>
+    public async Task<object?> ShowTeacherStatisticsDialogAsync(string title, object statistics)
+    {
+        // TODO: Реализовать диалог статистики преподавателя
+        await Task.Delay(1);
+        return null;
     }
 }

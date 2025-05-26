@@ -10,6 +10,7 @@ using ViridiscaUi.ViewModels.Auth;
 using ViridiscaUi.ViewModels.Pages;
 using ViridiscaUi.ViewModels.Students;
 using ViridiscaUi.ViewModels.Profile;
+using ViridiscaUi.ViewModels.Education;
 using ViridiscaUi.Windows;
 using ViridiscaUi.Services;
 using Microsoft.Extensions.Configuration;
@@ -43,6 +44,9 @@ public static class DependencyInjectionExtensions
         services.AddScoped<IEnrollmentService, EnrollmentService>();
         services.AddScoped<IAssignmentService, AssignmentService>();
         services.AddScoped<ISubmissionService, SubmissionService>();
+        services.AddScoped<IGradeService, GradeService>();
+        services.AddScoped<IExportService, ExportService>();
+        services.AddScoped<IImportService, ImportService>();
         
         // Register auth services (Scoped для работы с EF Core)
         services.AddScoped<IUserService, UserService>();
@@ -80,6 +84,8 @@ public static class DependencyInjectionExtensions
         services.AddTransient<StudentsViewModel>();
         services.AddTransient<StudentEditorViewModel>();
         services.AddTransient<ProfileViewModel>();
+        services.AddTransient<TeachersViewModel>();
+        services.AddTransient<GradesViewModel>();
  
         return services;
     }
