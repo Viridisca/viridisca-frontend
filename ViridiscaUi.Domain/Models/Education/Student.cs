@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using ReactiveUI;
 using ViridiscaUi.Domain.Models.Base;
+using ViridiscaUi.Domain.Models.Auth;
 
 namespace ViridiscaUi.Domain.Models.Education;
 
@@ -30,6 +31,7 @@ public class Student : ViewModelBase
     private DateTime? _graduationDate;
     private ObservableCollection<StudentParent> _parents = new();
     private Group? _group;
+    private User? _user;
 
     /// <summary>
     /// Идентификатор пользователя
@@ -38,6 +40,24 @@ public class Student : ViewModelBase
     {
         get => _userUid;
         set => this.RaiseAndSetIfChanged(ref _userUid, value);
+    }
+
+    /// <summary>
+    /// Пользователь (навигационное свойство)
+    /// </summary>
+    public User? User
+    {
+        get => _user;
+        set => this.RaiseAndSetIfChanged(ref _user, value);
+    }
+
+    /// <summary>
+    /// Телефон (алиас для PhoneNumber)
+    /// </summary>
+    public string Phone
+    {
+        get => PhoneNumber;
+        set => PhoneNumber = value;
     }
 
     /// <summary>

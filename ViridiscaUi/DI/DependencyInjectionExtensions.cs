@@ -1,3 +1,4 @@
+using System;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
@@ -50,24 +51,34 @@ public static class DependencyInjectionExtensions
         services.AddScoped<IRolePermissionService, RolePermissionService>();
         services.AddScoped<IAuthService, AuthService>();
         
+        // Register system services
+        services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<IFileService, FileService>();
+        
         // Register user session service (Singleton для сохранения состояния)
         services.AddSingleton<IUserSessionService, UserSessionService>();
         services.AddSingleton<INavigationService, NavigationService>();
         services.AddSingleton<IStatusService, StatusService>();
-        services.AddSingleton<IDialogService>(sp =>
-        {
-            var mainWindow = sp.GetRequiredService<MainWindow>();
-            return new DialogService(mainWindow, sp);
-        });
-
+        services.AddSingleton<IDialogService, DialogService>();
+        
         // ViewModels
         services.AddSingleton<MainViewModel>();
+        
+        // Register IScreen as separate implementation to avoid circular dependency
+        services.AddSingleton<IScreen>(provider => 
+        {
+            var screen = new RoutingState();
+            return new ScreenHost(screen);
+        });
+        
         services.AddTransient<HomeViewModel>();
-        services.AddTransient<CoursesViewModel>();
+        services.AddTransient<ViridiscaUi.ViewModels.Education.CoursesViewModel>();
         services.AddTransient<UsersViewModel>();
         services.AddTransient<LoginViewModel>();
         services.AddTransient<RegisterViewModel>();
+        services.AddTransient<AuthenticationViewModel>();
         services.AddTransient<StudentsViewModel>();
+        services.AddTransient<StudentEditorViewModel>();
         services.AddTransient<ProfileViewModel>();
  
         return services;

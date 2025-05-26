@@ -112,15 +112,9 @@ public class StatusBarViewModel : ReactiveObject, IDisposable
             // Создаем новое окно истории
             _historyWindow = new StatusHistoryWindow
             {
-                DataContext = this
+                DataContext = this,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner
             };
-
-            // Устанавливаем владельца окна
-            if (mainWindow != null)
-            {
-                // Owner может быть установлен только после создания окна
-                _historyWindow.WindowStartupLocation = WindowStartupLocation.CenterOwner;
-            }
 
             // Подписываемся на закрытие окна
             _historyWindow.Closed += (s, e) =>
@@ -129,12 +123,25 @@ public class StatusBarViewModel : ReactiveObject, IDisposable
                 _historyWindow = null;
             };
 
-            _historyWindow.Show();
+            // Подписываемся на закрытие главного окна, чтобы закрыть окно истории
+            void OnMainWindowClosing(object? sender, WindowClosingEventArgs e)
+            {
+                if (_historyWindow != null && _historyWindow.IsVisible)
+                {
+                    _historyWindow.Close();
+                }
+                mainWindow.Closing -= OnMainWindowClosing;
+            }
+            
+            mainWindow.Closing += OnMainWindowClosing;
+
+            // Для истории используем немодальное окно (Show), но с правильным управлением
+            _historyWindow.Show(mainWindow);
             IsHistoryVisible = true;
         }
         catch (Exception ex)
         {
-            _statusService.ShowError($"Ошибка открытия окна истории: {ex.Message}", "StatusBar");
+            _statusService?.ShowError($"Ошибка открытия окна истории: {ex.Message}", "StatusBar");
         }
     }
 
@@ -159,10 +166,10 @@ public class StatusBarViewModel : ReactiveObject, IDisposable
 
     private void UpdateCounts()
     {
-        TotalMessagesCount = _statusService.TotalMessagesCount;
-        ErrorsCount = _statusService.ErrorsCount;
-        WarningsCount = _statusService.WarningsCount;
-        InfoCount = _statusService.InfoCount;
+        TotalMessagesCount = _statusService?.TotalMessagesCount ?? 0;
+        ErrorsCount = _statusService?.ErrorsCount ?? 0;
+        WarningsCount = _statusService?.WarningsCount ?? 0;
+        InfoCount = _statusService?.InfoCount ?? 0;
     }
 
     private async Task CopyMessageAsync(StatusMessage message)
@@ -175,13 +182,13 @@ public class StatusBarViewModel : ReactiveObject, IDisposable
                 if (topLevel?.Clipboard != null)
                 {
                     await topLevel.Clipboard.SetTextAsync(message.CopyableText);
-                    _statusService.ShowSuccess("Сообщение скопировано в буфер обмена", "StatusBar");
+                    _statusService?.ShowSuccess("Сообщение скопировано в буфер обмена", "StatusBar");
                 }
             }
         }
         catch (Exception ex)
         {
-            _statusService.ShowError($"Ошибка копирования: {ex.Message}", "StatusBar");
+            _statusService?.ShowError($"Ошибка копирования: {ex.Message}", "StatusBar");
         }
     }
 
@@ -196,13 +203,13 @@ public class StatusBarViewModel : ReactiveObject, IDisposable
                 {
                     var allMessages = string.Join(Environment.NewLine, Messages.Select(m => m.CopyableText));
                     await topLevel.Clipboard.SetTextAsync(allMessages);
-                    _statusService.ShowSuccess($"Скопировано {Messages.Count} сообщений в буфер обмена", "StatusBar");
+                    _statusService?.ShowSuccess($"Скопировано {Messages.Count} сообщений в буфер обмена", "StatusBar");
                 }
             }
         }
         catch (Exception ex)
         {
-            _statusService.ShowError($"Ошибка копирования всех сообщений: {ex.Message}", "StatusBar");
+            _statusService?.ShowError($"Ошибка копирования всех сообщений: {ex.Message}", "StatusBar");
         }
     }
 

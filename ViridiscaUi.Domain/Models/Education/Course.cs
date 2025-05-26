@@ -29,6 +29,15 @@ public class Course : ViewModelBase
     }
 
     /// <summary>
+    /// Заголовок курса (синоним для Name)
+    /// </summary>
+    public string Title
+    {
+        get => _name;
+        set => this.RaiseAndSetIfChanged(ref _name, value);
+    }
+
+    /// <summary>
     /// Описание курса
     /// </summary>
     public string Description
@@ -140,6 +149,11 @@ public enum CourseStatus
     /// Активный
     /// </summary>
     Active,
+    
+    /// <summary>
+    /// Опубликованный
+    /// </summary>
+    Published,
     
     /// <summary>
     /// Архивированный

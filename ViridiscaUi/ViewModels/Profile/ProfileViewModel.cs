@@ -12,16 +12,14 @@ namespace ViridiscaUi.ViewModels.Profile
     /// <summary>
     /// ViewModel для страницы профиля пользователя
     /// </summary>
-    public class ProfileViewModel : RoutableViewModelBase
+    public class ProfileViewModel : ViewModelBase, IRoutableViewModel
     {
-        private readonly IUserService _userService;
-        private readonly IDialogService _dialogService;
-        private readonly IAuthService _authService;
+        public string? UrlPathSegment => "profile";
+        public IScreen HostScreen { get; }
 
-        /// <summary>
-        /// URL-сегмент для навигации
-        /// </summary>
-        public override string UrlPathSegment => "profile";
+        private readonly IUserService _userService;
+        private readonly IAuthService _authService;
+        private readonly IStatusService _statusService;
 
         /// <summary>
         /// Имя пользователя
@@ -78,12 +76,13 @@ namespace ViridiscaUi.ViewModels.Profile
         public ProfileViewModel(
             IScreen screen,
             IUserService userService,
-            IDialogService dialogService,
-            IAuthService authService) : base(screen)
+            IAuthService authService,
+            IStatusService statusService)
         {
             _userService = userService ?? throw new ArgumentNullException(nameof(userService));
-            _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
             _authService = authService ?? throw new ArgumentNullException(nameof(authService));
+            _statusService = statusService ?? throw new ArgumentNullException(nameof(statusService));
+            HostScreen = screen ?? throw new ArgumentNullException(nameof(screen));
 
             // Инициализация команд
             SaveProfileCommand = ReactiveCommand.CreateFromTask(SaveProfileAsync);
@@ -101,7 +100,7 @@ namespace ViridiscaUi.ViewModels.Profile
             var currentUser = await _authService.GetCurrentUserAsync();
             if (currentUser == null)
             {
-                await _dialogService.ShowErrorAsync("Ошибка", "Не удалось загрузить данные профиля");
+                _statusService.ShowError("Не удалось загрузить данные профиля", "ProfileViewModel");
                 return;
             }
 
@@ -124,30 +123,29 @@ namespace ViridiscaUi.ViewModels.Profile
                 var currentUser = await _authService.GetCurrentUserAsync();
                 if (currentUser == null)
                 {
-                    await _dialogService.ShowErrorAsync("Ошибка", "Не удалось получить данные пользователя");
+                    _statusService.ShowError("Не удалось получить данные пользователя", "ProfileViewModel");
                     return;
                 }
 
-                var success = await _userService.UpdateProfileAsync(
-                    currentUser.Uid,
-                    FirstName,
-                    LastName,
-                    MiddleName,
-                    PhoneNumber
-                );
+                // Обновляем данные пользователя
+                currentUser.FirstName = FirstName;
+                currentUser.LastName = LastName;
+                currentUser.MiddleName = MiddleName;
+                currentUser.PhoneNumber = PhoneNumber;
 
+                var success = await _userService.UpdateUserAsync(currentUser);
                 if (success)
                 {
-                    await _dialogService.ShowInfoAsync("Успех", "Профиль успешно обновлен");
+                    _statusService.ShowInfo("Профиль успешно обновлен", "ProfileViewModel");
                 }
                 else
                 {
-                    await _dialogService.ShowErrorAsync("Ошибка", "Не удалось обновить профиль");
+                    _statusService.ShowError("Не удалось обновить профиль", "ProfileViewModel");
                 }
             }
             catch (Exception ex)
             {
-                await _dialogService.ShowErrorAsync("Ошибка", $"Произошла ошибка при обновлении профиля: {ex.Message}");
+                _statusService.ShowError($"Произошла ошибка при обновлении профиля: {ex.Message}", "ProfileViewModel");
             }
         }
 
@@ -161,16 +159,16 @@ namespace ViridiscaUi.ViewModels.Profile
                 var currentUser = await _authService.GetCurrentUserAsync();
                 if (currentUser == null)
                 {
-                    await _dialogService.ShowErrorAsync("Ошибка", "Не удалось получить данные пользователя");
+                    _statusService.ShowError("Не удалось получить данные пользователя", "ProfileViewModel");
                     return;
                 }
 
                 // TODO: Реализовать выбор и загрузку изображения
-                await _dialogService.ShowInfoAsync("Информация", "Функция изменения изображения профиля будет доступна в следующем обновлении");
+                _statusService.ShowInfo("Функция изменения изображения профиля будет доступна в следующем обновлении", "ProfileViewModel");
             }
             catch (Exception ex)
             {
-                await _dialogService.ShowErrorAsync("Ошибка", $"Произошла ошибка при изменении изображения: {ex.Message}");
+                _statusService.ShowError($"Произошла ошибка при изменении изображения: {ex.Message}", "ProfileViewModel");
             }
         }
     }

@@ -187,22 +187,20 @@ namespace ViridiscaUi.Domain.Models.Education
             if (lesson == null)
                 throw new ArgumentNullException(nameof(lesson));
 
-            if (lesson.Teacher == null || lesson.Subject == null || lesson.Group == null)
-                throw new InvalidOperationException("Для создания детальной информации об уроке необходимы данные о преподавателе, предмете и группе");
-
+            // Для новой модели Lesson используем доступные свойства
             return new LessonDetail(
                 lesson.Uid,
-                lesson.Topic,
-                lesson.StartTime,
-                lesson.EndTime,
-                lesson.Teacher.LastName,
-                lesson.Teacher.FirstName,
-                lesson.Teacher.MiddleName,
-                lesson.Subject.Name,
-                lesson.Group.Name,
+                lesson.Title, // Используем Title вместо Topic
+                DateTime.Now, // Временная заглушка для StartTime
+                DateTime.Now.AddHours(1), // Временная заглушка для EndTime
+                "Unknown", // Временная заглушка для LastName
+                "Teacher", // Временная заглушка для FirstName
+                "", // Временная заглушка для MiddleName
+                "Unknown Subject", // Временная заглушка для Subject
+                "Unknown Group", // Временная заглушка для Group
                 lesson.Description,
-                lesson.IsCancelled,
-                lesson.IsCompleted);
+                false, // Временная заглушка для IsCancelled
+                false); // Временная заглушка для IsCompleted
         }
     }
 } 

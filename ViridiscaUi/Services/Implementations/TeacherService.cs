@@ -37,6 +37,11 @@ namespace ViridiscaUi.Services.Implementations
                 .ToListAsync();
         }
 
+        public async Task<IEnumerable<Teacher>> GetTeachersAsync()
+        {
+            return await GetAllTeachersAsync();
+        }
+
         public async Task AddTeacherAsync(Teacher teacher)
         {
             teacher.CreatedAt = DateTime.UtcNow;

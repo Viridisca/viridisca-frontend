@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
@@ -10,16 +12,61 @@ using ViridiscaUi.ViewModels;
 using ViridiscaUi.ViewModels.Students;
 using ViridiscaUi.Views.Education.Students;
 using Microsoft.Extensions.DependencyInjection;
+using ViridiscaUi.Domain.Models.System;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia;
 
 namespace ViridiscaUi.Services.Implementations;
 
 /// <summary>
 /// Реализация сервиса для работы с диалоговыми окнами
 /// </summary>
-public class DialogService(Window owner, IServiceProvider serviceProvider) : IDialogService
+public class DialogService(IServiceProvider serviceProvider) : IDialogService
 {
-    private readonly Window _owner = owner ?? throw new ArgumentNullException(nameof(owner));
     private readonly IServiceProvider _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+
+    /// <summary>
+    /// Получает активное окно для использования в качестве владельца диалогов
+    /// </summary>
+    private Window GetOwnerWindow()
+    {
+        // Пытаемся найти главное окно через ApplicationLifetime
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            return desktop.MainWindow ?? throw new InvalidOperationException("MainWindow is not available");
+        }
+        
+        throw new InvalidOperationException("Application lifetime is not available");
+    }
+
+    /// <summary>
+    /// Настраивает диалоговое окно с правильным владельцем и обработчиками событий
+    /// </summary>
+    private void ConfigureDialog(Window dialog)
+    {
+        var ownerWindow = GetOwnerWindow();
+        
+        // Устанавливаем владельца и позицию
+        dialog.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+        
+        // Подписываемся на закрытие главного окна, чтобы закрыть диалог
+        void OnOwnerClosing(object? sender, WindowClosingEventArgs e)
+        {
+            if (dialog.IsVisible)
+            {
+                dialog.Close();
+            }
+            ownerWindow.Closing -= OnOwnerClosing;
+        }
+        
+        ownerWindow.Closing += OnOwnerClosing;
+        
+        // Также подписываемся на закрытие диалога, чтобы очистить обработчики
+        dialog.Closed += (s, e) =>
+        {
+            ownerWindow.Closing -= OnOwnerClosing;
+        };
+    }
 
     /// <summary>
     /// Показывает информационное сообщение
@@ -37,9 +84,10 @@ public class DialogService(Window owner, IServiceProvider serviceProvider) : IDi
                     new Button { Content = "OK" }
                 }
             },
-            SizeToContent = SizeToContent.WidthAndHeight,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner
+            SizeToContent = SizeToContent.WidthAndHeight
         };
+
+        ConfigureDialog(dialog);
 
         var okButton = ((dialog.Content as StackPanel)?.Children[1]) as Button;
         if (okButton != null)
@@ -52,7 +100,7 @@ public class DialogService(Window owner, IServiceProvider serviceProvider) : IDi
             okButton.Click += OnClick;
         }
 
-        await dialog.ShowDialog(_owner);
+        await dialog.ShowDialog(GetOwnerWindow());
     }
 
     /// <summary>
@@ -71,9 +119,10 @@ public class DialogService(Window owner, IServiceProvider serviceProvider) : IDi
                     new Button { Content = "OK" }
                 }
             },
-            SizeToContent = SizeToContent.WidthAndHeight,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner
+            SizeToContent = SizeToContent.WidthAndHeight
         };
+
+        ConfigureDialog(dialog);
 
         var okButton = ((dialog.Content as StackPanel)?.Children[1]) as Button;
         if (okButton != null)
@@ -86,7 +135,7 @@ public class DialogService(Window owner, IServiceProvider serviceProvider) : IDi
             okButton.Click += OnClick;
         }
 
-        await dialog.ShowDialog(_owner);
+        await dialog.ShowDialog(GetOwnerWindow());
     }
 
     /// <summary>
@@ -105,9 +154,10 @@ public class DialogService(Window owner, IServiceProvider serviceProvider) : IDi
                     new Button { Content = "OK" }
                 }
             },
-            SizeToContent = SizeToContent.WidthAndHeight,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner
+            SizeToContent = SizeToContent.WidthAndHeight
         };
+
+        ConfigureDialog(dialog);
 
         var okButton = ((dialog.Content as StackPanel)?.Children[1]) as Button;
         if (okButton != null)
@@ -120,7 +170,7 @@ public class DialogService(Window owner, IServiceProvider serviceProvider) : IDi
             okButton.Click += OnClick;
         }
 
-        await dialog.ShowDialog(_owner);
+        await dialog.ShowDialog(GetOwnerWindow());
     }
 
     /// <summary>
@@ -148,9 +198,10 @@ public class DialogService(Window owner, IServiceProvider serviceProvider) : IDi
                     }
                 }
             },
-            SizeToContent = SizeToContent.WidthAndHeight,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner
+            SizeToContent = SizeToContent.WidthAndHeight
         };
+
+        ConfigureDialog(dialog);
 
         var buttons = ((dialog.Content as StackPanel)?.Children[1] as StackPanel)?.Children;
         if (buttons != null)
@@ -181,7 +232,7 @@ public class DialogService(Window owner, IServiceProvider serviceProvider) : IDi
             }
         }
 
-        await dialog.ShowDialog(_owner);
+        await dialog.ShowDialog(GetOwnerWindow());
         return await tcs.Task;
     }
 
@@ -211,9 +262,10 @@ public class DialogService(Window owner, IServiceProvider serviceProvider) : IDi
                     }
                 }
             },
-            SizeToContent = SizeToContent.WidthAndHeight,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner
+            SizeToContent = SizeToContent.WidthAndHeight
         };
+
+        ConfigureDialog(dialog);
 
         var buttons = ((dialog.Content as StackPanel)?.Children[2] as StackPanel)?.Children;
         if (buttons != null)
@@ -245,7 +297,7 @@ public class DialogService(Window owner, IServiceProvider serviceProvider) : IDi
             }
         }
 
-        await dialog.ShowDialog(_owner);
+        await dialog.ShowDialog(GetOwnerWindow());
         return await tcs.Task;
     }
 
@@ -281,9 +333,10 @@ public class DialogService(Window owner, IServiceProvider serviceProvider) : IDi
                     }
                 }
             },
-            SizeToContent = SizeToContent.WidthAndHeight,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner
+            SizeToContent = SizeToContent.WidthAndHeight
         };
+
+        ConfigureDialog(dialog);
 
         var buttons = ((dialog.Content as StackPanel)?.Children[2] as StackPanel)?.Children;
         if (buttons != null)
@@ -314,7 +367,7 @@ public class DialogService(Window owner, IServiceProvider serviceProvider) : IDi
             }
         }
 
-        await dialog.ShowDialog(_owner);
+        await dialog.ShowDialog(GetOwnerWindow());
         return await tcs.Task;
     }
 
@@ -326,6 +379,8 @@ public class DialogService(Window owner, IServiceProvider serviceProvider) : IDi
             {
                 ViewModel = studentEditor
             };
+            
+            ConfigureDialog(window);
             
             var tcs = new TaskCompletionSource<Student?>();
             
@@ -341,7 +396,7 @@ public class DialogService(Window owner, IServiceProvider serviceProvider) : IDi
                 window.Close();
             });
 
-            await window.ShowDialog(_owner);
+            await window.ShowDialog(GetOwnerWindow());
             return (TResult?)(object?)await tcs.Task;
         }
 
@@ -350,10 +405,101 @@ public class DialogService(Window owner, IServiceProvider serviceProvider) : IDi
 
     public async Task<Student?> ShowStudentEditorDialogAsync(Student? student = null)
     {
-        var viewModel = student != null 
-            ? ActivatorUtilities.CreateInstance<StudentEditorViewModel>(_serviceProvider, student)
-            : ActivatorUtilities.CreateInstance<StudentEditorViewModel>(_serviceProvider);
+        // TODO: Реализовать диалог редактирования студента
+        await Task.Delay(100);
+        return student;
+    }
 
-        return await ShowDialogAsync<Student>(viewModel);
+    // Диалоги для групп
+    public async Task<Group?> ShowGroupEditDialogAsync(Group group)
+    {
+        // TODO: Реализовать диалог редактирования группы
+        await Task.Delay(100);
+        return group;
+    }
+    
+    public async Task<Teacher?> ShowTeacherSelectionDialogAsync(IEnumerable<Teacher> teachers)
+    {
+        // TODO: Реализовать диалог выбора преподавателя
+        await Task.Delay(100);
+        return teachers.FirstOrDefault();
+    }
+    
+    public async Task<object?> ShowGroupStudentsManagementDialogAsync(Group group, IEnumerable<Student> allStudents)
+    {
+        // TODO: Реализовать диалог управления студентами группы
+        await Task.Delay(100);
+        return new object();
+    }
+    
+    // Диалоги для курсов
+    public async Task<Course?> ShowCourseEditDialogAsync(Course course)
+    {
+        // TODO: Реализовать диалог редактирования курса
+        await Task.Delay(100);
+        return course;
+    }
+    
+    public async Task<object?> ShowCourseEnrollmentDialogAsync(Course course, IEnumerable<Student> allStudents)
+    {
+        // TODO: Реализовать диалог записи на курс
+        await Task.Delay(100);
+        return new object();
+    }
+    
+    public async Task<Group?> ShowGroupSelectionDialogAsync(IEnumerable<Group> groups)
+    {
+        // TODO: Реализовать диалог выбора группы
+        await Task.Delay(100);
+        return groups.FirstOrDefault();
+    }
+    
+    // Диалоги для заданий
+    public async Task<Assignment?> ShowAssignmentEditDialogAsync(Assignment assignment)
+    {
+        // TODO: Реализовать диалог редактирования задания
+        await Task.Delay(100);
+        return assignment;
+    }
+    
+    public async Task<object?> ShowSubmissionsViewDialogAsync(Assignment assignment, IEnumerable<Submission> submissions)
+    {
+        // TODO: Реализовать диалог просмотра сдач
+        await Task.Delay(100);
+        return new object();
+    }
+    
+    public async Task<IEnumerable<object>?> ShowBulkGradingDialogAsync(IEnumerable<Submission> submissions)
+    {
+        // TODO: Реализовать диалог массового оценивания
+        await Task.Delay(100);
+        return new List<object>();
+    }
+    
+    // Диалоги для уведомлений
+    public async Task<NotificationTemplate?> ShowNotificationTemplateEditDialogAsync(NotificationTemplate template)
+    {
+        // TODO: Реализовать диалог редактирования шаблона уведомления
+        await Task.Delay(100);
+        return template;
+    }
+    
+    public async Task<Dictionary<string, object>?> ShowTemplateParametersDialogAsync(NotificationTemplate template)
+    {
+        // TODO: Реализовать диалог параметров шаблона
+        await Task.Delay(100);
+        return new Dictionary<string, object>();
+    }
+    
+    public async Task<ReminderData?> ShowCreateReminderDialogAsync()
+    {
+        // TODO: Реализовать диалог создания напоминания
+        await Task.Delay(100);
+        return new ReminderData
+        {
+            Title = "Напоминание",
+            Message = "Текст напоминания",
+            RemindAt = DateTime.Now.AddHours(1)
+        };
     }
 }

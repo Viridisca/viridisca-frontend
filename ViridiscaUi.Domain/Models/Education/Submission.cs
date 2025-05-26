@@ -32,9 +32,27 @@ public class Submission : ViewModelBase
     }
 
     /// <summary>
+    /// Идентификатор студента (синоним для StudentUid)
+    /// </summary>
+    public Guid StudentId
+    {
+        get => _studentUid;
+        set => this.RaiseAndSetIfChanged(ref _studentUid, value);
+    }
+
+    /// <summary>
     /// Идентификатор задания
     /// </summary>
     public Guid AssignmentUid
+    {
+        get => _assignmentUid;
+        set => this.RaiseAndSetIfChanged(ref _assignmentUid, value);
+    }
+
+    /// <summary>
+    /// Идентификатор задания (синоним для AssignmentUid)
+    /// </summary>
+    public Guid AssignmentId
     {
         get => _assignmentUid;
         set => this.RaiseAndSetIfChanged(ref _assignmentUid, value);
@@ -53,6 +71,15 @@ public class Submission : ViewModelBase
     /// Содержимое работы (текст ответа или ссылка на файл)
     /// </summary>
     public string Content
+    {
+        get => _content;
+        set => this.RaiseAndSetIfChanged(ref _content, value);
+    }
+
+    /// <summary>
+    /// Путь к файлу (синоним для Content)
+    /// </summary>
+    public string FilePath
     {
         get => _content;
         set => this.RaiseAndSetIfChanged(ref _content, value);

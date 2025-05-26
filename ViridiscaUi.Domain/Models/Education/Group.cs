@@ -23,6 +23,7 @@ public class Group : ViewModelBase
     private Guid _departmentUid;
     private ObservableCollection<Student> _students = new();
     private Teacher? _curator;
+    private DateTime? _lastActivityDate;
 
     /// <summary>
     /// Код группы
@@ -146,6 +147,15 @@ public class Group : ViewModelBase
     /// Full name of the group (Code - Name)
     /// </summary>
     public string FullName => $"{Code} - {Name}";
+
+    /// <summary>
+    /// Дата последней активности в группе
+    /// </summary>
+    public DateTime? LastActivityDate
+    {
+        get => _lastActivityDate;
+        set => this.RaiseAndSetIfChanged(ref _lastActivityDate, value);
+    }
 
     /// <summary>
     /// Создает новый экземпляр группы

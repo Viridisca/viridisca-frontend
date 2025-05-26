@@ -12,9 +12,10 @@ public class Module : ViewModelBase
 {
     private string _name = string.Empty;
     private string _description = string.Empty;
-    private int _order;
     private Guid _courseUid;
     private Course? _course;
+    private int _orderIndex;
+    private bool _isPublished;
 
     /// <summary>
     /// Название модуля
@@ -32,15 +33,6 @@ public class Module : ViewModelBase
     {
         get => _description;
         set => this.RaiseAndSetIfChanged(ref _description, value);
-    }
-
-    /// <summary>
-    /// Порядок модуля в курсе
-    /// </summary>
-    public int Order
-    {
-        get => _order;
-        set => this.RaiseAndSetIfChanged(ref _order, value);
     }
 
     /// <summary>
@@ -62,6 +54,24 @@ public class Module : ViewModelBase
     }
 
     /// <summary>
+    /// Порядковый номер модуля в курсе
+    /// </summary>
+    public int OrderIndex
+    {
+        get => _orderIndex;
+        set => this.RaiseAndSetIfChanged(ref _orderIndex, value);
+    }
+
+    /// <summary>
+    /// Флаг публикации модуля
+    /// </summary>
+    public bool IsPublished
+    {
+        get => _isPublished;
+        set => this.RaiseAndSetIfChanged(ref _isPublished, value);
+    }
+
+    /// <summary>
     /// Уроки модуля
     /// </summary>
     public ICollection<Lesson> Lessons { get; set; } = new List<Lesson>();
@@ -77,12 +87,11 @@ public class Module : ViewModelBase
     /// <summary>
     /// Создает новый экземпляр модуля с указанными параметрами
     /// </summary>
-    public Module(string name, string description, int order, Guid courseUid)
+    public Module(string name, string description, Guid courseUid)
     {
         Uid = Guid.NewGuid();
         _name = name.Trim();
         _description = description;
-        _order = order;
         _courseUid = courseUid;
     }
 } 

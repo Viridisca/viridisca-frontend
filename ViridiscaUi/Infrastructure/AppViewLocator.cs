@@ -7,6 +7,7 @@ using ViridiscaUi.ViewModels.Auth;
 using ViridiscaUi.ViewModels.Pages;
 using ViridiscaUi.ViewModels.Students;
 using ViridiscaUi.ViewModels.Profile;
+using ViridiscaUi.ViewModels.Education;
 using ViridiscaUi.Views.Auth;
 using ViridiscaUi.Views.Common;
 using ViridiscaUi.Views.Education;
@@ -46,8 +47,13 @@ public class AppViewLocator : IViewLocator, IDataTemplate
         if (viewModel is HomeViewModel homeVm)
             return new HomeView { DataContext = homeVm };
             
-        if (viewModel is CoursesViewModel coursesVm)
-            return new CoursesView { DataContext = coursesVm };
+        // Правильный маппинг для CoursesViewModel из Education namespace
+        if (viewModel is ViridiscaUi.ViewModels.Education.CoursesViewModel educationCoursesVm)
+            return new CoursesView { DataContext = educationCoursesVm };
+            
+        // Маппинг для CoursesViewModel из Pages namespace (если есть)
+        if (viewModel is ViridiscaUi.ViewModels.Pages.CoursesViewModel pagesCoursesVm)
+            return new CoursesView { DataContext = pagesCoursesVm };
             
         if (viewModel is UsersViewModel usersVm)
             return new UsersView { DataContext = usersVm }; 

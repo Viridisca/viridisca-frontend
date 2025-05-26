@@ -8,7 +8,7 @@ using DynamicData;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using ViridiscaUi.Domain.Models.Education;
-using ViridiscaUi.Services;
+using ViridiscaUi.Services.Interfaces;
 
 namespace ViridiscaUi.ViewModels.Students
 {
@@ -114,6 +114,12 @@ namespace ViridiscaUi.ViewModels.Students
         private async Task<Student?> SaveAsync()
         {
             var student = Student ?? new Student();
+            
+            // Set Uid for new students
+            if (student.Uid == Guid.Empty)
+            {
+                student.Uid = Guid.NewGuid();
+            }
             
             student.FirstName = FirstName;
             student.LastName = LastName;

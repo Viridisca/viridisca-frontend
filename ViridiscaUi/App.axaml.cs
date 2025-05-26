@@ -38,44 +38,91 @@ public partial class App : Application
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            // Создание конфигурации
-            var configuration = BuildConfiguration();
+            try
+            {
+                // Создание конфигурации
+                var configuration = BuildConfiguration();
 
-            // Create and build the service provider
-            var services = new ServiceCollection();
+                // Create and build the service provider
+                var services = new ServiceCollection();
 
-            // Create MainWindow first
-            var mainWindow = new MainWindow();
-            desktop.MainWindow = mainWindow;
+                // Create MainWindow first
+                var mainWindow = new MainWindow();
+                desktop.MainWindow = mainWindow;
 
-            // Register MainWindow in DI container
-            services.AddSingleton(mainWindow);
+                // Register MainWindow in DI container
+                services.AddSingleton(mainWindow);
 
-            // Register other services with configuration
-            services.AddViridiscaServices(configuration);
-            Services = services.BuildServiceProvider();
-            
-            // Инициализация StatusLogger
-            StatusLogger.Initialize(Services);
-              
-            mainWindow.DataContext = Services.GetRequiredService<MainViewModel>();
+                // Register other services with configuration
+                services.AddViridiscaServices(configuration);
+                
+                Services = services.BuildServiceProvider();
+                
+                // Инициализация StatusLogger
+                StatusLogger.Initialize(Services);
+                  
+                var mainViewModel = Services.GetRequiredService<MainViewModel>();
+                
+                mainWindow.DataContext = mainViewModel;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"=== ОШИБКА при инициализации Desktop приложения: {ex.Message} ===");
+                Console.WriteLine($"StackTrace: {ex.StackTrace}");
+                
+                // Fallback initialization if services fail
+                var mainWindow = new MainWindow();
+                desktop.MainWindow = mainWindow;
+                
+                // Create minimal services for fallback
+                var services = new ServiceCollection();
+                services.AddSingleton(mainWindow);
+                services.AddSingleton<MainViewModel>();
+                Services = services.BuildServiceProvider();
+                
+                mainWindow.DataContext = Services.GetRequiredService<MainViewModel>();
+                
+                // Show error message
+                var errorMessage = $"Ошибка инициализации приложения: {ex.Message}\n\nПриложение запущено в ограниченном режиме.";
+                Console.WriteLine(errorMessage);
+                
+                // You can also show a message box if needed
+                // MessageBox.Show(errorMessage, "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
         }
         else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
         {
-            // Создание конфигурации
-            var configuration = BuildConfiguration();
-
-            var services = new ServiceCollection();
-            services.AddViridiscaServices(configuration);
-            Services = services.BuildServiceProvider();
-            
-            // Инициализация StatusLogger
-            StatusLogger.Initialize(Services);
-             
-            singleViewPlatform.MainView = new MainView
+            try
             {
-                DataContext = Services.GetRequiredService<MainViewModel>()
-            };
+                // Создание конфигурации
+                var configuration = BuildConfiguration();
+
+                var services = new ServiceCollection();
+                services.AddViridiscaServices(configuration);
+                Services = services.BuildServiceProvider();
+                
+                // Инициализация StatusLogger
+                StatusLogger.Initialize(Services);
+                 
+                singleViewPlatform.MainView = new MainView
+                {
+                    DataContext = Services.GetRequiredService<MainViewModel>()
+                };
+            }
+            catch (Exception ex)
+            {
+                // Fallback for single view platforms
+                var services = new ServiceCollection();
+                services.AddSingleton<MainViewModel>();
+                Services = services.BuildServiceProvider();
+                
+                singleViewPlatform.MainView = new MainView
+                {
+                    DataContext = Services.GetRequiredService<MainViewModel>()
+                };
+                
+                Console.WriteLine($"Ошибка инициализации: {ex.Message}");
+            }
         }
 
         base.OnFrameworkInitializationCompleted();

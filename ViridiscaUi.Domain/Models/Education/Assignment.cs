@@ -19,6 +19,10 @@ public class Assignment : ViewModelBase
     private Guid? _lessonUid;
     private Course? _course;
     private Lesson? _lesson;
+    private string _instructions = string.Empty;
+    private AssignmentDifficulty _difficulty = AssignmentDifficulty.Medium;
+    private AssignmentStatus _status = AssignmentStatus.Draft;
+    private Guid? _moduleUid;
 
     /// <summary>
     /// Название задания
@@ -75,6 +79,15 @@ public class Assignment : ViewModelBase
     }
 
     /// <summary>
+    /// Идентификатор курса (синоним для CourseUid)
+    /// </summary>
+    public Guid CourseId
+    {
+        get => _courseUid;
+        set => this.RaiseAndSetIfChanged(ref _courseUid, value);
+    }
+
+    /// <summary>
     /// Идентификатор урока (опционально)
     /// </summary>
     public Guid? LessonUid
@@ -99,6 +112,51 @@ public class Assignment : ViewModelBase
     {
         get => _lesson;
         set => this.RaiseAndSetIfChanged(ref _lesson, value);
+    }
+
+    /// <summary>
+    /// Инструкции к заданию
+    /// </summary>
+    public string Instructions
+    {
+        get => _instructions;
+        set => this.RaiseAndSetIfChanged(ref _instructions, value);
+    }
+
+    /// <summary>
+    /// Сложность задания
+    /// </summary>
+    public AssignmentDifficulty Difficulty
+    {
+        get => _difficulty;
+        set => this.RaiseAndSetIfChanged(ref _difficulty, value);
+    }
+
+    /// <summary>
+    /// Статус задания
+    /// </summary>
+    public AssignmentStatus Status
+    {
+        get => _status;
+        set => this.RaiseAndSetIfChanged(ref _status, value);
+    }
+
+    /// <summary>
+    /// Идентификатор модуля (опционально)
+    /// </summary>
+    public Guid? ModuleUid
+    {
+        get => _moduleUid;
+        set => this.RaiseAndSetIfChanged(ref _moduleUid, value);
+    }
+
+    /// <summary>
+    /// Идентификатор модуля (синоним для ModuleUid)
+    /// </summary>
+    public Guid? ModuleId
+    {
+        get => _moduleUid;
+        set => this.RaiseAndSetIfChanged(ref _moduleUid, value);
     }
 
     /// <summary>
@@ -174,4 +232,51 @@ public enum AssignmentType
     /// Лабораторная работа
     /// </summary>
     LabWork
+}
+
+/// <summary>
+/// Сложность задания
+/// </summary>
+public enum AssignmentDifficulty
+{
+    /// <summary>
+    /// Легкая
+    /// </summary>
+    Easy,
+    
+    /// <summary>
+    /// Средняя
+    /// </summary>
+    Medium,
+    
+    /// <summary>
+    /// Сложная
+    /// </summary>
+    Hard
+}
+
+/// <summary>
+/// Статус задания
+/// </summary>
+public enum AssignmentStatus
+{
+    /// <summary>
+    /// Черновик
+    /// </summary>
+    Draft,
+    
+    /// <summary>
+    /// Опубликовано
+    /// </summary>
+    Published,
+    
+    /// <summary>
+    /// Закрыто для сдачи
+    /// </summary>
+    Closed,
+    
+    /// <summary>
+    /// Архивировано
+    /// </summary>
+    Archived
 } 

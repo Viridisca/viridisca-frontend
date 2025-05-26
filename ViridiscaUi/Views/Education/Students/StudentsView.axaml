@@ -19,7 +19,7 @@
                     IsEnabled="{Binding CanAddStudent}"
                     IsVisible="{Binding CanAddStudent}">
                 <StackPanel Orientation="Horizontal">
-                    <PathIcon Data="{StaticResource add_regular}"/>
+                    <!--<PathIcon Data="{StaticResource add_regular}"/>-->
                     <TextBlock Text="Добавить" Margin="5,0,0,0"/>
                 </StackPanel>
             </Button>
@@ -40,7 +40,7 @@
                 <controls:DataGridTextColumn Header="ФИО" Binding="{Binding FullName}" Width="*"/>
                 <controls:DataGridTextColumn Header="Email" Binding="{Binding Email}" Width="*"/>
                 <controls:DataGridTextColumn Header="Группа" Binding="{Binding GroupName}" Width="*"/>
-                <controls:DataGridTextColumn Header="Статус" Binding="{Binding Status}" Width="*"/>
+                <controls:DataGridTextColumn Header="Статус" Binding="{Binding StatusDisplayName}" Width="*"/>
                 <controls:DataGridTemplateColumn Width="Auto">
                     <controls:DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>

@@ -26,6 +26,7 @@ public class Grade : ViewModelBase
     private Student? _student;
     private Subject? _subject;
     private Teacher? _teacher;
+    private Assignment? _assignment;
 
     /// <summary>
     /// Идентификатор студента
@@ -175,6 +176,15 @@ public class Grade : ViewModelBase
     {
         get => _revisions;
         set => this.RaiseAndSetIfChanged(ref _revisions, value);
+    }
+
+    /// <summary>
+    /// Задание, за которое выставлена оценка (если применимо)
+    /// </summary>
+    public Assignment? Assignment
+    {
+        get => _assignment;
+        set => this.RaiseAndSetIfChanged(ref _assignment, value);
     }
 
     /// <summary>

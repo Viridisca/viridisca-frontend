@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
+using DynamicData;
 using ViridiscaUi.Domain.Models.Auth;
 using ViridiscaUi.Services.Interfaces;
 using ViridiscaUi.ViewModels.Auth;
@@ -15,22 +16,23 @@ using System.Threading.Tasks;
 using Avalonia.Controls;
 using ViridiscaUi.Infrastructure;
 using System.Collections.Generic;
+using Microsoft.Extensions.DependencyInjection;
+using ReactiveUI.Fody.Helpers;
+using ViridiscaUi.ViewModels.Education;
 
 namespace ViridiscaUi.ViewModels;
 
 /// <summary>
-/// Главная ViewModel, реализующая IScreen для управления навигацией
+/// Главная ViewModel для управления приложением
 /// </summary>
-public class MainViewModel : ViewModelBase, IScreen
+public class MainViewModel : ViewModelBase, IDisposable
 {
     private readonly IAuthService _authService;
-    private readonly INavigationService _navigationService;
-    private readonly IStudentService _studentService;
-    private readonly IDialogService _dialogService;
-    private readonly IUserService _userService;
-    private readonly IRoleService _roleService;
     private readonly IUserSessionService _userSessionService;
     private readonly IStatusService _statusService;
+    private readonly IServiceProvider _serviceProvider;
+    private readonly IScreen _screen;
+    private readonly CompositeDisposable _disposables = new();
     private bool _isLoggedIn;
     private string? _currentUser;
     private string? _userRole;
@@ -39,7 +41,7 @@ public class MainViewModel : ViewModelBase, IScreen
     /// <summary>
     /// RoutingState для управления навигацией
     /// </summary>
-    public RoutingState Router { get; } = new RoutingState();
+    public RoutingState Router => _screen.Router;
     
     /// <summary>
     /// StatusBar ViewModel
@@ -132,101 +134,108 @@ public class MainViewModel : ViewModelBase, IScreen
     /// </summary>
     public MainViewModel(
         IAuthService authService, 
-        INavigationService navigationService,
-        IStudentService studentService,
-        IDialogService dialogService,
-        IUserService userService,
-        IRoleService roleService,
         IUserSessionService userSessionService,
-        IStatusService statusService)
+        IStatusService statusService,
+        IServiceProvider serviceProvider,
+        IScreen screen)
     {
         _authService = authService ?? throw new ArgumentNullException(nameof(authService));
-        _navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
-        _studentService = studentService ?? throw new ArgumentNullException(nameof(studentService));
-        _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
-        _userService = userService ?? throw new ArgumentNullException(nameof(userService));
-        _roleService = roleService ?? throw new ArgumentNullException(nameof(roleService));
         _userSessionService = userSessionService ?? throw new ArgumentNullException(nameof(userSessionService));
         _statusService = statusService ?? throw new ArgumentNullException(nameof(statusService));
-        
+        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+        _screen = screen ?? throw new ArgumentNullException(nameof(screen));
+
+        // Команды
+        GoBackCommand = ReactiveCommand.Create(() => { Router.NavigateBack.Execute(); });
+
+        // Подписка на изменения навигации для обновления CanGoBack
+        this.WhenAnyValue(x => x.Router.NavigationStack.Count)
+            .Subscribe(count => CanGoBack = count > 1)
+            .DisposeWith(_disposables);
+
         // Инициализация StatusBar
         StatusBar = new StatusBarViewModel(_statusService);
-        
-        // Приветственное сообщение
-        _statusService.ShowInfo("Добро пожаловать в Viridisca LMS!", "Система");
-        
-        // Подписка на изменения текущего пользователя
-        _authService.CurrentUserObservable.Subscribe(user =>
-        {
-            var wasLoggedIn = IsLoggedIn;
-            IsLoggedIn = user != null;
-            CurrentUser = user?.Email;
-            UserRole = user?.Role?.Name;
-            
-            // Если пользователь только что вошел в систему
-            if (!wasLoggedIn && user != null)
-            {
-                StatusLogger.LogInfo($"Пользователь вошел в систему: {user.Email}", "MainViewModel");
-                UpdateMenuItems(user);
-                NavigateToDefaultPage(user);
-            }
-            // Если пользователь вышел из системы
-            else if (wasLoggedIn && user == null)
-            {
-                StatusLogger.LogInfo("Пользователь вышел из системы", "MainViewModel");
-                MenuItems.Clear();
-                Router.Navigate.Execute(new AuthenticationViewModel(_authService, _navigationService, _roleService, this)).Subscribe();
-            }
-        });
-        
+
         // Инициализация команд навигации
-        NavigateToHomeCommand = ReactiveCommand.CreateFromObservable(
-            () => Router.Navigate.Execute(new HomeViewModel(this))
-                    .Do(_ => UpdateCanGoBack())
-        );
-        NavigateToCoursesCommand = ReactiveCommand.CreateFromObservable(
-            () => Router.Navigate.Execute(new CoursesViewModel(this))
-                    .Do(_ => UpdateCanGoBack())
-        );
-        NavigateToUsersCommand = ReactiveCommand.CreateFromObservable(
-            () => Router.Navigate.Execute(new UsersViewModel(this))
-                    .Do(_ => UpdateCanGoBack())
-        );
-        NavigateToStudentsCommand = ReactiveCommand.CreateFromObservable(
-            () => Router.Navigate.Execute(new StudentsViewModel(this, _studentService, _navigationService, _dialogService, _authService))
-                    .Do(_ => UpdateCanGoBack())
-        );
-        NavigateToProfileCommand = ReactiveCommand.CreateFromObservable(
-            () => Router.Navigate.Execute(new ProfileViewModel(this, _userService, _dialogService, _authService))
-                    .Do(_ => UpdateCanGoBack())
-        );
         LogoutCommand = ReactiveCommand.CreateFromTask(Logout);
-        GoBackCommand = ReactiveCommand.Create(GoBack);
+        NavigateToHomeCommand = ReactiveCommand.CreateFromObservable(() => {
+            var homeViewModel = _serviceProvider.GetRequiredService<HomeViewModel>();
+            return Router.Navigate.Execute(homeViewModel);
+        });
+        NavigateToCoursesCommand = ReactiveCommand.CreateFromObservable(() => {
+            var coursesViewModel = _serviceProvider.GetRequiredService<ViridiscaUi.ViewModels.Education.CoursesViewModel>();
+            return Router.Navigate.Execute(coursesViewModel);
+        });
+        NavigateToUsersCommand = ReactiveCommand.CreateFromObservable(() => {
+            var usersViewModel = _serviceProvider.GetRequiredService<UsersViewModel>();
+            return Router.Navigate.Execute(usersViewModel);
+        });
+        NavigateToStudentsCommand = ReactiveCommand.CreateFromObservable(() => {
+            var studentsViewModel = _serviceProvider.GetRequiredService<StudentsViewModel>();
+            return Router.Navigate.Execute(studentsViewModel);
+        });
+        NavigateToProfileCommand = ReactiveCommand.CreateFromObservable(() => {
+            var profileViewModel = _serviceProvider.GetRequiredService<ProfileViewModel>();
+            return Router.Navigate.Execute(profileViewModel);
+        });
+
+        // Инициализация меню
+        InitializeMenuItems();
         
-        // Проверяем текущего пользователя и выполняем навигацию
-        CheckCurrentUserAndNavigate();
-    }
-    
-    /// <summary>
-    /// Проверяет текущего пользователя и выполняет соответствующую навигацию
-    /// </summary>
-    private async void CheckCurrentUserAndNavigate()
-    {
-        StatusLogger.LogInfo("Проверяем текущего пользователя...", "MainViewModel");
-        var currentUser = await _authService.GetCurrentUserAsync();
-        
-        if (currentUser == null)
+        // ВАЖНО: Подписка на изменения текущего пользователя для автоматической навигации
+        _authService.CurrentUserObservable
+            .Subscribe(user => {
+                StatusLogger.LogInfo($"Изменение текущего пользователя: {user?.Email ?? "null"}", "MainViewModel");
+                
+                // Обновляем состояние авторизации
+                IsLoggedIn = user != null;
+                CurrentUser = user?.Email;
+                UserRole = user?.Role?.Name;
+                
+                if (user != null)
+                {
+                    // Пользователь авторизован - обновляем меню и выполняем навигацию
+                    UpdateMenuItems(user);
+                    
+                    // Проверяем, находимся ли мы на странице авторизации
+                    var currentViewModel = Router.GetCurrentViewModel();
+                    if (currentViewModel is AuthenticationViewModel)
+                    {
+                        StatusLogger.LogInfo("Пользователь авторизован, выполняем навигацию с страницы авторизации", "MainViewModel");
+                        NavigateToDefaultPage(user);
+                    }
+                    else if (Router.NavigationStack.Count == 0)
+                    {
+                        // Если стек навигации пуст (первый запуск), выполняем начальную навигацию
+                        StatusLogger.LogInfo("Стек навигации пуст, выполняем начальную навигацию", "MainViewModel");
+                        NavigateToDefaultPage(user);
+                    }
+                }
+                else
+                {
+                    // Пользователь не авторизован - очищаем меню и переходим на авторизацию
+                    MenuItems.Clear();
+                    
+                    var currentViewModel = Router.GetCurrentViewModel();
+                    if (!(currentViewModel is AuthenticationViewModel))
+                    {
+                        StatusLogger.LogInfo("Пользователь не авторизован, переходим на страницу авторизации", "MainViewModel");
+                        Router.NavigationStack.Clear();
+                        var authViewModel = _serviceProvider.GetRequiredService<AuthenticationViewModel>();
+                        Router.Navigate.Execute(authViewModel).Subscribe();
+                    }
+                }
+                
+                UpdateCanGoBack();
+            })
+            .DisposeWith(_disposables);
+            
+        // Начальная навигация: если пользователь не авторизован и стек пуст, переходим на авторизацию
+        if (_userSessionService.CurrentUser == null && Router.NavigationStack.Count == 0)
         {
-            StatusLogger.LogInfo("Пользователь не авторизован, показываем экран авторизации", "MainViewModel");
-            // Если пользователь не авторизован, показываем экран авторизации
-            Router.Navigate.Execute(new AuthenticationViewModel(_authService, _navigationService, _roleService, this)).Subscribe();
-        }
-        else
-        {
-            StatusLogger.LogInfo($"Пользователь уже авторизован: {currentUser.Email}", "MainViewModel");
-            // Если пользователь авторизован, принудительно обновляем состояние через UserSessionService
-            // чтобы сработала подписка на CurrentUserObservable
-            _userSessionService.SetCurrentUser(currentUser);
+            StatusLogger.LogInfo("Начальная навигация: переходим на страницу авторизации", "MainViewModel");
+            var authViewModel = _serviceProvider.GetRequiredService<AuthenticationViewModel>();
+            Router.Navigate.Execute(authViewModel).Subscribe();
         }
     }
     
@@ -235,44 +244,28 @@ public class MainViewModel : ViewModelBase, IScreen
     /// </summary>
     private void UpdateMenuItems(User? user)
     {
-        StatusLogger.LogInfo($"Начинаем обновление меню для пользователя: {user?.Email ?? "null"}", "MainViewModel");
-        
         var menuItems = new List<NavigationItemViewModel>();
         
         if (user == null)
         {
-            StatusLogger.LogInfo("Пользователь null, меню не создается", "MainViewModel");
             return;
         }
 
-        StatusLogger.LogInfo($"Роль пользователя: {user.Role?.Name ?? "null"}", "MainViewModel");
-        StatusLogger.LogInfo($"RoleId: {user.RoleId}", "MainViewModel");
-        
         // Общие пункты меню для всех пользователей
         menuItems.Add(new NavigationItemViewModel("Главная", "🏠", NavigateToHomeCommand));
         menuItems.Add(new NavigationItemViewModel("Курсы", "📚", NavigateToCoursesCommand));
         menuItems.Add(new NavigationItemViewModel("Мой профиль", "👤", NavigateToProfileCommand));
         
-        StatusLogger.LogInfo("Добавлены базовые пункты меню: Главная, Курсы, Профиль", "MainViewModel");
-        
         // Пункты меню для Администраторов и Преподавателей
         if (user.Role?.Name == "Administrator" || user.Role?.Name == "Teacher")
         {
             menuItems.Add(new NavigationItemViewModel("Студенты", "🎓", NavigateToStudentsCommand));
-            StatusLogger.LogInfo($"Добавлен пункт 'Студенты' для роли: {user.Role.Name}", "MainViewModel");
         }
         
         // Пункты меню только для администраторов
         if (user.Role?.Name == "Administrator")
         {
             menuItems.Add(new NavigationItemViewModel("Пользователи", "👥", NavigateToUsersCommand));
-            StatusLogger.LogInfo("Добавлен пункт 'Пользователи' для Администратора", "MainViewModel");
-        }
-        
-        StatusLogger.LogInfo($"Итого создано пунктов меню: {menuItems.Count}", "MainViewModel");
-        foreach (var item in menuItems)
-        {
-            StatusLogger.LogInfo($"  - {item.Label}", "MainViewModel");
         }
         
         MenuItems = new ObservableCollection<NavigationItemViewModel>(menuItems);
@@ -295,21 +288,22 @@ public class MainViewModel : ViewModelBase, IScreen
         // Навигация в зависимости от роли
         if (user.Role?.Name == "Administrator")
         {
-            Router.Navigate.Execute(new HomeViewModel(this)).Subscribe();
+            var homeViewModel = _serviceProvider.GetRequiredService<HomeViewModel>();
+            Router.Navigate.Execute(homeViewModel).Subscribe();
         }
         else if (user.Role?.Name == "Teacher")
         {
-            Router.Navigate.Execute(new CoursesViewModel(this)).Subscribe();
+            var coursesViewModel = _serviceProvider.GetRequiredService<ViridiscaUi.ViewModels.Education.CoursesViewModel>();
+            Router.Navigate.Execute(coursesViewModel).Subscribe();
         }
         else // Student или другие роли
         {
-            Router.Navigate.Execute(new CoursesViewModel(this)).Subscribe();
+            var coursesViewModel = _serviceProvider.GetRequiredService<ViridiscaUi.ViewModels.Education.CoursesViewModel>();
+            Router.Navigate.Execute(coursesViewModel).Subscribe();
         }
         
         // Обновляем состояние кнопки "Назад"
         UpdateCanGoBack();
-        
-        StatusLogger.LogInfo($"Стек навигации очищен, размер: {Router.NavigationStack.Count}", "MainViewModel");
     }
     
     private async Task Logout()
@@ -322,7 +316,8 @@ public class MainViewModel : ViewModelBase, IScreen
         
         // Очищаем стек и переходим на авторизацию
         Router.NavigationStack.Clear();
-        Router.Navigate.Execute(new AuthenticationViewModel(_authService, _navigationService, _roleService, this)).Subscribe();
+        var authViewModel = _serviceProvider.GetRequiredService<AuthenticationViewModel>();
+        Router.Navigate.Execute(authViewModel).Subscribe();
         UpdateCanGoBack();
     }
 
@@ -361,5 +356,18 @@ public class MainViewModel : ViewModelBase, IScreen
         
         CanGoBack = canGoBack;
         StatusLogger.LogInfo($"CanGoBack={CanGoBack}, стек размер={Router.NavigationStack.Count}, авторизован={IsLoggedIn}", "MainViewModel");
+    }
+
+    /// <summary>
+    /// Инициализирует элементы меню
+    /// </summary>
+    private void InitializeMenuItems()
+    {
+        MenuItems = new ObservableCollection<NavigationItemViewModel>();
+    }
+
+    public void Dispose()
+    {
+        _disposables.Dispose();
     }
 }

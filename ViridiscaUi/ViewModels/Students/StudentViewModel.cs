@@ -20,6 +20,8 @@ namespace ViridiscaUi.ViewModels.Students
         [Reactive] public StudentStatus Status { get; set; }
 
         public string FullName => $"{LastName} {FirstName}" + (MiddleName != null ? $" {MiddleName}" : string.Empty);
+        
+        public string StatusDisplayName => Status.GetDisplayName();
 
         public StudentViewModel(Student student)
         {

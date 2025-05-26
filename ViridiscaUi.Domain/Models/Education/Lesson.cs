@@ -1,64 +1,44 @@
 using System;
-using System.Collections.ObjectModel;
-using System.Linq;
+using System.Collections.Generic;
 using ReactiveUI;
 using ViridiscaUi.Domain.Models.Base;
 
 namespace ViridiscaUi.Domain.Models.Education;
 
 /// <summary>
-/// Урок (занятие)
+/// Урок в рамках модуля курса
 /// </summary>
 public class Lesson : ViewModelBase
 {
-    private Guid _subjectUid;
-    private Guid _teacherUid;
-    private Guid _groupUid;
-    private string _topic = string.Empty;
+    private string _title = string.Empty;
     private string _description = string.Empty;
-    private DateTime _startTime;
-    private DateTime _endTime;
-    private bool _isCancelled;
-    private string _cancellationReason = string.Empty;
-    private bool _isCompleted;
-    private ObservableCollection<Grade> _grades = new();
-    private Subject? _subject;
-    private Teacher? _teacher;
-    private Group? _group;
+    private string _content = string.Empty;
+    private Guid _moduleUid;
+    private Module? _module;
+    private int _orderIndex;
+    private TimeSpan? _duration;
+    private LessonType _type = LessonType.Lecture;
+    private bool _isPublished;
+    private string _topic = string.Empty;
+    private Guid? _subjectUid;
+    private Guid? _teacherUid;
+    private Guid? _groupUid;
 
     /// <summary>
-    /// Идентификатор предмета
+    /// Название урока
     /// </summary>
-    public Guid SubjectUid
+    public string Title
     {
-        get => _subjectUid;
-        set => this.RaiseAndSetIfChanged(ref _subjectUid, value);
+        get => _title;
+        set => this.RaiseAndSetIfChanged(ref _title, value);
     }
 
     /// <summary>
-    /// Идентификатор преподавателя
-    /// </summary>
-    public Guid TeacherUid
-    {
-        get => _teacherUid;
-        set => this.RaiseAndSetIfChanged(ref _teacherUid, value);
-    }
-
-    /// <summary>
-    /// Идентификатор группы
-    /// </summary>
-    public Guid GroupUid
-    {
-        get => _groupUid;
-        set => this.RaiseAndSetIfChanged(ref _groupUid, value);
-    }
-
-    /// <summary>
-    /// Тема урока
+    /// Тема урока (синоним для Title)
     /// </summary>
     public string Topic
     {
-        get => _topic;
+        get => string.IsNullOrEmpty(_topic) ? _title : _topic;
         set => this.RaiseAndSetIfChanged(ref _topic, value);
     }
 
@@ -72,85 +52,99 @@ public class Lesson : ViewModelBase
     }
 
     /// <summary>
-    /// Время начала урока
+    /// Содержимое урока
     /// </summary>
-    public DateTime StartTime
+    public string Content
     {
-        get => _startTime;
-        set => this.RaiseAndSetIfChanged(ref _startTime, value);
+        get => _content;
+        set => this.RaiseAndSetIfChanged(ref _content, value);
     }
 
     /// <summary>
-    /// Время окончания урока
+    /// Идентификатор модуля
     /// </summary>
-    public DateTime EndTime
+    public Guid ModuleUid
     {
-        get => _endTime;
-        set => this.RaiseAndSetIfChanged(ref _endTime, value);
+        get => _moduleUid;
+        set => this.RaiseAndSetIfChanged(ref _moduleUid, value);
     }
 
     /// <summary>
-    /// Признак отмены урока
+    /// Модуль, к которому принадлежит урок
     /// </summary>
-    public bool IsCancelled
+    public Module? Module
     {
-        get => _isCancelled;
-        set => this.RaiseAndSetIfChanged(ref _isCancelled, value);
+        get => _module;
+        set => this.RaiseAndSetIfChanged(ref _module, value);
     }
 
     /// <summary>
-    /// Причина отмены урока
+    /// Порядковый номер урока в модуле
     /// </summary>
-    public string CancellationReason
+    public int OrderIndex
     {
-        get => _cancellationReason;
-        set => this.RaiseAndSetIfChanged(ref _cancellationReason, value);
+        get => _orderIndex;
+        set => this.RaiseAndSetIfChanged(ref _orderIndex, value);
     }
 
     /// <summary>
-    /// Признак завершения урока
+    /// Продолжительность урока
     /// </summary>
-    public bool IsCompleted
+    public TimeSpan? Duration
     {
-        get => _isCompleted;
-        set => this.RaiseAndSetIfChanged(ref _isCompleted, value);
+        get => _duration;
+        set => this.RaiseAndSetIfChanged(ref _duration, value);
     }
 
     /// <summary>
-    /// Оценки, выставленные на уроке
+    /// Тип урока
     /// </summary>
-    public ObservableCollection<Grade> Grades
+    public LessonType Type
     {
-        get => _grades;
-        set => this.RaiseAndSetIfChanged(ref _grades, value);
+        get => _type;
+        set => this.RaiseAndSetIfChanged(ref _type, value);
     }
 
     /// <summary>
-    /// Предмет
+    /// Идентификатор предмета
     /// </summary>
-    public Subject? Subject
+    public Guid? SubjectUid
     {
-        get => _subject;
-        set => this.RaiseAndSetIfChanged(ref _subject, value);
+        get => _subjectUid;
+        set => this.RaiseAndSetIfChanged(ref _subjectUid, value);
     }
 
     /// <summary>
-    /// Преподаватель
+    /// Идентификатор преподавателя
     /// </summary>
-    public Teacher? Teacher
+    public Guid? TeacherUid
     {
-        get => _teacher;
-        set => this.RaiseAndSetIfChanged(ref _teacher, value);
+        get => _teacherUid;
+        set => this.RaiseAndSetIfChanged(ref _teacherUid, value);
     }
 
     /// <summary>
-    /// Группа
+    /// Идентификатор группы
     /// </summary>
-    public Group? Group
+    public Guid? GroupUid
     {
-        get => _group;
-        set => this.RaiseAndSetIfChanged(ref _group, value);
+        get => _groupUid;
+        set => this.RaiseAndSetIfChanged(ref _groupUid, value);
     }
+
+    /// <summary>
+    /// Флаг публикации урока
+    /// </summary>
+    public bool IsPublished
+    {
+        get => _isPublished;
+        set => this.RaiseAndSetIfChanged(ref _isPublished, value);
+    }
+
+    /// <summary>
+    /// Прогресс студентов по уроку
+    /// </summary>
+    public ICollection<LessonProgress> LessonProgress { get; set; } = new List<LessonProgress>();
 
     /// <summary>
     /// Создает новый экземпляр урока
@@ -163,110 +157,142 @@ public class Lesson : ViewModelBase
     /// <summary>
     /// Создает новый экземпляр урока с указанными параметрами
     /// </summary>
-    public Lesson(
-        Guid subjectUid,
-        Guid teacherUid,
-        Guid groupUid,
-        string topic,
-        DateTime startTime,
-        DateTime endTime,
-        string? description = null)
+    public Lesson(string title, string description, Guid moduleUid)
     {
         Uid = Guid.NewGuid();
-        _subjectUid = subjectUid;
-        _teacherUid = teacherUid;
-        _groupUid = groupUid;
-        _topic = topic;
-        _description = description ?? string.Empty;
-        _startTime = startTime;
-        _endTime = endTime;
-        _isCancelled = false;
-        _isCompleted = false;
+        _title = title.Trim();
+        _description = description;
+        _moduleUid = moduleUid;
+    }
+}
+
+/// <summary>
+/// Тип урока
+/// </summary>
+public enum LessonType
+{
+    /// <summary>
+    /// Лекция
+    /// </summary>
+    Lecture,
+    
+    /// <summary>
+    /// Практическое занятие
+    /// </summary>
+    Practice,
+    
+    /// <summary>
+    /// Лабораторная работа
+    /// </summary>
+    Lab,
+    
+    /// <summary>
+    /// Семинар
+    /// </summary>
+    Seminar,
+    
+    /// <summary>
+    /// Видео урок
+    /// </summary>
+    Video,
+    
+    /// <summary>
+    /// Тест
+    /// </summary>
+    Quiz
+}
+
+/// <summary>
+/// Прогресс студента по уроку
+/// </summary>
+public class LessonProgress : ViewModelBase
+{
+    private Guid _studentUid;
+    private Guid _lessonUid;
+    private bool _isCompleted;
+    private DateTime? _completedAt;
+    private TimeSpan? _timeSpent;
+    private Student? _student;
+    private Lesson? _lesson;
+
+    /// <summary>
+    /// Идентификатор студента
+    /// </summary>
+    public Guid StudentUid
+    {
+        get => _studentUid;
+        set => this.RaiseAndSetIfChanged(ref _studentUid, value);
     }
 
     /// <summary>
-    /// Обновляет информацию об уроке
+    /// Идентификатор урока
     /// </summary>
-    public void UpdateDetails(
-        string topic,
-        DateTime startTime,
-        DateTime endTime,
-        string? description = null)
+    public Guid LessonUid
     {
-        if (IsCancelled || IsCompleted)
-            return;
-
-        Topic = topic;
-        StartTime = startTime;
-        EndTime = endTime;
-        Description = description ?? string.Empty;
-        LastModifiedAt = DateTime.UtcNow;
+        get => _lessonUid;
+        set => this.RaiseAndSetIfChanged(ref _lessonUid, value);
     }
 
     /// <summary>
-    /// Отменяет урок
+    /// Флаг завершения урока
     /// </summary>
-    public void Cancel(string reason)
+    public bool IsCompleted
     {
-        if (IsCompleted)
-            return;
-
-        IsCancelled = true;
-        CancellationReason = reason;
-        LastModifiedAt = DateTime.UtcNow;
+        get => _isCompleted;
+        set => this.RaiseAndSetIfChanged(ref _isCompleted, value);
     }
 
     /// <summary>
-    /// Восстанавливает отмененный урок
+    /// Дата завершения урока
     /// </summary>
-    public void Resume()
+    public DateTime? CompletedAt
     {
-        if (!IsCancelled || IsCompleted)
-            return;
-
-        IsCancelled = false;
-        CancellationReason = string.Empty;
-        LastModifiedAt = DateTime.UtcNow;
+        get => _completedAt;
+        set => this.RaiseAndSetIfChanged(ref _completedAt, value);
     }
 
     /// <summary>
-    /// Завершает урок
+    /// Время, потраченное на урок
     /// </summary>
-    public void Complete()
+    public TimeSpan? TimeSpent
     {
-        if (IsCancelled || IsCompleted)
-            return;
-
-        IsCompleted = true;
-        LastModifiedAt = DateTime.UtcNow;
+        get => _timeSpent;
+        set => this.RaiseAndSetIfChanged(ref _timeSpent, value);
     }
 
     /// <summary>
-    /// Добавляет оценку к уроку
+    /// Студент
     /// </summary>
-    public void AddGrade(Grade grade)
+    public Student? Student
     {
-        if (IsCancelled || !IsCompleted || grade == null)
-            return;
-
-        if (!Grades.Any(g => g.StudentUid == grade.StudentUid))
-        {
-            Grades.Add(grade);
-            this.RaisePropertyChanged(nameof(Grades));
-            LastModifiedAt = DateTime.UtcNow;
-        }
+        get => _student;
+        set => this.RaiseAndSetIfChanged(ref _student, value);
     }
 
     /// <summary>
-    /// Удаляет оценку из урока
+    /// Урок
     /// </summary>
-    public void RemoveGrade(Grade grade)
+    public Lesson? Lesson
     {
-        if (grade != null && Grades.Contains(grade))
-        {
-            Grades.Remove(grade);
-            this.RaisePropertyChanged(nameof(Grades));
-            LastModifiedAt = DateTime.UtcNow;
-        }
+        get => _lesson;
+        set => this.RaiseAndSetIfChanged(ref _lesson, value);
+    }
+
+    /// <summary>
+    /// Создает новый экземпляр прогресса урока
+    /// </summary>
+    public LessonProgress()
+    {
+        Uid = Guid.NewGuid();
+    }
+
+    /// <summary>
+    /// Создает новый экземпляр прогресса урока с указанными параметрами
+    /// </summary>
+    public LessonProgress(Guid studentUid, Guid lessonUid)
+    {
+        Uid = Guid.NewGuid();
+        _studentUid = studentUid;
+        _lessonUid = lessonUid;
     }
 } 

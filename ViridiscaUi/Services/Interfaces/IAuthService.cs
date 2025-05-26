@@ -35,6 +35,11 @@ namespace ViridiscaUi.Services.Interfaces
         Task<User?> GetCurrentUserAsync();
         
         /// <summary>
+        /// Получает идентификатор текущего аутентифицированного пользователя
+        /// </summary>
+        Task<Guid> GetCurrentUserUidAsync();
+        
+        /// <summary>
         /// Наблюдаемый объект, отражающий текущего пользователя
         /// </summary>
         IObservable<User?> CurrentUserObservable { get; }

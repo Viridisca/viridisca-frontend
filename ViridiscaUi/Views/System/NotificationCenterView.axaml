@@ -1,0 +1,697 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:ViridiscaUi.ViewModels.System"
+             mc:Ignorable="d" d:DesignWidth="1800" d:DesignHeight="1200"
+             x:Class="ViridiscaUi.Views.System.NotificationCenterView"
+             x:DataType="vm:NotificationCenterViewModel">
+
+    <Design.DataContext>
+        <vm:NotificationCenterViewModel />
+    </Design.DataContext>
+
+    <Grid RowDefinitions="Auto,*" ColumnDefinitions="2*,*" Margin="16">
+        
+        <!-- Заголовок и панель управления -->
+        <Border Grid.Row="0" Grid.ColumnSpan="2" 
+                Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                CornerRadius="8" Padding="16" Margin="0,0,0,16">
+            <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="*,Auto">
+                
+                <!-- Заголовок -->
+                <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="12">
+                    <TextBlock Text="🔔" FontSize="24" VerticalAlignment="Center"/>
+                    <TextBlock Text="Центр уведомлений" 
+                               FontSize="24" FontWeight="Bold" 
+                               VerticalAlignment="Center"/>
+                    <Border Background="{DynamicResource SystemAccentColor}" 
+                            CornerRadius="12" Padding="8,4">
+                        <TextBlock Text="{Binding TotalNotifications, StringFormat='{}{0} уведомлений'}" 
+                                   Foreground="White" FontSize="12" FontWeight="SemiBold"/>
+                    </Border>
+                    <Border Background="Red" CornerRadius="12" Padding="8,4"
+                            IsVisible="{Binding HasUnreadNotifications}">
+                        <TextBlock Text="{Binding UnreadCount, StringFormat='{}{0} непрочитанных'}" 
+                                   Foreground="White" FontSize="12" FontWeight="SemiBold"/>
+                    </Border>
+                </StackPanel>
+
+                <!-- Кнопки действий -->
+                <StackPanel Grid.Row="0" Grid.Column="1" 
+                            Orientation="Horizontal" Spacing="8">
+                    <Button Content="📬 Непрочитанные" 
+                            Command="{Binding ShowUnreadOnlyCommand}"
+                            Classes="info" Padding="12,8"/>
+                    <Button Content="⭐ Важные" 
+                            Command="{Binding ShowImportantOnlyCommand}"
+                            Classes="warning" Padding="12,8"/>
+                    <Button Content="🔴 Высокий приоритет" 
+                            Command="{Binding ShowHighPriorityCommand}"
+                            Classes="danger" Padding="12,8"/>
+                    <Button Content="📅 Сегодня" 
+                            Command="{Binding ShowTodayNotificationsCommand}"
+                            Padding="12,8"/>
+                    <Button Content="✅ Отметить все" 
+                            Command="{Binding MarkAllAsReadCommand}"
+                            Classes="accent" Padding="12,8"/>
+                    <Button Content="🔄 Обновить" 
+                            Command="{Binding RefreshCommand}"
+                            Padding="12,8"/>
+                </StackPanel>
+
+                <!-- Поиск -->
+                <Grid Grid.Row="1" Grid.ColumnSpan="2" Margin="0,12,0,0">
+                    <TextBox Text="{Binding SearchText}" 
+                             Watermark="🔍 Поиск уведомлений по заголовку или содержимому..."
+                             MinWidth="400"/>
+                </Grid>
+
+                <!-- Основные фильтры -->
+                <Grid Grid.Row="2" Grid.ColumnSpan="2" Margin="0,12,0,0"
+                      ColumnDefinitions="Auto,*,Auto,*,Auto,*,Auto,*,Auto,*">
+                    
+                    <!-- Статус прочтения -->
+                    <TextBlock Grid.Column="0" Text="Статус:" 
+                               VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <ComboBox Grid.Column="1" SelectedItem="{Binding IsReadFilter}" 
+                              MinWidth="120" Margin="0,0,16,0">
+                        <ComboBoxItem Content="Все"/>
+                        <ComboBoxItem Content="Прочитанные"/>
+                        <ComboBoxItem Content="Непрочитанные"/>
+                    </ComboBox>
+                    
+                    <!-- Тип -->
+                    <TextBlock Grid.Column="2" Text="Тип:" 
+                               VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <ComboBox Grid.Column="3" SelectedItem="{Binding TypeFilter}" 
+                              MinWidth="120" Margin="0,0,16,0">
+                        <ComboBoxItem Content="Все типы"/>
+                        <ComboBoxItem Content="ℹ️ Информация"/>
+                        <ComboBoxItem Content="⚠️ Предупреждение"/>
+                        <ComboBoxItem Content="❌ Ошибка"/>
+                        <ComboBoxItem Content="✅ Успех"/>
+                        <ComboBoxItem Content="⏰ Напоминание"/>
+                    </ComboBox>
+                    
+                    <!-- Приоритет -->
+                    <TextBlock Grid.Column="4" Text="Приоритет:" 
+                               VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <ComboBox Grid.Column="5" SelectedItem="{Binding PriorityFilter}" 
+                              MinWidth="120" Margin="0,0,16,0">
+                        <ComboBoxItem Content="Все приоритеты"/>
+                        <ComboBoxItem Content="🔵 Низкий"/>
+                        <ComboBoxItem Content="🟡 Обычный"/>
+                        <ComboBoxItem Content="🟠 Высокий"/>
+                        <ComboBoxItem Content="🔴 Критический"/>
+                    </ComboBox>
+                    
+                    <!-- Категория -->
+                    <TextBlock Grid.Column="6" Text="Категория:" 
+                               VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <ComboBox Grid.Column="7" 
+                              ItemsSource="{Binding Categories}"
+                              SelectedItem="{Binding CategoryFilter}"
+                              MinWidth="120" Margin="0,0,16,0">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    
+                    <!-- Размер страницы -->
+                    <TextBlock Grid.Column="8" Text="Размер страницы:" 
+                               VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <ComboBox Grid.Column="9" SelectedItem="{Binding PageSize}" 
+                              Width="80">
+                        <ComboBoxItem Content="10"/>
+                        <ComboBoxItem Content="20"/>
+                        <ComboBoxItem Content="30"/>
+                        <ComboBoxItem Content="50"/>
+                    </ComboBox>
+                </Grid>
+
+                <!-- Дополнительные фильтры -->
+                <Grid Grid.Row="3" Grid.ColumnSpan="2" Margin="0,12,0,0"
+                      ColumnDefinitions="Auto,*,Auto,*,Auto,*,Auto">
+                    
+                    <TextBlock Grid.Column="0" Text="Дата с:" 
+                               VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <DatePicker Grid.Column="1" SelectedDate="{Binding FromDateFilter}" 
+                                Width="150" Margin="0,0,16,0"/>
+                    
+                    <TextBlock Grid.Column="2" Text="по:" 
+                               VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <DatePicker Grid.Column="3" SelectedDate="{Binding ToDateFilter}" 
+                                Width="150" Margin="0,0,16,0"/>
+                    
+                    <CheckBox Grid.Column="4" Content="Только важные" 
+                              IsChecked="{Binding IsImportantFilter}" 
+                              Margin="0,0,16,0"/>
+                    
+                    <CheckBox Grid.Column="5" Content="Только истекшие" 
+                              IsChecked="{Binding IsExpiredFilter}" 
+                              Margin="0,0,16,0"/>
+                    
+                    <Button Grid.Column="6" Content="🧹 Очистить фильтры" 
+                            Command="{Binding ClearFiltersCommand}"
+                            Padding="12,8"/>
+                </Grid>
+
+                <!-- Дополнительные действия -->
+                <StackPanel Grid.Row="4" Grid.ColumnSpan="2" Orientation="Horizontal" 
+                            Spacing="8" Margin="0,12,0,0">
+                    <Button Content="⏰ Создать напоминание" 
+                            Command="{Binding CreateReminderCommand}"
+                            Classes="accent" Padding="12,8"/>
+                    <Button Content="📝 Создать шаблон" 
+                            Command="{Binding CreateTemplateCommand}"
+                            Padding="12,8"/>
+                    <Button Content="📊 Системная статистика" 
+                            Command="{Binding LoadSystemStatisticsCommand}"
+                            Classes="info" Padding="12,8"/>
+                    <Button Content="🗄️ Архивировать старые" 
+                            Command="{Binding ArchiveOldNotificationsCommand}"
+                            Classes="warning" Padding="12,8"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Список уведомлений -->
+        <Border Grid.Row="1" Grid.Column="0" 
+                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+                CornerRadius="8" Padding="0" Margin="0,0,8,0">
+            <Grid RowDefinitions="*,Auto">
+                
+                <!-- DataGrid с уведомлениями -->
+                <DataGrid Grid.Row="0" ItemsSource="{Binding Notifications}" 
+                          SelectedItem="{Binding SelectedNotification}"
+                          IsReadOnly="True" GridLinesVisibility="Horizontal"
+                          AutoGenerateColumns="False" CanUserReorderColumns="True"
+                          CanUserResizeColumns="True" CanUserSortColumns="True">
+                    
+                    <DataGrid.Columns>
+                        <!-- Статус -->
+                        <DataGridTemplateColumn Header="Статус" Width="80">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <TextBlock Text="{Binding StatusIcon}" FontSize="16"/>
+                                        <TextBlock Text="{Binding ImportantIcon}" FontSize="14"
+                                                   IsVisible="{Binding IsImportant}"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        
+                        <!-- Тип и приоритет -->
+                        <DataGridTemplateColumn Header="Тип" Width="100">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <TextBlock Text="{Binding TypeIcon}" FontSize="16"/>
+                                        <TextBlock Text="{Binding PriorityIcon}" FontSize="14"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        
+                        <!-- Заголовок -->
+                        <DataGridTextColumn Header="Заголовок" 
+                                            Binding="{Binding Title}" 
+                                            Width="250" FontWeight="SemiBold"/>
+                        
+                        <!-- Сообщение -->
+                        <DataGridTemplateColumn Header="Сообщение" 
+                                                Width="300">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Message}" 
+                                               TextWrapping="Wrap" TextTrimming="CharacterEllipsis"
+                                               MaxHeight="60"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        
+                        <!-- Категория -->
+                        <DataGridTextColumn Header="Категория" 
+                                            Binding="{Binding Category}" 
+                                            Width="120"/>
+                        
+                        <!-- Дата создания -->
+                        <DataGridTextColumn Header="Дата создания" 
+                                            Binding="{Binding CreatedAtText}" 
+                                            Width="130"/>
+                        
+                        <!-- Истечение -->
+                        <DataGridTemplateColumn Header="Истечение" Width="100">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding ExpiredText}" 
+                                               Foreground="Red" FontSize="12"
+                                               IsVisible="{Binding IsExpired}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        
+                        <!-- Действия -->
+                        <DataGridTemplateColumn Header="Действия" Width="300">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate DataType="vm:NotificationViewModel">
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <Button Content="👁" ToolTip.Tip="Просмотр деталей"
+                                                Command="{Binding $parent[DataGrid].DataContext.ViewNotificationDetailsCommand}"
+                                                CommandParameter="{Binding}" Padding="8,4" FontSize="12"/>
+                                        <Button Content="✅" ToolTip.Tip="Отметить как прочитанное"
+                                                Command="{Binding $parent[DataGrid].DataContext.MarkAsReadCommand}"
+                                                CommandParameter="{Binding}" Padding="8,4" FontSize="12"
+                                                IsVisible="{Binding !IsRead}"/>
+                                        <Button Content="⭐" ToolTip.Tip="Отметить как важное"
+                                                Command="{Binding $parent[DataGrid].DataContext.MarkAsImportantCommand}"
+                                                CommandParameter="{Binding}" Padding="8,4" FontSize="12"
+                                                IsVisible="{Binding !IsImportant}"
+                                                Classes="warning"/>
+                                        <Button Content="⭐" ToolTip.Tip="Снять отметку важности"
+                                                Command="{Binding $parent[DataGrid].DataContext.UnmarkAsImportantCommand}"
+                                                CommandParameter="{Binding}" Padding="8,4" FontSize="12"
+                                                IsVisible="{Binding IsImportant}"
+                                                Classes="accent"/>
+                                        <Button Content="🗑️" ToolTip.Tip="Удалить"
+                                                Command="{Binding $parent[DataGrid].DataContext.DeleteNotificationCommand}"
+                                                CommandParameter="{Binding}" Padding="8,4" FontSize="12"
+                                                Classes="danger"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- Пагинация -->
+                <Border Grid.Row="1" Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                        Padding="16,8" BorderThickness="0,1,0,0" 
+                        BorderBrush="{DynamicResource SystemControlForegroundBaseMediumBrush}">
+                    <Grid ColumnDefinitions="*,Auto,*">
+                        
+                        <!-- Информация о страницах -->
+                        <TextBlock Grid.Column="0" VerticalAlignment="Center">
+                            <Run Text="Страница"/>
+                            <Run Text="{Binding CurrentPage}" FontWeight="SemiBold"/>
+                            <Run Text="из"/>
+                            <Run Text="{Binding TotalPages}" FontWeight="SemiBold"/>
+                            <Run Text="•"/>
+                            <Run Text="{Binding TotalNotifications}" FontWeight="SemiBold"/>
+                            <Run Text="уведомлений всего"/>
+                            <Run Text="•"/>
+                            <Run Text="{Binding UnreadCount}" FontWeight="SemiBold" Foreground="Red"/>
+                            <Run Text="непрочитанных"/>
+                        </TextBlock>
+
+                        <!-- Навигация по страницам -->
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                            <Button Content="⬅️ Предыдущая" 
+                                    Command="{Binding PreviousPageCommand}" 
+                                    Padding="12,6"/>
+                            <TextBox Text="{Binding CurrentPage}" Width="60" 
+                                     HorizontalContentAlignment="Center"/>
+                            <Button Content="Следующая ➡️" 
+                                    Command="{Binding NextPageCommand}" 
+                                    Padding="12,6"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- Панель деталей, статистики и настроек -->
+        <ScrollViewer Grid.Row="1" Grid.Column="1">
+            <StackPanel Spacing="16">
+                
+                <!-- Статистика пользователя -->
+                <Border Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+                        CornerRadius="8" Padding="16"
+                        IsVisible="{Binding HasUserStatistics}">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="📊 Моя статистика" FontSize="18" FontWeight="Bold"/>
+                        
+                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto">
+                            <!-- Всего уведомлений -->
+                            <Border Grid.Column="0" Grid.Row="0" Classes="statistic-card" Margin="0,0,4,4">
+                                <StackPanel>
+                                    <TextBlock Text="📬 Всего" FontSize="12" Opacity="0.8"/>
+                                    <TextBlock Text="{Binding UserStatistics.TotalNotifications}" 
+                                               FontSize="18" FontWeight="Bold"/>
+                                </StackPanel>
+                            </Border>
+                            
+                            <!-- Непрочитанные -->
+                            <Border Grid.Column="1" Grid.Row="0" Classes="statistic-card" Margin="4,0,0,4">
+                                <StackPanel>
+                                    <TextBlock Text="📬 Непрочитанные" FontSize="12" Opacity="0.8"/>
+                                    <TextBlock Text="{Binding UserStatistics.UnreadNotifications}" 
+                                               FontSize="18" FontWeight="Bold" Foreground="Red"/>
+                                </StackPanel>
+                            </Border>
+                            
+                            <!-- Важные -->
+                            <Border Grid.Column="0" Grid.Row="1" Classes="statistic-card" Margin="0,4,4,4">
+                                <StackPanel>
+                                    <TextBlock Text="⭐ Важные" FontSize="12" Opacity="0.8"/>
+                                    <TextBlock Text="{Binding UserStatistics.ImportantNotifications}" 
+                                               FontSize="18" FontWeight="Bold"/>
+                                </StackPanel>
+                            </Border>
+                            
+                            <!-- Сегодня -->
+                            <Border Grid.Column="1" Grid.Row="1" Classes="statistic-card" Margin="4,4,0,4">
+                                <StackPanel>
+                                    <TextBlock Text="📅 Сегодня" FontSize="12" Opacity="0.8"/>
+                                    <TextBlock Text="{Binding UserStatistics.TodayNotifications}" 
+                                               FontSize="18" FontWeight="Bold"/>
+                                </StackPanel>
+                            </Border>
+                            
+                            <!-- За неделю -->
+                            <Border Grid.Column="0" Grid.Row="2" Classes="statistic-card" Margin="0,4,4,4">
+                                <StackPanel>
+                                    <TextBlock Text="📅 За неделю" FontSize="12" Opacity="0.8"/>
+                                    <TextBlock Text="{Binding UserStatistics.WeekNotifications}" 
+                                               FontSize="18" FontWeight="Bold"/>
+                                </StackPanel>
+                            </Border>
+                            
+                            <!-- Среднее время прочтения -->
+                            <Border Grid.Column="1" Grid.Row="2" Classes="statistic-card" Margin="4,4,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="⏱️ Ср. время" FontSize="12" Opacity="0.8"/>
+                                    <TextBlock Text="{Binding UserStatistics.AverageReadTime, StringFormat='{}{0:F1}ч'}" 
+                                               FontSize="18" FontWeight="Bold"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Детали выбранного уведомления -->
+                <Border Grid.Row="1" Grid.Column="1" 
+                        Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+                        CornerRadius="8" Padding="16"
+                        IsVisible="{Binding HasSelectedNotification}">
+                    <StackPanel Spacing="16">
+                        
+                        <!-- Заголовок деталей -->
+                        <TextBlock Text="📋 Детали уведомления" FontSize="18" FontWeight="Bold"/>
+                        
+                        <!-- Информация об уведомлении -->
+                        <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                                CornerRadius="8" Padding="12">
+                            <StackPanel Spacing="8">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="{Binding SelectedNotification.TypeIcon}" FontSize="20"/>
+                                    <TextBlock Text="{Binding SelectedNotification.PriorityIcon}" FontSize="16"/>
+                                    <TextBlock Text="{Binding SelectedNotification.StatusIcon}" FontSize="16"/>
+                                    <TextBlock Text="{Binding SelectedNotification.ImportantIcon}" FontSize="16"
+                                               IsVisible="{Binding SelectedNotification.IsImportant}"/>
+                                </StackPanel>
+                                
+                                <TextBlock Text="{Binding SelectedNotification.Title}" 
+                                           FontWeight="SemiBold" FontSize="16" 
+                                           TextWrapping="Wrap" TextTrimming="None"/>
+                                
+                                <TextBlock Text="{Binding SelectedNotification.Message}" 
+                                           TextWrapping="Wrap" TextTrimming="None"
+                                           Margin="0,8,0,0"/>
+                                
+                                <Separator Margin="0,8"/>
+                                
+                                <TextBlock>
+                                    <Run Text="📂 Категория:"/>
+                                    <Run Text="{Binding SelectedNotification.Category, TargetNullValue='не указана'}" FontWeight="SemiBold"/>
+                                </TextBlock>
+                                
+                                <TextBlock>
+                                    <Run Text="📅 Создано:"/>
+                                    <Run Text="{Binding SelectedNotification.CreatedAtText}" FontWeight="SemiBold"/>
+                                </TextBlock>
+                                
+                                <TextBlock IsVisible="{Binding HasSelectedNotificationReadAt}">
+                                    <Run Text="📖 Прочитано:"/>
+                                    <Run Text="{Binding SelectedNotification.ReadAt, StringFormat='dd.MM.yyyy HH:mm'}" FontWeight="SemiBold"/>
+                                </TextBlock>
+                                <TextBlock IsVisible="{Binding HasSelectedNotificationExpiresAt}">
+                                    <Run Text="⏰ Истекает:"/>
+                                    <Run Text="{Binding SelectedNotification.ExpiresAt, StringFormat='dd.MM.yyyy HH:mm'}" FontWeight="SemiBold"/>
+                                </TextBlock>
+                                <TextBlock IsVisible="{Binding HasSelectedNotificationActionUrl}">
+                                    <Run Text="🔗 Ссылка:"/>
+                                    <Run Text="{Binding SelectedNotification.ActionUrl}" FontWeight="SemiBold"/>
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Быстрые действия -->
+                        <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                                CornerRadius="8" Padding="12">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="⚡ Быстрые действия" FontWeight="SemiBold" FontSize="14"/>
+                                <StackPanel Spacing="4">
+                                    <Button Content="✅ Отметить как прочитанное" 
+                                            Command="{Binding MarkAsReadCommand}"
+                                            CommandParameter="{Binding SelectedNotification}"
+                                            HorizontalAlignment="Stretch"
+                                            IsVisible="{Binding !SelectedNotification.IsRead}"/>
+                                    <Button Content="⭐ Отметить как важное" 
+                                            Command="{Binding MarkAsImportantCommand}"
+                                            CommandParameter="{Binding SelectedNotification}"
+                                            HorizontalAlignment="Stretch"
+                                            IsVisible="{Binding !SelectedNotification.IsImportant}"/>
+                                    <Button Content="⭐ Снять отметку важности" 
+                                            Command="{Binding UnmarkAsImportantCommand}"
+                                            CommandParameter="{Binding SelectedNotification}"
+                                            HorizontalAlignment="Stretch"
+                                            IsVisible="{Binding SelectedNotification.IsImportant}"/>
+                                    <Button Content="🗑️ Удалить уведомление" 
+                                            Command="{Binding DeleteNotificationCommand}"
+                                            CommandParameter="{Binding SelectedNotification}"
+                                            HorizontalAlignment="Stretch"
+                                            Classes="danger"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- Шаблоны уведомлений -->
+                <Border Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+                        CornerRadius="8" Padding="16">
+                    <StackPanel Spacing="12">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <TextBlock Text="📝 Шаблоны уведомлений" FontSize="18" FontWeight="Bold"/>
+                            <Button Content="➕ Создать" 
+                                    Command="{Binding CreateTemplateCommand}"
+                                    Classes="accent" Padding="8,4" FontSize="12"/>
+                        </StackPanel>
+                        
+                        <ItemsControl ItemsSource="{Binding Templates}" MaxHeight="300">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="vm:NotificationTemplateViewModel">
+                                    <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                                            CornerRadius="6" Padding="8" Margin="0,0,0,4">
+                                        <Grid ColumnDefinitions="Auto,*,Auto">
+                                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4">
+                                                <TextBlock Text="{Binding TypeIcon}" FontSize="16"/>
+                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                                            </StackPanel>
+                                            
+                                            <TextBlock Grid.Column="1" Text="{Binding StatusText}" 
+                                                       HorizontalAlignment="Center" FontSize="12"/>
+                                            
+                                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
+                                                <Button Content="📤" ToolTip.Tip="Отправить"
+                                                        Command="{Binding $parent[ItemsControl].DataContext.SendFromTemplateCommand}"
+                                                        CommandParameter="{Binding}" 
+                                                        Padding="6,4" FontSize="10"/>
+                                                <Button Content="✏️" ToolTip.Tip="Редактировать"
+                                                        Command="{Binding $parent[ItemsControl].DataContext.EditTemplateCommand}"
+                                                        CommandParameter="{Binding}" 
+                                                        Padding="6,4" FontSize="10"/>
+                                                <Button Content="🗑️" ToolTip.Tip="Удалить"
+                                                        Command="{Binding $parent[ItemsControl].DataContext.DeleteTemplateCommand}"
+                                                        CommandParameter="{Binding}" 
+                                                        Padding="6,4" FontSize="10"
+                                                        Classes="danger"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <!-- Настройки уведомлений -->
+                <Border Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+                        CornerRadius="8" Padding="16"
+                        IsVisible="{Binding HasUserSettings}">
+                    <StackPanel Spacing="12">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <TextBlock Text="⚙️ Настройки уведомлений" FontSize="18" FontWeight="Bold"/>
+                            <Button Content="💾 Сохранить" 
+                                    Command="{Binding SaveUserSettingsCommand}"
+                                    Classes="accent" Padding="8,4" FontSize="12"/>
+                        </StackPanel>
+                        
+                        <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                                CornerRadius="8" Padding="12">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="📧 Способы доставки" FontWeight="SemiBold"/>
+                                <CheckBox Content="📧 Email уведомления" 
+                                          IsChecked="{Binding UserSettings.EmailNotifications}"/>
+                                <CheckBox Content="📱 Push уведомления" 
+                                          IsChecked="{Binding UserSettings.PushNotifications}"/>
+                                <CheckBox Content="📱 SMS уведомления" 
+                                          IsChecked="{Binding UserSettings.SmsNotifications}"/>
+                                
+                                <Separator Margin="0,8"/>
+                                
+                                <TextBlock Text="🕐 Время и расписание" FontWeight="SemiBold"/>
+                                <CheckBox Content="📅 Уведомления в выходные" 
+                                          IsChecked="{Binding UserSettings.WeekendNotifications}"/>
+                                
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="🌙 Тихие часы с:" VerticalAlignment="Center"/>
+                                    <TimePicker SelectedTime="{Binding UserSettings.QuietHoursStart}"/>
+                                    <TextBlock Text="до:" VerticalAlignment="Center"/>
+                                    <TimePicker SelectedTime="{Binding UserSettings.QuietHoursEnd}"/>
+                                </StackPanel>
+                                
+                                <Separator Margin="0,8"/>
+                                
+                                <TextBlock Text="🎯 Минимальный приоритет" FontWeight="SemiBold"/>
+                                <ComboBox SelectedItem="{Binding UserSettings.MinimumPriority}">
+                                    <ComboBoxItem Content="🔵 Низкий"/>
+                                    <ComboBoxItem Content="🟡 Обычный"/>
+                                    <ComboBoxItem Content="🟠 Высокий"/>
+                                    <ComboBoxItem Content="🔴 Критический"/>
+                                </ComboBox>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- Системная статистика -->
+                <Border Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+                        CornerRadius="8" Padding="16"
+                        IsVisible="{Binding HasSystemStatistics}">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="🌐 Системная статистика" FontSize="18" FontWeight="Bold"/>
+                        
+                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto">
+                            <!-- Всего уведомлений -->
+                            <Border Grid.Column="0" Grid.Row="0" Classes="statistic-card" Margin="0,0,4,4">
+                                <StackPanel>
+                                    <TextBlock Text="📬 Всего в системе" FontSize="12" Opacity="0.8"/>
+                                    <TextBlock Text="{Binding SystemStatistics.TotalNotifications}" 
+                                               FontSize="18" FontWeight="Bold"/>
+                                </StackPanel>
+                            </Border>
+                            
+                            <!-- Активные пользователи -->
+                            <Border Grid.Column="1" Grid.Row="0" Classes="statistic-card" Margin="4,0,0,4">
+                                <StackPanel>
+                                    <TextBlock Text="👥 Активные пользователи" FontSize="12" Opacity="0.8"/>
+                                    <TextBlock Text="{Binding SystemStatistics.ActiveUsers}" 
+                                               FontSize="18" FontWeight="Bold"/>
+                                </StackPanel>
+                            </Border>
+                            
+                            <!-- Среднее на пользователя -->
+                            <Border Grid.Column="0" Grid.Row="1" Classes="statistic-card" Margin="0,4,4,4">
+                                <StackPanel>
+                                    <TextBlock Text="📊 Среднее на польз." FontSize="12" Opacity="0.8"/>
+                                    <TextBlock Text="{Binding SystemStatistics.AverageNotificationsPerUser, StringFormat='{}{0:F1}'}" 
+                                               FontSize="18" FontWeight="Bold"/>
+                                </StackPanel>
+                            </Border>
+                            
+                            <!-- Процент прочтения -->
+                            <Border Grid.Column="1" Grid.Row="1" Classes="statistic-card" Margin="4,4,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="📈 % прочтения" FontSize="12" Opacity="0.8"/>
+                                    <TextBlock Text="{Binding SystemStatistics.ReadRate, StringFormat='{}{0:F1}%'}" 
+                                               FontSize="18" FontWeight="Bold"/>
+                                </StackPanel>
+                            </Border>
+                            
+                            <!-- Пиковый час -->
+                            <Border Grid.Column="0" Grid.Row="2" Grid.ColumnSpan="2" Classes="statistic-card" Margin="0,4,4,4">
+                                <StackPanel>
+                                    <TextBlock Text="⏰ Пиковый час" FontSize="12" Opacity="0.8"/>
+                                    <TextBlock Text="{Binding SystemStatistics.PeakHour, StringFormat='HH:mm'}" 
+                                               FontSize="18" FontWeight="Bold"/>
+                                    <TextBlock Text="{Binding SystemStatistics.PeakHourCount, StringFormat='({0} уведомлений)'}" 
+                                               FontSize="12" Opacity="0.8"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Индикатор загрузки -->
+        <Border Grid.RowSpan="2" Grid.ColumnSpan="2" 
+                Background="#80000000" 
+                IsVisible="{Binding IsLoading}"
+                HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
+                <ProgressBar IsIndeterminate="True" Width="200"/>
+                <TextBlock Text="Загрузка уведомлений..." HorizontalAlignment="Center" 
+                           Foreground="White" FontSize="16"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+
+    <!-- Стили -->
+    <UserControl.Styles>
+        <Style Selector="Border.statistic-card">
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeMediumBrush}"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="8"/>
+            <Setter Property="Margin" Value="2"/>
+        </Style>
+        
+        <Style Selector="Button.danger">
+            <Setter Property="Background" Value="#FF4444"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        
+        <Style Selector="Button.danger:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#FF6666"/>
+        </Style>
+        
+        <Style Selector="Button.warning">
+            <Setter Property="Background" Value="#FF9500"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        
+        <Style Selector="Button.warning:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#FFB84D"/>
+        </Style>
+        
+        <Style Selector="Button.info">
+            <Setter Property="Background" Value="#007ACC"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        
+        <Style Selector="Button.info:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#1E90FF"/>
+        </Style>
+        
+        <Style Selector="Button.accent">
+            <Setter Property="Background" Value="{DynamicResource SystemAccentColor}"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+    </UserControl.Styles>
+</UserControl> 

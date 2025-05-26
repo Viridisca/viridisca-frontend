@@ -2,31 +2,439 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:vm="clr-namespace:ViridiscaUi.ViewModels.Pages"
-             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             xmlns:vm="clr-namespace:ViridiscaUi.ViewModels.Education"
+             xmlns:domain="clr-namespace:ViridiscaUi.Domain.Models.Education;assembly=ViridiscaUi.Domain"
+             xmlns:converters="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
+             xmlns:local="clr-namespace:ViridiscaUi.Converters"
+             mc:Ignorable="d" d:DesignWidth="1800" d:DesignHeight="1200"
              x:Class="ViridiscaUi.Views.Education.CoursesView"
              x:DataType="vm:CoursesViewModel">
-    <Grid RowDefinitions="Auto,*">
-        <!-- Заголовок -->
-        <TextBlock Grid.Row="0" 
-                   Text="{Binding Title}" 
-                   FontSize="24" 
-                   FontWeight="Bold" 
-                   HorizontalAlignment="Center"
-                   Margin="0,20"/>
-                   
-        <!-- Контент -->
-        <StackPanel Grid.Row="1" 
-                    VerticalAlignment="Center" 
-                    HorizontalAlignment="Center"
-                    Spacing="15">
-            <TextBlock Text="{Binding Description}" 
-                       FontSize="16" 
-                       HorizontalAlignment="Center"/>
-                       
-            <TextBlock Text="Здесь будет список курсов" 
-                       FontSize="14" 
-                       HorizontalAlignment="Center"/>
-        </StackPanel>
+
+    <UserControl.Resources>
+        <local:EnumEqualityConverter x:Key="EnumEqualityConverter" />
+    </UserControl.Resources>
+
+    <Design.DataContext>
+        <vm:CoursesViewModel />
+    </Design.DataContext>
+
+    <Grid RowDefinitions="Auto,*" ColumnDefinitions="2*,*" Margin="16">
+        
+        <!-- Заголовок и панель управления -->
+        <Border Grid.Row="0" Grid.ColumnSpan="2" 
+                Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                CornerRadius="8" Padding="16" Margin="0,0,0,16">
+            <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto">
+                
+                <!-- Заголовок -->
+                <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="12">
+                    <TextBlock Text="🎓" FontSize="24" VerticalAlignment="Center"/>
+                    <TextBlock Text="Управление курсами" 
+                               FontSize="24" FontWeight="Bold" 
+                               VerticalAlignment="Center"/>
+                    <Border Background="{DynamicResource SystemAccentColor}" 
+                            CornerRadius="12" Padding="8,4">
+                        <TextBlock Text="{Binding TotalCourses, StringFormat='{}{0} курсов'}" 
+                                   Foreground="White" FontSize="12" FontWeight="SemiBold"/>
+                    </Border>
+                </StackPanel>
+
+                <!-- Кнопки действий -->
+                <StackPanel Grid.Row="0" Grid.Column="1" 
+                            Orientation="Horizontal" Spacing="8">
+                    <Button Content="➕ Создать курс" 
+                            Command="{Binding CreateCourseCommand}"
+                            Classes="accent" Padding="12,8"/>
+                    <Button Content="🔄 Обновить" 
+                            Command="{Binding RefreshCommand}"
+                            Padding="12,8"/>
+                    <Button Content="🧹 Очистить фильтры" 
+                            Command="{Binding ClearFiltersCommand}"
+                            Padding="12,8"/>
+                </StackPanel>
+
+                <!-- Поиск -->
+                <Grid Grid.Row="1" Grid.ColumnSpan="2" Margin="0,12,0,0">
+                    <TextBox Text="{Binding SearchText}" 
+                             Watermark="🔍 Поиск курсов по названию или описанию..."
+                             MinWidth="400"/>
+                </Grid>
+
+                <!-- Фильтры -->
+                <Grid Grid.Row="2" Grid.ColumnSpan="2" Margin="0,12,0,0"
+                      ColumnDefinitions="Auto,*,Auto,*,Auto,*,Auto">
+                    
+                    <!-- Статус -->
+                    <TextBlock Grid.Column="0" Text="Статус:" 
+                               VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <ComboBox Grid.Column="1" SelectedItem="{Binding StatusFilter}" 
+                              MinWidth="150" Margin="0,0,16,0">
+                        <ComboBoxItem Content="Все статусы"/>
+                        <ComboBoxItem Content="📝 Черновик"/>
+                        <ComboBoxItem Content="✅ Опубликован"/>
+                        <ComboBoxItem Content="📦 Архивирован"/>
+                        <ComboBoxItem Content="⏸️ Приостановлен"/>
+                    </ComboBox>
+                    
+                    <!-- Преподаватель -->
+                    <TextBlock Grid.Column="2" Text="Преподаватель:" 
+                               VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <ComboBox Grid.Column="3" 
+                              ItemsSource="{Binding Teachers}"
+                              SelectedItem="{Binding SelectedTeacherFilter}"
+                              MinWidth="200" Margin="0,0,16,0">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding FullName}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    
+                    <!-- Размер страницы -->
+                    <TextBlock Grid.Column="4" Text="Размер страницы:" 
+                               VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <ComboBox Grid.Column="5" SelectedItem="{Binding PageSize}" 
+                              Width="80" Margin="0,0,16,0">
+                        <ComboBoxItem Content="10"/>
+                        <ComboBoxItem Content="15"/>
+                        <ComboBoxItem Content="25"/>
+                        <ComboBoxItem Content="50"/>
+                    </ComboBox>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- Список курсов -->
+        <Border Grid.Row="1" Grid.Column="0" 
+                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+                CornerRadius="8" Padding="0" Margin="0,0,8,0">
+            <Grid RowDefinitions="*,Auto">
+                
+                <!-- DataGrid с курсами -->
+                <DataGrid Grid.Row="0" ItemsSource="{Binding Courses}" 
+                          SelectedItem="{Binding SelectedCourse}"
+                          IsReadOnly="True" GridLinesVisibility="Horizontal"
+                          AutoGenerateColumns="False" CanUserReorderColumns="True"
+                          CanUserResizeColumns="True" CanUserSortColumns="True">
+                    
+                    <DataGrid.Columns>
+                        <!-- Название курса -->
+                        <DataGridTextColumn Header="Название" 
+                                            Binding="{Binding Name}" 
+                                            Width="250" FontWeight="SemiBold"/>
+                        
+                        <!-- Преподаватель -->
+                        <DataGridTextColumn Header="Преподаватель" 
+                                            Binding="{Binding TeacherName}" 
+                                            Width="180"/>
+                        
+                        <!-- Статус -->
+                        <DataGridTextColumn Header="Статус" 
+                                            Binding="{Binding StatusText}" 
+                                            Width="140"/>
+                        
+                        <!-- Период -->
+                        <DataGridTextColumn Header="Период" 
+                                            Binding="{Binding DurationText}" 
+                                            Width="160"/>
+                        
+                        <!-- Кредиты -->
+                        <DataGridTemplateColumn Header="Кредиты" 
+                                                Width="80">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Border Background="{DynamicResource SystemAccentColorLight3}" 
+                                            CornerRadius="12" Padding="8,4"
+                                            HorizontalAlignment="Center">
+                                        <TextBlock Text="{Binding Credits}" 
+                                                   Foreground="{DynamicResource SystemAccentColorDark1}"
+                                                   FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                    </Border>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        
+                        <!-- Студентов записано -->
+                        <DataGridTemplateColumn Header="Студентов" 
+                                                Width="100">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}" 
+                                            CornerRadius="12" Padding="8,4"
+                                            HorizontalAlignment="Center">
+                                        <TextBlock Text="{Binding EnrolledStudents}" 
+                                                   FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                    </Border>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        
+                        <!-- Действия -->
+                        <DataGridTemplateColumn Header="Действия" Width="350">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate DataType="vm:CourseViewModel">
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <Button Content="👁" ToolTip.Tip="Просмотр деталей"
+                                                Command="{Binding $parent[DataGrid].DataContext.ViewCourseDetailsCommand}"
+                                                CommandParameter="{Binding}" Padding="8,4" FontSize="12"/>
+                                        <Button Content="✏️" ToolTip.Tip="Редактировать"
+                                                Command="{Binding $parent[DataGrid].DataContext.EditCourseCommand}"
+                                                CommandParameter="{Binding}" Padding="8,4" FontSize="12"/>
+                                        <Button Content="📝" ToolTip.Tip="Опубликовать"
+                                                Command="{Binding $parent[DataGrid].DataContext.PublishCourseCommand}"
+                                                CommandParameter="{Binding}" Padding="8,4" FontSize="12"
+                                                IsVisible="{Binding Status, Converter={StaticResource EnumEqualityConverter}, ConverterParameter={x:Static domain:CourseStatus.Draft}}"/>
+                                        <Button Content="👥" ToolTip.Tip="Управление записями"
+                                                Command="{Binding $parent[DataGrid].DataContext.ManageEnrollmentsCommand}"
+                                                CommandParameter="{Binding}" Padding="8,4" FontSize="12"/>
+                                        <Button Content="📚" ToolTip.Tip="Записать группу"
+                                                Command="{Binding $parent[DataGrid].DataContext.BulkEnrollGroupCommand}"
+                                                CommandParameter="{Binding}" Padding="8,4" FontSize="12"/>
+                                        <Button Content="📦" ToolTip.Tip="Архивировать"
+                                                Command="{Binding $parent[DataGrid].DataContext.ArchiveCourseCommand}"
+                                                CommandParameter="{Binding}" Padding="8,4" FontSize="12"
+                                                Classes="warning"/>
+                                        <Button Content="🗑️" ToolTip.Tip="Удалить"
+                                                Command="{Binding $parent[DataGrid].DataContext.DeleteCourseCommand}"
+                                                CommandParameter="{Binding}" Padding="8,4" FontSize="12"
+                                                Classes="danger"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- Пагинация -->
+                <Border Grid.Row="1" Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                        Padding="16,8" BorderThickness="0,1,0,0" 
+                        BorderBrush="{DynamicResource SystemControlForegroundBaseMediumBrush}">
+                    <Grid ColumnDefinitions="*,Auto,*">
+                        
+                        <!-- Информация о страницах -->
+                        <TextBlock Grid.Column="0" VerticalAlignment="Center">
+                            <Run Text="Страница"/>
+                            <Run Text="{Binding CurrentPage}" FontWeight="SemiBold"/>
+                            <Run Text="из"/>
+                            <Run Text="{Binding TotalPages}" FontWeight="SemiBold"/>
+                            <Run Text="•"/>
+                            <Run Text="{Binding TotalCourses}" FontWeight="SemiBold"/>
+                            <Run Text="курсов всего"/>
+                        </TextBlock>
+
+                        <!-- Навигация по страницам -->
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                            <Button Content="⬅️ Предыдущая" 
+                                    Command="{Binding PreviousPageCommand}" 
+                                    Padding="12,6"/>
+                            <TextBox Text="{Binding CurrentPage}" Width="60" 
+                                     HorizontalContentAlignment="Center"/>
+                            <Button Content="Следующая ➡️" 
+                                    Command="{Binding NextPageCommand}" 
+                                    Padding="12,6"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- Панель деталей курса -->
+        <Border Grid.Row="1" Grid.Column="1" 
+                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+                CornerRadius="8" Padding="16"
+                IsVisible="{Binding HasSelectedCourse}">
+            <ScrollViewer>
+                <StackPanel Spacing="16">
+                    
+                    <!-- Заголовок деталей -->
+                    <TextBlock Text="📋 Детали курса" FontSize="18" FontWeight="Bold"/>
+                    
+                    <!-- Информация о курсе -->
+                    <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                            CornerRadius="8" Padding="12">
+                        <StackPanel Spacing="8">
+                            <TextBlock FontWeight="SemiBold" FontSize="16" TextWrapping="Wrap" TextTrimming="None">
+                                <Run Text="🎓"/>
+                                <Run Text="{Binding SelectedCourse.Name}"/>
+                            </TextBlock>
+                            <TextBlock Text="{Binding SelectedCourse.Description}" 
+                                       TextWrapping="Wrap" TextTrimming="None"
+                                       IsVisible="{Binding SelectedCourse.Description, Converter={x:Static converters:StringConverters.IsNotNullOrEmpty}}"/>
+                            <TextBlock>
+                                <Run Text="👨‍🏫 Преподаватель:"/>
+                                <Run Text="{Binding SelectedCourse.TeacherName, TargetNullValue='не назначен'}" FontWeight="SemiBold"/>
+                            </TextBlock>
+                            <TextBlock>
+                                <Run Text="📊 Статус:"/>
+                                <Run Text="{Binding SelectedCourse.StatusText}" FontWeight="SemiBold"/>
+                            </TextBlock>
+                            <TextBlock>
+                                <Run Text="📅 Период:"/>
+                                <Run Text="{Binding SelectedCourse.DurationText}" FontWeight="SemiBold"/>
+                            </TextBlock>
+                            <TextBlock>
+                                <Run Text="⭐ Кредиты:"/>
+                                <Run Text="{Binding SelectedCourse.Credits}" FontWeight="SemiBold"/>
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Статистика курса -->
+                    <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                            CornerRadius="8" Padding="12"
+                            IsVisible="{Binding HasSelectedCourseStatistics}">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="📊 Статистика" FontWeight="SemiBold" FontSize="14"/>
+                            
+                            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto">
+                                <!-- Всего студентов -->
+                                <Border Grid.Column="0" Grid.Row="0" Classes="statistic-card" Margin="0,0,4,4">
+                                    <StackPanel>
+                                        <TextBlock Text="👨‍🎓 Всего студентов" FontSize="12" Opacity="0.8"/>
+                                        <TextBlock Text="{Binding SelectedCourseStatistics.TotalStudents}" 
+                                                   FontSize="18" FontWeight="Bold"/>
+                                    </StackPanel>
+                                </Border>
+                                
+                                <!-- Активные студенты -->
+                                <Border Grid.Column="1" Grid.Row="0" Classes="statistic-card" Margin="4,0,0,4">
+                                    <StackPanel>
+                                        <TextBlock Text="🔥 Активные" FontSize="12" Opacity="0.8"/>
+                                        <TextBlock Text="{Binding SelectedCourseStatistics.ActiveStudents}" 
+                                                   FontSize="18" FontWeight="Bold"/>
+                                    </StackPanel>
+                                </Border>
+                                
+                                <!-- Завершившие -->
+                                <Border Grid.Column="0" Grid.Row="1" Classes="statistic-card" Margin="0,4,4,4">
+                                    <StackPanel>
+                                        <TextBlock Text="✅ Завершили" FontSize="12" Opacity="0.8"/>
+                                        <TextBlock Text="{Binding SelectedCourseStatistics.CompletedStudents}" 
+                                                   FontSize="18" FontWeight="Bold"/>
+                                    </StackPanel>
+                                </Border>
+                                
+                                <!-- Средний балл -->
+                                <Border Grid.Column="1" Grid.Row="1" Classes="statistic-card" Margin="4,4,0,4">
+                                    <StackPanel>
+                                        <TextBlock Text="📈 Средний балл" FontSize="12" Opacity="0.8"/>
+                                        <TextBlock Text="{Binding SelectedCourseStatistics.AverageGrade, StringFormat='{}{0:F1}'}" 
+                                                   FontSize="18" FontWeight="Bold"/>
+                                    </StackPanel>
+                                </Border>
+                                
+                                <!-- Процент завершения -->
+                                <Border Grid.Column="0" Grid.Row="2" Classes="statistic-card" Margin="0,4,4,4">
+                                    <StackPanel>
+                                        <TextBlock Text="📊 % завершения" FontSize="12" Opacity="0.8"/>
+                                        <TextBlock Text="{Binding SelectedCourseStatistics.AverageCompletionRate, StringFormat='{}{0:F1}%'}" 
+                                                   FontSize="18" FontWeight="Bold"/>
+                                    </StackPanel>
+                                </Border>
+                                
+                                <!-- Всего уроков -->
+                                <Border Grid.Column="1" Grid.Row="2" Classes="statistic-card" Margin="4,4,0,4">
+                                    <StackPanel>
+                                        <TextBlock Text="📖 Уроков" FontSize="12" Opacity="0.8"/>
+                                        <TextBlock Text="{Binding SelectedCourseStatistics.TotalLessons}" 
+                                                   FontSize="18" FontWeight="Bold"/>
+                                    </StackPanel>
+                                </Border>
+                                
+                                <!-- Всего заданий -->
+                                <Border Grid.Column="0" Grid.Row="3" Classes="statistic-card" Margin="0,4,4,0">
+                                    <StackPanel>
+                                        <TextBlock Text="📝 Заданий" FontSize="12" Opacity="0.8"/>
+                                        <TextBlock Text="{Binding SelectedCourseStatistics.TotalAssignments}" 
+                                                   FontSize="18" FontWeight="Bold"/>
+                                    </StackPanel>
+                                </Border>
+                                
+                                <!-- Последняя активность -->
+                                <Border Grid.Column="1" Grid.Row="3" Classes="statistic-card" Margin="4,4,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="🕒 Последняя активность" FontSize="12" Opacity="0.8"/>
+                                        <TextBlock Text="{Binding SelectedCourseStatistics.LastActivityDate, StringFormat='{}{0:dd.MM}'}" 
+                                                   FontSize="18" FontWeight="Bold"/>
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Быстрые действия -->
+                    <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                            CornerRadius="8" Padding="12">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="⚡ Быстрые действия" FontWeight="SemiBold" FontSize="14"/>
+                            <StackPanel Spacing="4">
+                                <Button Content="👥 Управление записями" 
+                                        Command="{Binding ManageEnrollmentsCommand}"
+                                        CommandParameter="{Binding SelectedCourse}"
+                                        HorizontalAlignment="Stretch"/>
+                                <Button Content="📚 Записать группу" 
+                                        Command="{Binding BulkEnrollGroupCommand}"
+                                        CommandParameter="{Binding SelectedCourse}"
+                                        HorizontalAlignment="Stretch"/>
+                                <Button Content="📝 Опубликовать курс" 
+                                        Command="{Binding PublishCourseCommand}"
+                                        CommandParameter="{Binding SelectedCourse}"
+                                        HorizontalAlignment="Stretch"
+                                        IsVisible="{Binding SelectedCourse.Status, Converter={StaticResource EnumEqualityConverter}, ConverterParameter={x:Static domain:CourseStatus.Draft}}"/>
+                                <Button Content="✏️ Редактировать курс" 
+                                        Command="{Binding EditCourseCommand}"
+                                        CommandParameter="{Binding SelectedCourse}"
+                                        HorizontalAlignment="Stretch"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+
+        <!-- Индикатор загрузки -->
+        <Border Grid.RowSpan="2" Grid.ColumnSpan="2" 
+                Background="#80000000" 
+                IsVisible="{Binding IsLoading}"
+                HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
+                <ProgressBar IsIndeterminate="True" Width="200"/>
+                <TextBlock Text="Загрузка курсов..." HorizontalAlignment="Center" 
+                           Foreground="White" FontSize="16"/>
+            </StackPanel>
+        </Border>
     </Grid>
+
+    <!-- Стили -->
+    <UserControl.Styles>
+        <Style Selector="Border.statistic-card">
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeMediumBrush}"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="8"/>
+            <Setter Property="Margin" Value="2"/>
+        </Style>
+        
+        <Style Selector="Button.danger">
+            <Setter Property="Background" Value="#FF4444"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        
+        <Style Selector="Button.danger:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#FF6666"/>
+        </Style>
+        
+        <Style Selector="Button.warning">
+            <Setter Property="Background" Value="#FF9500"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        
+        <Style Selector="Button.warning:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#FFB84D"/>
+        </Style>
+        
+        <Style Selector="Button.accent">
+            <Setter Property="Background" Value="{DynamicResource SystemAccentColor}"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+    </UserControl.Styles>
 </UserControl> 

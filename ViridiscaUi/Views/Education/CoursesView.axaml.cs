@@ -1,19 +1,23 @@
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using Avalonia.ReactiveUI;
-using ViridiscaUi.ViewModels.Pages;
+using ViridiscaUi.ViewModels.Education;
 
-namespace ViridiscaUi.Views.Education;
-
-public partial class CoursesView : ReactiveUserControl<CoursesViewModel>
+namespace ViridiscaUi.Views.Education
 {
-    public CoursesView()
+    /// <summary>
+    /// Представление для управления курсами
+    /// </summary>
+    public partial class CoursesView : ReactiveUserControl<CoursesViewModel>
     {
-        InitializeComponent();
-    }
+        public CoursesView()
+        {
+            InitializeComponent();
+        }
 
-    private void InitializeComponent()
-    {
-        AvaloniaXamlLoader.Load(this);
+        private void InitializeComponent()
+        {
+            AvaloniaXamlLoader.Load(this);
+        }
     }
 } 

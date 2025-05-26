@@ -67,6 +67,7 @@ namespace ViridiscaUi.Services.Implementations
             try
             {
                 return await _dbContext.Users
+                    .Include(u => u.Role)
                     .Include(u => u.UserRoles)
                         .ThenInclude(ur => ur.Role)
                     .FirstOrDefaultAsync(u => u.Uid == uid);
@@ -83,14 +84,35 @@ namespace ViridiscaUi.Services.Implementations
             ValidateDbContext();
             try
             {
-                return await _dbContext.Users
+                Console.WriteLine($"[UserService] Загружаем пользователя по username: {username}");
+                
+                var user = await _dbContext.Users
+                    .Include(u => u.Role) // Загружаем основную роль
                     .Include(u => u.UserRoles)
                         .ThenInclude(ur => ur.Role)
                     .FirstOrDefaultAsync(u => u.Username == username);
+                
+                if (user != null)
+                {
+                    Console.WriteLine($"[UserService] Пользователь найден:");
+                    Console.WriteLine($"  - Uid: {user.Uid}");
+                    Console.WriteLine($"  - Email: {user.Email}");
+                    Console.WriteLine($"  - RoleId: {user.RoleId}");
+                    Console.WriteLine($"  - Role loaded: {user.Role != null}");
+                    Console.WriteLine($"  - Role name: {user.Role?.Name ?? "null"}");
+                    Console.WriteLine($"  - UserRoles count: {user.UserRoles?.Count ?? 0}");
+                }
+                else
+                {
+                    Console.WriteLine($"[UserService] Пользователь с username '{username}' не найден");
+                }
+                
+                return user;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Ошибка при получении пользователя по имени {Username}: {ErrorMessage}", username, ex.Message);
+                Console.WriteLine($"[UserService] Ошибка загрузки пользователя: {ex.Message}");
                 throw;
             }
         }
@@ -100,14 +122,35 @@ namespace ViridiscaUi.Services.Implementations
             ValidateDbContext();
             try
             {
-                return await _dbContext.Users
+                Console.WriteLine($"[UserService] Загружаем пользователя по email: {email}");
+                
+                var user = await _dbContext.Users
+                    .Include(u => u.Role) // Загружаем основную роль
                     .Include(u => u.UserRoles)
                         .ThenInclude(ur => ur.Role)
                     .FirstOrDefaultAsync(u => u.Email == email);
+                
+                if (user != null)
+                {
+                    Console.WriteLine($"[UserService] Пользователь найден:");
+                    Console.WriteLine($"  - Uid: {user.Uid}");
+                    Console.WriteLine($"  - Username: {user.Username}");
+                    Console.WriteLine($"  - RoleId: {user.RoleId}");
+                    Console.WriteLine($"  - Role loaded: {user.Role != null}");
+                    Console.WriteLine($"  - Role name: {user.Role?.Name ?? "null"}");
+                    Console.WriteLine($"  - UserRoles count: {user.UserRoles?.Count ?? 0}");
+                }
+                else
+                {
+                    Console.WriteLine($"[UserService] Пользователь с email '{email}' не найден");
+                }
+                
+                return user;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Ошибка при получении пользователя по email {Email}: {ErrorMessage}", email, ex.Message);
+                Console.WriteLine($"[UserService] Ошибка загрузки пользователя: {ex.Message}");
                 throw;
             }
         }
@@ -118,6 +161,7 @@ namespace ViridiscaUi.Services.Implementations
             try
             {
                 return await _dbContext.Users
+                    .Include(u => u.Role)
                     .Include(u => u.UserRoles)
                         .ThenInclude(ur => ur.Role)
                     .OrderBy(u => u.LastName)

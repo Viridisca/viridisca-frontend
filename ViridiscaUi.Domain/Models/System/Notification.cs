@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using ReactiveUI;
 using ViridiscaUi.Domain.Models.Base;
 using ViridiscaUi.Domain.Models.Auth;
@@ -19,6 +20,14 @@ public class Notification : ViewModelBase
     private DateTime _sentAt;
     private DateTime? _readAt;
     private User? _recipient;
+    private string? _category;
+    private string? _actionUrl;
+    private bool _isImportant;
+    private DateTime? _expiresAt;
+    private DateTime? _scheduledFor;
+    private TimeSpan? _repeatInterval;
+    private Dictionary<string, object>? _metadata;
+    private string? _metadataJson;
 
     /// <summary>
     /// Идентификатор получателя
@@ -99,6 +108,78 @@ public class Notification : ViewModelBase
     {
         get => _recipient;
         set => this.RaiseAndSetIfChanged(ref _recipient, value);
+    }
+
+    /// <summary>
+    /// Категория уведомления
+    /// </summary>
+    public string? Category
+    {
+        get => _category;
+        set => this.RaiseAndSetIfChanged(ref _category, value);
+    }
+
+    /// <summary>
+    /// URL для действия
+    /// </summary>
+    public string? ActionUrl
+    {
+        get => _actionUrl;
+        set => this.RaiseAndSetIfChanged(ref _actionUrl, value);
+    }
+
+    /// <summary>
+    /// Флаг важности
+    /// </summary>
+    public bool IsImportant
+    {
+        get => _isImportant;
+        set => this.RaiseAndSetIfChanged(ref _isImportant, value);
+    }
+
+    /// <summary>
+    /// Время истечения
+    /// </summary>
+    public DateTime? ExpiresAt
+    {
+        get => _expiresAt;
+        set => this.RaiseAndSetIfChanged(ref _expiresAt, value);
+    }
+
+    /// <summary>
+    /// Запланированное время отправки
+    /// </summary>
+    public DateTime? ScheduledFor
+    {
+        get => _scheduledFor;
+        set => this.RaiseAndSetIfChanged(ref _scheduledFor, value);
+    }
+
+    /// <summary>
+    /// Интервал повтора для напоминаний
+    /// </summary>
+    public TimeSpan? RepeatInterval
+    {
+        get => _repeatInterval;
+        set => this.RaiseAndSetIfChanged(ref _repeatInterval, value);
+    }
+
+    /// <summary>
+    /// Дополнительные метаданные
+    /// </summary>
+    public Dictionary<string, object>? Metadata
+    {
+        get => _metadata;
+        set => this.RaiseAndSetIfChanged(ref _metadata, value);
+    }
+
+    /// <summary>
+    /// Дополнительные метаданные в формате JSON
+    /// </summary>
+    public string? MetadataJson
+    {
+        get => _metadataJson;
+        set => this.RaiseAndSetIfChanged(ref _metadataJson, value);
     }
 
     /// <summary>
@@ -186,7 +267,12 @@ public enum NotificationType
     /// <summary>
     /// Задание
     /// </summary>
-    Assignment = 7
+    Assignment = 7,
+
+    /// <summary>
+    /// Напоминание
+    /// </summary>
+    Reminder = 8
 }
 
 /// <summary>

@@ -103,7 +103,7 @@ namespace ViridiscaUi.ViewModels.Auth
         /// Текст кнопки действия
         /// </summary>
         [ObservableAsProperty]
-        public string ActionButtonText { get; }
+        public string? ActionButtonText { get; }
 
         /// <summary>
         /// Команда основного действия (вход/регистрация)

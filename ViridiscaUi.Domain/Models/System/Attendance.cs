@@ -92,6 +92,11 @@ public class Attendance : ViewModelBase
     }
 
     /// <summary>
+    /// Присутствовал ли студент (вычисляемое свойство)
+    /// </summary>
+    public bool IsPresent => Status == AttendanceStatus.Present || Status == AttendanceStatus.Late;
+
+    /// <summary>
     /// Создает новый экземпляр записи посещаемости
     /// </summary>
     public Attendance()

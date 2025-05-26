@@ -38,34 +38,52 @@ namespace ViridiscaUi.Services.Implementations
         /// </summary>
         public async Task<(bool Success, User? User, string ErrorMessage)> AuthenticateAsync(string username, string password)
         {
-            // Попробуем найти пользователя сначала по username, затем по email
-            var user = await _userService.GetUserByUsernameAsync(username);
-            if (user == null)
+            try
             {
-                // Если не нашли по username, попробуем найти по email
-                user = await _userService.GetUserByEmailAsync(username);
-            }
-            
-            if (user == null)
-            {
-                _userSessionService.ClearSession();
-                return (false, null, "Пользователь не найден");
-            }
+                // Попробуем найти пользователя сначала по username, затем по email
+                var user = await _userService.GetUserByUsernameAsync(username);
+                if (user == null)
+                {
+                    // Если не нашли по username, попробуем найти по email
+                    user = await _userService.GetUserByEmailAsync(username);
+                }
+                
+                if (user == null)
+                {
+                    _userSessionService.ClearSession();
+                    return (false, null, "Пользователь не найден");
+                }
 
-            if (!BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
-            {
-                _userSessionService.ClearSession();
-                return (false, null, "Неверный пароль");
-            }
+                if (!BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
+                {
+                    _userSessionService.ClearSession();
+                    return (false, null, "Неверный пароль");
+                }
 
-            if (!user.IsActive)
-            {
-                _userSessionService.ClearSession();
-                return (false, null, "Учетная запись заблокирована");
-            }
+                if (!user.IsActive)
+                {
+                    _userSessionService.ClearSession();
+                    return (false, null, "Учетная запись заблокирована");
+                }
 
-            _userSessionService.SetCurrentUser(user);
-            return (true, user, string.Empty);
+                // Логируем информацию о загруженном пользователе для отладки
+                Console.WriteLine($"[AuthService] Пользователь успешно аутентифицирован:");
+                Console.WriteLine($"  - Email: {user.Email}");
+                Console.WriteLine($"  - FullName: {user.FullName}");
+                Console.WriteLine($"  - RoleId: {user.RoleId}");
+                Console.WriteLine($"  - Role: {user.Role?.Name ?? "null"}");
+                Console.WriteLine($"  - UserRoles count: {user.UserRoles?.Count ?? 0}");
+
+                _userSessionService.SetCurrentUser(user);
+                return (true, user, string.Empty);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[AuthService] Ошибка аутентификации: {ex.Message}");
+                Console.WriteLine($"[AuthService] StackTrace: {ex.StackTrace}");
+                _userSessionService.ClearSession();
+                return (false, null, $"Ошибка аутентификации: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -136,9 +154,9 @@ namespace ViridiscaUi.Services.Implementations
         /// <summary>
         /// Получает текущего аутентифицированного пользователя
         /// </summary>
-        public Task<User?> GetCurrentUserAsync()
+        public async Task<User?> GetCurrentUserAsync()
         {
-            return Task.FromResult(_userSessionService.CurrentUser);
+            return _userSessionService.CurrentUser;
         }
 
         /// <summary>
@@ -226,6 +244,12 @@ namespace ViridiscaUi.Services.Implementations
         {
             // TODO: Реализовать проверку токена и сброс пароля
             return true;
+        }
+
+        public async Task<Guid> GetCurrentUserUidAsync()
+        {
+            var user = await GetCurrentUserAsync();
+            return user?.Uid ?? Guid.Empty;
         }
     }
 } 

@@ -3,6 +3,8 @@ using System;
 using ViridiscaUi.Domain.Models.Auth;
 using ViridiscaUi.Domain.Models.Education;
 using ViridiscaUi.Domain.Models.System;
+using System.Collections.Generic;
+using System.Text.Json;
 
 namespace ViridiscaUi.Infrastructure;
 
@@ -26,6 +28,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Course> Courses { get; set; } = null!;
     public DbSet<Module> Modules { get; set; } = null!;
     public DbSet<Lesson> Lessons { get; set; } = null!;
+    public DbSet<LessonProgress> LessonProgress { get; set; } = null!;
     public DbSet<Assignment> Assignments { get; set; } = null!;
     public DbSet<Submission> Submissions { get; set; } = null!;
     public DbSet<Enrollment> Enrollments { get; set; } = null!;
@@ -36,6 +39,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Attendance> Attendances { get; set; } = null!;
     public DbSet<Schedule> Schedules { get; set; } = null!;
     public DbSet<Notification> Notifications { get; set; } = null!;
+    public DbSet<NotificationTemplate> NotificationTemplates { get; set; } = null!;
+    public DbSet<NotificationSettings> NotificationSettings { get; set; } = null!;
+    public DbSet<FileRecord> FileRecords { get; set; } = null!;
     
     // Дополнительные модели LMS
     public DbSet<Grade> Grades { get; set; } = null!;
@@ -370,6 +376,36 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 .WithOne()
                 .HasForeignKey(g => g.LessonUid)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // LessonProgress
+        modelBuilder.Entity<LessonProgress>(entity =>
+        {
+            entity.HasKey(e => e.Uid);
+            entity.Property(e => e.StudentUid).IsRequired();
+            entity.Property(e => e.LessonUid).IsRequired();
+            entity.Property(e => e.IsCompleted).HasDefaultValue(false);
+            entity.Property(e => e.CompletedAt).IsRequired(false);
+            entity.Property(e => e.TimeSpent).IsRequired(false);
+            
+            // Связь со студентом
+            entity.HasOne(lp => lp.Student)
+                .WithMany()
+                .HasForeignKey(lp => lp.StudentUid)
+                .OnDelete(DeleteBehavior.Cascade);
+            
+            // Связь с уроком
+            entity.HasOne(lp => lp.Lesson)
+                .WithMany(l => l.LessonProgress)
+                .HasForeignKey(lp => lp.LessonUid)
+                .OnDelete(DeleteBehavior.Cascade);
+                
+            // Уникальный индекс: один студент - один урок - один прогресс
+            entity.HasIndex(e => new { e.StudentUid, e.LessonUid }).IsUnique();
+            
+            // Индексы для быстрого поиска
+            entity.HasIndex(e => e.IsCompleted);
+            entity.HasIndex(e => e.CompletedAt);
         });
 
         // Assignment
@@ -718,6 +754,13 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(e => e.Message).IsRequired().HasMaxLength(2000);
             entity.Property(e => e.SentAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
             
+            // Сериализуем Metadata в JSON для хранения в БД
+            entity.Property(e => e.Metadata)
+                .HasConversion(
+                    v => v == null ? null : System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                    v => v == null ? null : System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(v, (System.Text.Json.JsonSerializerOptions?)null))
+                .HasColumnType("text");
+            
             // Связь с получателем
             entity.HasOne(n => n.Recipient)
                 .WithMany()
@@ -728,6 +771,86 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.HasIndex(e => new { e.RecipientUid, e.IsRead });
             entity.HasIndex(e => e.SentAt);
             entity.HasIndex(e => e.Type);
+        });
+
+        // NotificationTemplate
+        modelBuilder.Entity<NotificationTemplate>(entity =>
+        {
+            entity.HasKey(e => e.Uid);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.TitleTemplate).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.MessageTemplate).IsRequired().HasMaxLength(2000);
+            entity.Property(e => e.Category).HasMaxLength(100);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            
+            // Сериализуем Parameters в JSON для хранения в БД
+            entity.Property(e => e.Parameters)
+                .HasConversion(
+                    v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                    v => System.Text.Json.JsonSerializer.Deserialize<List<string>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new List<string>())
+                .HasColumnType("text");
+            
+            // Индексы
+            entity.HasIndex(e => e.Name);
+            entity.HasIndex(e => e.Type);
+            entity.HasIndex(e => e.IsActive);
+        });
+
+        // NotificationSettings
+        modelBuilder.Entity<NotificationSettings>(entity =>
+        {
+            entity.HasKey(e => e.Uid);
+            entity.Property(e => e.UserUid).IsRequired();
+            entity.Property(e => e.EmailNotifications).HasDefaultValue(true);
+            entity.Property(e => e.PushNotifications).HasDefaultValue(true);
+            entity.Property(e => e.SmsNotifications).HasDefaultValue(false);
+            entity.Property(e => e.WeekendNotifications).HasDefaultValue(false);
+            entity.Property(e => e.MinimumPriority).HasConversion<int>().HasDefaultValue(NotificationPriority.Low);
+            
+            // Сериализуем TypeSettings в JSON для хранения в БД
+            entity.Property(e => e.TypeSettings)
+                .HasConversion(
+                    v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                    v => System.Text.Json.JsonSerializer.Deserialize<Dictionary<NotificationType, bool>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new Dictionary<NotificationType, bool>())
+                .HasColumnType("text");
+            
+            // Сериализуем CategorySettings в JSON для хранения в БД
+            entity.Property(e => e.CategorySettings)
+                .HasConversion(
+                    v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                    v => System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, bool>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new Dictionary<string, bool>())
+                .HasColumnType("text");
+            
+            // Связь с пользователем
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(ns => ns.UserUid)
+                .OnDelete(DeleteBehavior.Cascade);
+                
+            // Уникальный индекс: один пользователь - одни настройки
+            entity.HasIndex(e => e.UserUid).IsUnique();
+        });
+
+        // FileRecord
+        modelBuilder.Entity<FileRecord>(entity =>
+        {
+            entity.HasKey(e => e.Uid);
+            entity.Property(e => e.OriginalFileName).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.StoredFileName).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.FilePath).IsRequired().HasMaxLength(1000);
+            entity.Property(e => e.ContentType).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.EntityType).HasMaxLength(100);
+            entity.Property(e => e.Description).HasMaxLength(1000);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.LastModifiedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            
+            // Индексы для быстрого поиска
+            entity.HasIndex(e => e.UploadedByUid);
+            entity.HasIndex(e => new { e.EntityType, e.EntityUid });
+            entity.HasIndex(e => e.ContentType);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => e.IsPublic);
         });
     }
 

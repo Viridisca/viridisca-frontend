@@ -21,6 +21,11 @@ namespace ViridiscaUi.Services.Interfaces
         Task<IEnumerable<Teacher>> GetAllTeachersAsync();
         
         /// <summary>
+        /// Получает всех преподавателей (алиас для GetAllTeachersAsync)
+        /// </summary>
+        Task<IEnumerable<Teacher>> GetTeachersAsync();
+        
+        /// <summary>
         /// Добавляет нового преподавателя
         /// </summary>
         Task AddTeacherAsync(Teacher teacher);
