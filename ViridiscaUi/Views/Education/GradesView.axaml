@@ -39,7 +39,7 @@
                     </Border>
                     <Border Background="{DynamicResource SystemControlBackgroundAltMediumBrush}" 
                             CornerRadius="12" Padding="8,4">
-                        <TextBlock Text="{Binding AverageGrade, StringFormat='Средний балл: {0:F2}'}" 
+                        <TextBlock Text="{Binding AverageGrade, StringFormat='Средний балл: {}{0:F2}'}" 
                                    FontSize="12" FontWeight="SemiBold"/>
                     </Border>
                 </StackPanel>
@@ -290,7 +290,7 @@
                                         <TextBlock Text="{Binding SelectedGrade.GradeDisplay}" 
                                                    Foreground="White" FontWeight="Bold"/>
                                     </Border>
-                                    <TextBlock Text="{Binding SelectedGrade.Percentage, StringFormat='({0:F0}%)'}" 
+                                    <TextBlock Text="{Binding SelectedGrade.Percentage, StringFormat='{}{0:F0}%'}" 
                                                VerticalAlignment="Center"/>
                                 </StackPanel>
                                 

@@ -1,0 +1,379 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="600"
+             x:Class="ViridiscaUi.Views.Components.DataGridComponent">
+
+  <UserControl.Styles>
+    <!-- Data Grid Component Styles -->
+    <Style Selector="Border.datagrid-container">
+      <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="BoxShadow" Value="0 4 12 0 #15000000" />
+    </Style>
+    
+    <Style Selector="Border.datagrid-header">
+      <Setter Property="Background" Value="{DynamicResource SystemAccentColorLight3}" />
+      <Setter Property="Padding" Value="20,16" />
+      <Setter Property="CornerRadius" Value="12,12,0,0" />
+      <Setter Property="Margin" Value="0,0,0,1" />
+    </Style>
+    
+    <Style Selector="TextBlock.datagrid-title">
+      <Setter Property="FontSize" Value="18" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    
+    <Style Selector="Border.search-container">
+      <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="12,8" />
+      <Setter Property="Margin" Value="0,0,8,0" />
+    </Style>
+    
+    <Style Selector="TextBox.search-box">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="Watermark" Value="Поиск..." />
+    </Style>
+    
+    <Style Selector="Button.action-button">
+      <Setter Property="Padding" Value="12,8" />
+      <Setter Property="Margin" Value="4,0" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="MinWidth" Value="100" />
+    </Style>
+    
+    <Style Selector="Button.primary-action">
+      <Setter Property="Background" Value="{DynamicResource AccentButtonBackground}" />
+      <Setter Property="Foreground" Value="{DynamicResource AccentButtonForeground}" />
+    </Style>
+    
+    <Style Selector="Button.secondary-action">
+      <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseLowBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+    </Style>
+    
+    <Style Selector="DataGrid">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="GridLinesVisibility" Value="Horizontal" />
+      <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+      <Setter Property="RowBackground" Value="Transparent" />
+      <Setter Property="HeadersVisibility" Value="Column" />
+      <Setter Property="CanUserReorderColumns" Value="True" />
+      <Setter Property="CanUserResizeColumns" Value="True" />
+      <Setter Property="CanUserSortColumns" Value="True" />
+      <Setter Property="AutoGenerateColumns" Value="False" />
+      <Setter Property="IsReadOnly" Value="True" />
+      <Setter Property="SelectionMode" Value="Single" />
+    </Style>
+    
+    <Style Selector="DataGridColumnHeader">
+      <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseLowBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Padding" Value="12,8" />
+      <Setter Property="BorderThickness" Value="0,0,1,1" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+    </Style>
+    
+    <Style Selector="DataGridRow">
+      <Setter Property="MinHeight" Value="40" />
+    </Style>
+    
+    <Style Selector="DataGridRow:selected">
+      <Setter Property="Background" Value="{DynamicResource SystemAccentColorLight2}" />
+    </Style>
+    
+    <Style Selector="DataGridCell">
+      <Setter Property="Padding" Value="12,8" />
+      <Setter Property="BorderThickness" Value="0,0,1,0" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    
+    <Style Selector="Border.pagination-container">
+      <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}" />
+      <Setter Property="Padding" Value="20,12" />
+      <Setter Property="CornerRadius" Value="0,0,12,12" />
+      <Setter Property="BorderThickness" Value="0,1,0,0" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+    </Style>
+    
+    <Style Selector="Button.pagination-button">
+      <Setter Property="Padding" Value="8,6" />
+      <Setter Property="Margin" Value="2,0" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="MinWidth" Value="32" />
+      <Setter Property="FontSize" Value="12" />
+    </Style>
+    
+    <Style Selector="Button.pagination-button.current">
+      <Setter Property="Background" Value="{DynamicResource AccentButtonBackground}" />
+      <Setter Property="Foreground" Value="{DynamicResource AccentButtonForeground}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    
+    <Style Selector="TextBlock.pagination-info">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Opacity" Value="0.8" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    
+    <Style Selector="ComboBox.page-size">
+      <Setter Property="MinWidth" Value="80" />
+      <Setter Property="Margin" Value="8,0" />
+    </Style>
+  </UserControl.Styles>
+
+  <Border Classes="datagrid-container">
+    <Grid>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />  <!-- Header -->
+        <RowDefinition Height="Auto" />  <!-- Toolbar -->
+        <RowDefinition Height="*" />     <!-- Data Grid -->
+        <RowDefinition Height="Auto" />  <!-- Pagination -->
+      </Grid.RowDefinitions>
+
+      <!-- Header Section -->
+      <Border Grid.Row="0" Classes="datagrid-header">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          
+          <StackPanel Grid.Column="0">
+            <TextBlock Classes="datagrid-title" 
+                       Text="{Binding Title, FallbackValue='Данные'}" />
+            <TextBlock Text="{Binding Description}" 
+                       FontSize="12" 
+                       Opacity="0.8"
+                       TextWrapping="Wrap"
+                       IsVisible="{Binding Description, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+          </StackPanel>
+          
+          <StackPanel Grid.Column="1" 
+                      Orientation="Horizontal" 
+                      VerticalAlignment="Center">
+            <Button Classes="action-button primary-action"
+                    Command="{Binding AddCommand}"
+                    Content="{Binding AddButtonText, FallbackValue='+ Добавить'}"
+                    IsVisible="{Binding ShowAddButton}" />
+            <Button Classes="action-button secondary-action"
+                    Command="{Binding RefreshCommand}"
+                    Content="Обновить"
+                    IsVisible="{Binding ShowRefreshButton}" />
+            <Button Classes="action-button secondary-action"
+                    Command="{Binding ExportCommand}"
+                    Content="Экспорт"
+                    IsVisible="{Binding ShowExportButton}" />
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- Toolbar Section -->
+      <Border Grid.Row="1" 
+              Padding="20,12"
+              Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+              BorderThickness="0,0,0,1"
+              BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          
+          <!-- Search Section -->
+          <StackPanel Grid.Column="0" 
+                      Orientation="Horizontal" 
+                      VerticalAlignment="Center">
+            <Border Classes="search-container" MinWidth="300">
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                
+                <TextBox Grid.Column="0" 
+                         Classes="search-box"
+                         Text="{Binding SearchText, Mode=TwoWay}"
+                         Watermark="{Binding SearchWatermark, FallbackValue='Поиск...'}" />
+                
+                <PathIcon Grid.Column="1" 
+                          Data="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"
+                          Width="16" 
+                          Height="16" 
+                          Opacity="0.6" />
+              </Grid>
+            </Border>
+            
+            <ComboBox ItemsSource="{Binding FilterOptions}"
+                      SelectedItem="{Binding SelectedFilter}"
+                      PlaceholderText="Фильтр"
+                      MinWidth="120"
+                      Margin="8,0,0,0"
+                      IsVisible="{Binding ShowFilterOptions}" />
+          </StackPanel>
+          
+          <!-- Status Section -->
+          <StackPanel Grid.Column="1" 
+                      Orientation="Horizontal" 
+                      VerticalAlignment="Center">
+            <TextBlock Classes="pagination-info"
+                       Text="{Binding StatusText, FallbackValue='Загрузка...'}" />
+            
+            <ProgressBar IsIndeterminate="True" 
+                         Width="100" 
+                         Height="4"
+                         Margin="12,0,0,0"
+                         IsVisible="{Binding IsLoading}" />
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- Data Grid Section -->
+      <ScrollViewer Grid.Row="2" 
+                    HorizontalScrollBarVisibility="Auto"
+                    VerticalScrollBarVisibility="Auto">
+        <DataGrid ItemsSource="{Binding Items}"
+                  SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
+                  MinHeight="300">
+          
+          <!-- Loading Overlay -->
+          <DataGrid.Styles>
+            <Style Selector="DataGrid">
+              <Setter Property="IsEnabled" Value="{Binding !IsLoading}" />
+            </Style>
+          </DataGrid.Styles>
+          
+        </DataGrid>
+      </ScrollViewer>
+
+      <!-- Pagination Section -->
+      <Border Grid.Row="3" 
+              Classes="pagination-container"
+              IsVisible="{Binding ShowPagination}">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          
+          <!-- Page Size Selection -->
+          <StackPanel Grid.Column="0" 
+                      Orientation="Horizontal" 
+                      VerticalAlignment="Center">
+            <TextBlock Text="Показать:" 
+                       Classes="pagination-info"
+                       Margin="0,0,8,0" />
+            <ComboBox Classes="page-size"
+                      ItemsSource="{Binding PageSizeOptions}"
+                      SelectedItem="{Binding PageSize, Mode=TwoWay}" />
+            <TextBlock Text="записей" 
+                       Classes="pagination-info"
+                       Margin="8,0,0,0" />
+          </StackPanel>
+          
+          <!-- Page Info -->
+          <StackPanel Grid.Column="1" 
+                      Orientation="Horizontal" 
+                      HorizontalAlignment="Center"
+                      VerticalAlignment="Center">
+            <TextBlock Classes="pagination-info">
+              <TextBlock.Text>
+                <MultiBinding StringFormat="Показано {0}-{1} из {2} записей">
+                  <Binding Path="StartRecord" />
+                  <Binding Path="EndRecord" />
+                  <Binding Path="TotalRecords" />
+                </MultiBinding>
+              </TextBlock.Text>
+            </TextBlock>
+          </StackPanel>
+          
+          <!-- Page Navigation -->
+          <StackPanel Grid.Column="2" 
+                      Orientation="Horizontal" 
+                      VerticalAlignment="Center">
+            <Button Classes="pagination-button"
+                    Command="{Binding FirstPageCommand}"
+                    Content="⟪"
+                    IsEnabled="{Binding CanGoToPreviousPage}"
+                    ToolTip.Tip="Первая страница" />
+            
+            <Button Classes="pagination-button"
+                    Command="{Binding PreviousPageCommand}"
+                    Content="⟨"
+                    IsEnabled="{Binding CanGoToPreviousPage}"
+                    ToolTip.Tip="Предыдущая страница" />
+            
+            <ItemsControl ItemsSource="{Binding PageNumbers}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <StackPanel Orientation="Horizontal" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Button Classes="pagination-button"
+                          Classes.current="{Binding IsCurrentPage}"
+                          Command="{Binding $parent[UserControl].((vm:DataGridComponentViewModel)DataContext).GoToPageCommand}"
+                          CommandParameter="{Binding PageNumber}"
+                          Content="{Binding PageNumber}" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            
+            <Button Classes="pagination-button"
+                    Command="{Binding NextPageCommand}"
+                    Content="⟩"
+                    IsEnabled="{Binding CanGoToNextPage}"
+                    ToolTip.Tip="Следующая страница" />
+            
+            <Button Classes="pagination-button"
+                    Command="{Binding LastPageCommand}"
+                    Content="⟫"
+                    IsEnabled="{Binding CanGoToNextPage}"
+                    ToolTip.Tip="Последняя страница" />
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- Empty State -->
+      <Border Grid.Row="2"
+              Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+              IsVisible="{Binding IsEmpty}">
+        <StackPanel HorizontalAlignment="Center" 
+                    VerticalAlignment="Center"
+                    Spacing="16">
+          <PathIcon Data="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"
+                    Width="48" 
+                    Height="48" 
+                    Opacity="0.3" />
+          <TextBlock Text="{Binding EmptyStateMessage, FallbackValue='Нет данных для отображения'}"
+                     FontSize="16"
+                     Opacity="0.6"
+                     HorizontalAlignment="Center"
+                     TextWrapping="Wrap" />
+          <Button Classes="action-button primary-action"
+                  Command="{Binding AddCommand}"
+                  Content="{Binding AddButtonText, FallbackValue='Добавить первую запись'}"
+                  IsVisible="{Binding ShowAddButton}" />
+        </StackPanel>
+      </Border>
+    </Grid>
+  </Border>
+</UserControl> 

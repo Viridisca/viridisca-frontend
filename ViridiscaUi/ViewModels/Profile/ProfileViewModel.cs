@@ -1,25 +1,28 @@
 using System;
 using System.Reactive;
+using System.Reactive.Disposables;
 using System.Threading.Tasks;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using ViridiscaUi.Domain.Models.Auth;
 using ViridiscaUi.Services.Interfaces;
-using ViridiscaUi.ViewModels;
+using ViridiscaUi.Infrastructure;
+using ViridiscaUi.Infrastructure.Navigation;
 
 namespace ViridiscaUi.ViewModels.Profile
 {
     /// <summary>
     /// ViewModel для страницы профиля пользователя
+    /// Следует принципам SOLID и чистой архитектуры
     /// </summary>
-    public class ProfileViewModel : ViewModelBase, IRoutableViewModel
+    [Route("profile", DisplayName = "Профиль", IconKey = "Profile", Order = 10, ShowInMenu = false)]
+    public class ProfileViewModel : RoutableViewModelBase
     {
-        public string? UrlPathSegment => "profile";
-        public IScreen HostScreen { get; }
+        
 
         private readonly IUserService _userService;
         private readonly IAuthService _authService;
-        private readonly IStatusService _statusService;
+        private readonly IFileService _fileService;
 
         /// <summary>
         /// Имя пользователя
@@ -66,41 +69,64 @@ namespace ViridiscaUi.ViewModels.Profile
         /// <summary>
         /// Команда для сохранения изменений профиля
         /// </summary>
-        public ReactiveCommand<Unit, Unit> SaveProfileCommand { get; }
+        public ReactiveCommand<Unit, Unit> SaveProfileCommand { get; private set; } = null!;
 
         /// <summary>
         /// Команда для изменения изображения профиля
         /// </summary>
-        public ReactiveCommand<Unit, Unit> ChangeProfileImageCommand { get; }
+        public ReactiveCommand<Unit, Unit> ChangeProfileImageCommand { get; private set; } = null!;
 
         public ProfileViewModel(
-            IScreen screen,
+            IScreen hostScreen,
             IUserService userService,
             IAuthService authService,
-            IStatusService statusService)
+            IFileService fileService) : base(hostScreen)
         {
             _userService = userService ?? throw new ArgumentNullException(nameof(userService));
             _authService = authService ?? throw new ArgumentNullException(nameof(authService));
-            _statusService = statusService ?? throw new ArgumentNullException(nameof(statusService));
-            HostScreen = screen ?? throw new ArgumentNullException(nameof(screen));
+            _fileService = fileService ?? throw new ArgumentNullException(nameof(fileService));
 
-            // Инициализация команд
-            SaveProfileCommand = ReactiveCommand.CreateFromTask(SaveProfileAsync);
-            ChangeProfileImageCommand = ReactiveCommand.CreateFromTask(ChangeProfileImageAsync);
+            InitializeCommands();
+            
+            LogInfo("ProfileViewModel initialized");
+        }
 
-            // Загрузка данных профиля
-            LoadProfileData();
+        #region Lifecycle Methods
+
+        /// <summary>
+        /// Вызывается при первой загрузке ViewModel
+        /// </summary>
+        protected override async Task OnFirstTimeLoadedAsync()
+        {
+            await LoadProfileDataAsync();
+        }
+
+        #endregion
+
+        #region Private Methods
+
+        /// <summary>
+        /// Инициализирует команды
+        /// </summary>
+        private void InitializeCommands()
+        {
+            // Используем стандартизированные методы создания команд из ViewModelBase
+            SaveProfileCommand = CreateCommand(SaveProfileAsync, null, "Ошибка сохранения профиля");
+            ChangeProfileImageCommand = CreateCommand(ChangeProfileImageAsync, null, "Ошибка изменения изображения профиля");
         }
 
         /// <summary>
         /// Загружает данные профиля пользователя
         /// </summary>
-        private async void LoadProfileData()
+        private async Task LoadProfileDataAsync()
         {
+            LogInfo("Loading profile data");
+            
             var currentUser = await _authService.GetCurrentUserAsync();
             if (currentUser == null)
             {
-                _statusService.ShowError("Не удалось загрузить данные профиля", "ProfileViewModel");
+                ShowError("Не удалось загрузить данные профиля");
+                LogWarning("Failed to load current user data");
                 return;
             }
 
@@ -111,6 +137,8 @@ namespace ViridiscaUi.ViewModels.Profile
             ProfileImageUrl = currentUser.ProfileImageUrl;
             Email = currentUser.Email;
             Role = currentUser.Role?.Name ?? "Не назначена";
+            
+            LogInfo("Profile data loaded successfully for user: {Email}", currentUser.Email);
         }
 
         /// <summary>
@@ -118,34 +146,32 @@ namespace ViridiscaUi.ViewModels.Profile
         /// </summary>
         private async Task SaveProfileAsync()
         {
-            try
+            LogInfo("Saving profile changes");
+            
+            var currentUser = await _authService.GetCurrentUserAsync();
+            if (currentUser == null)
             {
-                var currentUser = await _authService.GetCurrentUserAsync();
-                if (currentUser == null)
-                {
-                    _statusService.ShowError("Не удалось получить данные пользователя", "ProfileViewModel");
-                    return;
-                }
-
-                // Обновляем данные пользователя
-                currentUser.FirstName = FirstName;
-                currentUser.LastName = LastName;
-                currentUser.MiddleName = MiddleName;
-                currentUser.PhoneNumber = PhoneNumber;
-
-                var success = await _userService.UpdateUserAsync(currentUser);
-                if (success)
-                {
-                    _statusService.ShowInfo("Профиль успешно обновлен", "ProfileViewModel");
-                }
-                else
-                {
-                    _statusService.ShowError("Не удалось обновить профиль", "ProfileViewModel");
-                }
+                ShowError("Не удалось получить данные пользователя");
+                LogWarning("Failed to get current user for profile update");
+                return;
             }
-            catch (Exception ex)
+
+            // Обновляем данные пользователя
+            currentUser.FirstName = FirstName;
+            currentUser.LastName = LastName;
+            currentUser.MiddleName = MiddleName;
+            currentUser.PhoneNumber = PhoneNumber;
+
+            var success = await _userService.UpdateUserAsync(currentUser);
+            if (success)
             {
-                _statusService.ShowError($"Произошла ошибка при обновлении профиля: {ex.Message}", "ProfileViewModel");
+                ShowSuccess("Профиль успешно обновлен");
+                LogInfo("Profile updated successfully for user: {Email}", currentUser.Email);
+            }
+            else
+            {
+                ShowError("Не удалось обновить профиль");
+                LogWarning("Failed to update profile for user: {Email}", currentUser.Email);
             }
         }
 
@@ -154,22 +180,21 @@ namespace ViridiscaUi.ViewModels.Profile
         /// </summary>
         private async Task ChangeProfileImageAsync()
         {
-            try
+            LogInfo("Changing profile image");
+            
+            var currentUser = await _authService.GetCurrentUserAsync();
+            if (currentUser == null)
             {
-                var currentUser = await _authService.GetCurrentUserAsync();
-                if (currentUser == null)
-                {
-                    _statusService.ShowError("Не удалось получить данные пользователя", "ProfileViewModel");
-                    return;
-                }
+                ShowError("Не удалось получить данные пользователя");
+                LogWarning("Failed to get current user for image change");
+                return;
+            }
 
-                // TODO: Реализовать выбор и загрузку изображения
-                _statusService.ShowInfo("Функция изменения изображения профиля будет доступна в следующем обновлении", "ProfileViewModel");
-            }
-            catch (Exception ex)
-            {
-                _statusService.ShowError($"Произошла ошибка при изменении изображения: {ex.Message}", "ProfileViewModel");
-            }
+            // TODO: Реализовать выбор и загрузку изображения
+            ShowInfo("Функция изменения изображения профиля будет доступна в следующем обновлении");
+            LogInfo("Profile image change requested for user: {Email}", currentUser.Email);
         }
+
+        #endregion
     }
 } 

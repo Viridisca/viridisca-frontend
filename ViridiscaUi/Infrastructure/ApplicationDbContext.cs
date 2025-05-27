@@ -4,7 +4,6 @@ using ViridiscaUi.Domain.Models.Auth;
 using ViridiscaUi.Domain.Models.Education;
 using ViridiscaUi.Domain.Models.System;
 using System.Collections.Generic;
-using System.Text.Json;
 
 namespace ViridiscaUi.Infrastructure;
 
@@ -50,7 +49,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<StudentParent> StudentParents { get; set; } = null!;
     public DbSet<TeacherSubject> TeacherSubjects { get; set; } = null!;
     public DbSet<TeacherGroup> TeacherGroups { get; set; } = null!;
-    public DbSet<LessonDetail> LessonDetails { get; set; } = null!;
+    public DbSet<LessonDetail> LessonDetails { get; set; } = null!; 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -808,13 +807,13 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(e => e.PushNotifications).HasDefaultValue(true);
             entity.Property(e => e.SmsNotifications).HasDefaultValue(false);
             entity.Property(e => e.WeekendNotifications).HasDefaultValue(false);
-            entity.Property(e => e.MinimumPriority).HasConversion<int>().HasDefaultValue(NotificationPriority.Low);
+            entity.Property(e => e.MinimumPriority).HasConversion<int>().HasDefaultValue(ViridiscaUi.Domain.Models.System.NotificationPriority.Low);
             
             // Сериализуем TypeSettings в JSON для хранения в БД
             entity.Property(e => e.TypeSettings)
                 .HasConversion(
                     v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
-                    v => System.Text.Json.JsonSerializer.Deserialize<Dictionary<NotificationType, bool>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new Dictionary<NotificationType, bool>())
+                    v => System.Text.Json.JsonSerializer.Deserialize<Dictionary<ViridiscaUi.Domain.Models.System.NotificationType, bool>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new Dictionary<ViridiscaUi.Domain.Models.System.NotificationType, bool>())
                 .HasColumnType("text");
             
             // Сериализуем CategorySettings в JSON для хранения в БД

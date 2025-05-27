@@ -14,8 +14,8 @@ namespace ViridiscaUi.Services.Implementations;
 /// </summary>
 public class StatusService : ReactiveObject, IStatusService
 {
+    private readonly ObservableCollection<StatusMessage> _messages = [];
     private readonly ILogger<StatusService> _logger;
-    private readonly ObservableCollection<StatusMessage> _messages = new();
     private readonly Timer _messageTimer;
     private StatusMessage? _currentMessage;
     private int _maxMessagesCount = 500;

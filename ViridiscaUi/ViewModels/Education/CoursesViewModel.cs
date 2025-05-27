@@ -2,15 +2,16 @@ using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
-using Splat;
 using ViridiscaUi.Domain.Models.Education;
 using ViridiscaUi.Services.Interfaces;
 using ViridiscaUi.ViewModels;
-using ViridiscaUi.ViewModels.Education;
+using ViridiscaUi.Infrastructure;
+using ViridiscaUi.Infrastructure.Navigation;
 using Avalonia.Media;
 using Avalonia.Media.Immutable;
 using CourseStatus = ViridiscaUi.Domain.Models.Education.CourseStatus;
@@ -20,12 +21,11 @@ namespace ViridiscaUi.ViewModels.Education
 {
     /// <summary>
     /// ViewModel для управления курсами
+    /// Следует принципам SOLID и чистой архитектуры
     /// </summary>
-    public class CoursesViewModel : ViewModelBase, IRoutableViewModel
-    {
-        public string? UrlPathSegment => "courses";
-        public IScreen HostScreen { get; }
-
+    [Route("courses", DisplayName = "Курсы", IconKey = "Course", Order = 2, Group = "Education")]
+    public class CoursesViewModel : RoutableViewModelBase
+    { 
         private readonly ICourseService _courseService;
         private readonly IStudentService _studentService;
         private readonly ITeacherService _teacherService;
@@ -33,9 +33,6 @@ namespace ViridiscaUi.ViewModels.Education
         private readonly IDialogService _dialogService;
         private readonly IStatusService _statusService;
         private readonly INotificationService _notificationService;
-        private readonly IServiceProvider _serviceProvider;
-        private readonly IExportService _exportService;
-        private readonly IImportService _importService;
 
         // === СВОЙСТВА ===
         
@@ -68,297 +65,294 @@ namespace ViridiscaUi.ViewModels.Education
 
         // === КОМАНДЫ ===
         
-        public ReactiveCommand<Unit, Unit> LoadCoursesCommand { get; }
-        public ReactiveCommand<Unit, Unit> RefreshCommand { get; }
-        public ReactiveCommand<Unit, Unit> CreateCourseCommand { get; }
-        public ReactiveCommand<CourseViewModel, Unit> EditCourseCommand { get; }
-        public ReactiveCommand<CourseViewModel, Unit> DeleteCourseCommand { get; }
-        public ReactiveCommand<CourseViewModel, Unit> ViewCourseDetailsCommand { get; }
-        public ReactiveCommand<CourseViewModel, Unit> LoadCourseStatisticsCommand { get; }
-        public ReactiveCommand<CourseViewModel, Unit> PublishCourseCommand { get; }
-        public ReactiveCommand<CourseViewModel, Unit> ArchiveCourseCommand { get; }
-        public ReactiveCommand<CourseViewModel, Unit> ManageEnrollmentsCommand { get; }
-        public ReactiveCommand<CourseViewModel, Unit> BulkEnrollGroupCommand { get; }
-        public ReactiveCommand<string, Unit> SearchCommand { get; }
-        public ReactiveCommand<Unit, Unit> ApplyFiltersCommand { get; }
-        public ReactiveCommand<Unit, Unit> ClearFiltersCommand { get; }
-        public ReactiveCommand<int, Unit> GoToPageCommand { get; }
-        public ReactiveCommand<Unit, Unit> NextPageCommand { get; }
-        public ReactiveCommand<Unit, Unit> PreviousPageCommand { get; }
-        public ReactiveCommand<CourseViewModel, Unit> ManageContentCommand { get; }
-        public ReactiveCommand<CourseViewModel, Unit> ManageStudentsCommand { get; }
-        public ReactiveCommand<CourseViewModel, Unit> ViewStatisticsCommand { get; }
-        public ReactiveCommand<CourseViewModel, Unit> CloneCourseCommand { get; }
-        public ReactiveCommand<Unit, Unit> ImportCoursesCommand { get; }
-        public ReactiveCommand<Unit, Unit> ExportReportCommand { get; }
+        public ReactiveCommand<Unit, Unit> LoadCoursesCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> RefreshCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> CreateCourseCommand { get; private set; } = null!;
+        public ReactiveCommand<CourseViewModel, Unit> EditCourseCommand { get; private set; } = null!;
+        public ReactiveCommand<CourseViewModel, Unit> DeleteCourseCommand { get; private set; } = null!;
+        public ReactiveCommand<CourseViewModel, Unit> ViewCourseDetailsCommand { get; private set; } = null!;
+        public ReactiveCommand<CourseViewModel, Unit> LoadCourseStatisticsCommand { get; private set; } = null!;
+        public ReactiveCommand<CourseViewModel, Unit> PublishCourseCommand { get; private set; } = null!;
+        public ReactiveCommand<CourseViewModel, Unit> ArchiveCourseCommand { get; private set; } = null!;
+        public ReactiveCommand<CourseViewModel, Unit> ManageEnrollmentsCommand { get; private set; } = null!;
+        public ReactiveCommand<CourseViewModel, Unit> BulkEnrollGroupCommand { get; private set; } = null!;
+        public ReactiveCommand<string, Unit> SearchCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> ApplyFiltersCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> ClearFiltersCommand { get; private set; } = null!;
+        public ReactiveCommand<int, Unit> GoToPageCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> NextPageCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> PreviousPageCommand { get; private set; } = null!;
+        public ReactiveCommand<CourseViewModel, Unit> ManageContentCommand { get; private set; } = null!;
+        public ReactiveCommand<CourseViewModel, Unit> ManageStudentsCommand { get; private set; } = null!;
+        public ReactiveCommand<CourseViewModel, Unit> ViewStatisticsCommand { get; private set; } = null!;
+        public ReactiveCommand<CourseViewModel, Unit> CloneCourseCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> ImportCoursesCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> ExportReportCommand { get; private set; } = null!;
 
         /// <summary>
         /// Конструктор
         /// </summary>
         public CoursesViewModel(
+            IScreen hostScreen,
             ICourseService courseService,
-            IStudentService studentService,
             ITeacherService teacherService,
+            IStudentService studentService,
             IGroupService groupService,
             IDialogService dialogService,
             IStatusService statusService,
-            INotificationService notificationService,
-            IServiceProvider serviceProvider,
-            IExportService exportService,
-            IImportService importService,
-            IScreen hostScreen)
+            INotificationService notificationService) : base(hostScreen)
         {
-            _courseService = courseService;
-            _studentService = studentService;
-            _teacherService = teacherService;
-            _groupService = groupService;
-            _dialogService = dialogService;
-            _statusService = statusService;
-            _notificationService = notificationService;
-            _serviceProvider = serviceProvider;
-            _exportService = exportService;
-            _importService = importService;
-            HostScreen = hostScreen;
+            _courseService = courseService ?? throw new ArgumentNullException(nameof(courseService));
+            _teacherService = teacherService ?? throw new ArgumentNullException(nameof(teacherService));
+            _studentService = studentService ?? throw new ArgumentNullException(nameof(studentService));
+            _groupService = groupService ?? throw new ArgumentNullException(nameof(groupService));
+            _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
+            _statusService = statusService ?? throw new ArgumentNullException(nameof(statusService));
+            _notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
 
-            // === ИНИЦИАЛИЗАЦИЯ КОМАНД ===
+            InitializeCommands();
+            SetupSubscriptions();
+            
+            LogInfo("CoursesViewModel initialized");
+        }
 
-            LoadCoursesCommand = ReactiveCommand.CreateFromTask(LoadCoursesAsync);
-            RefreshCommand = ReactiveCommand.CreateFromTask(RefreshAsync);
-            CreateCourseCommand = ReactiveCommand.CreateFromTask(CreateCourseAsync);
-            EditCourseCommand = ReactiveCommand.CreateFromTask<CourseViewModel>(EditCourseAsync);
-            DeleteCourseCommand = ReactiveCommand.CreateFromTask<CourseViewModel>(DeleteCourseAsync);
-            ViewCourseDetailsCommand = ReactiveCommand.CreateFromTask<CourseViewModel>(ViewCourseDetailsAsync);
-            LoadCourseStatisticsCommand = ReactiveCommand.CreateFromTask<CourseViewModel>(LoadCourseStatisticsAsync);
-            PublishCourseCommand = ReactiveCommand.CreateFromTask<CourseViewModel>(PublishCourseAsync);
-            ArchiveCourseCommand = ReactiveCommand.CreateFromTask<CourseViewModel>(ArchiveCourseAsync);
-            ManageEnrollmentsCommand = ReactiveCommand.CreateFromTask<CourseViewModel>(ManageEnrollmentsAsync);
-            BulkEnrollGroupCommand = ReactiveCommand.CreateFromTask<CourseViewModel>(BulkEnrollGroupAsync);
-            SearchCommand = ReactiveCommand.CreateFromTask<string>(SearchCoursesAsync);
-            ApplyFiltersCommand = ReactiveCommand.CreateFromTask(ApplyFiltersAsync);
-            ClearFiltersCommand = ReactiveCommand.CreateFromTask(ClearFiltersAsync);
-            GoToPageCommand = ReactiveCommand.CreateFromTask<int>(GoToPageAsync);
-            NextPageCommand = ReactiveCommand.CreateFromTask(NextPageAsync, this.WhenAnyValue(x => x.CurrentPage, x => x.TotalPages, (current, total) => current < total));
-            PreviousPageCommand = ReactiveCommand.CreateFromTask(PreviousPageAsync, this.WhenAnyValue(x => x.CurrentPage, current => current > 1));
-            ManageContentCommand = ReactiveCommand.CreateFromTask<CourseViewModel>(ManageContentAsync);
-            ManageStudentsCommand = ReactiveCommand.CreateFromTask<CourseViewModel>(ManageStudentsAsync);
-            ViewStatisticsCommand = ReactiveCommand.CreateFromTask<CourseViewModel>(ViewStatisticsAsync);
-            CloneCourseCommand = ReactiveCommand.CreateFromTask<CourseViewModel>(CloneCourseAsync);
-            ImportCoursesCommand = ReactiveCommand.CreateFromTask(ImportCoursesAsync);
-            ExportReportCommand = ReactiveCommand.CreateFromTask(ExportReportAsync);
+        #region Private Methods
 
-            // === ПОДПИСКИ ===
+        /// <summary>
+        /// Инициализирует команды
+        /// </summary>
+        private void InitializeCommands()
+        {
+            // Используем стандартизированные методы создания команд из ViewModelBase
+            LoadCoursesCommand = CreateCommand(LoadCoursesAsync, null, "Ошибка загрузки курсов");
+            RefreshCommand = CreateCommand(RefreshAsync, null, "Ошибка обновления данных");
+            CreateCourseCommand = CreateCommand(CreateCourseAsync, null, "Ошибка создания курса");
+            EditCourseCommand = CreateCommand<CourseViewModel>(EditCourseAsync, null, "Ошибка редактирования курса");
+            DeleteCourseCommand = CreateCommand<CourseViewModel>(DeleteCourseAsync, null, "Ошибка удаления курса");
+            ViewCourseDetailsCommand = CreateCommand<CourseViewModel>(ViewCourseDetailsAsync, null, "Ошибка просмотра деталей курса");
+            LoadCourseStatisticsCommand = CreateCommand<CourseViewModel>(LoadCourseStatisticsAsync, null, "Ошибка загрузки статистики");
+            PublishCourseCommand = CreateCommand<CourseViewModel>(PublishCourseAsync, null, "Ошибка публикации курса");
+            ArchiveCourseCommand = CreateCommand<CourseViewModel>(ArchiveCourseAsync, null, "Ошибка архивирования курса");
+            ManageEnrollmentsCommand = CreateCommand<CourseViewModel>(ManageEnrollmentsAsync, null, "Ошибка управления записями");
+            BulkEnrollGroupCommand = CreateCommand<CourseViewModel>(BulkEnrollGroupAsync, null, "Ошибка массовой записи группы");
+            SearchCommand = CreateCommand<string>(SearchCoursesAsync, null, "Ошибка поиска курсов");
+            ApplyFiltersCommand = CreateCommand(ApplyFiltersAsync, null, "Ошибка применения фильтров");
+            ClearFiltersCommand = CreateCommand(ClearFiltersAsync, null, "Ошибка очистки фильтров");
+            GoToPageCommand = CreateCommand<int>(GoToPageAsync, null, "Ошибка навигации по страницам");
+            
+            var canGoNext = this.WhenAnyValue(x => x.CurrentPage, x => x.TotalPages, (current, total) => current < total);
+            var canGoPrevious = this.WhenAnyValue(x => x.CurrentPage, current => current > 1);
+            
+            NextPageCommand = CreateCommand(NextPageAsync, canGoNext, "Ошибка перехода на следующую страницу");
+            PreviousPageCommand = CreateCommand(PreviousPageAsync, canGoPrevious, "Ошибка перехода на предыдущую страницу");
+            ManageContentCommand = CreateCommand<CourseViewModel>(ManageContentAsync, null, "Ошибка управления контентом");
+            ManageStudentsCommand = CreateCommand<CourseViewModel>(ManageStudentsAsync, null, "Ошибка управления студентами");
+            ViewStatisticsCommand = CreateCommand<CourseViewModel>(ViewStatisticsAsync, null, "Ошибка просмотра статистики");
+            CloneCourseCommand = CreateCommand<CourseViewModel>(CloneCourseAsync, null, "Ошибка клонирования курса");
+            ImportCoursesCommand = CreateCommand(ImportCoursesAsync, null, "Ошибка импорта курсов");
+            ExportReportCommand = CreateCommand(ExportReportAsync, null, "Ошибка экспорта отчета");
+        }
 
+        /// <summary>
+        /// Настраивает подписки на изменения свойств
+        /// </summary>
+        private void SetupSubscriptions()
+        {
             // Автопоиск при изменении текста поиска
             this.WhenAnyValue(x => x.SearchText)
                 .Throttle(TimeSpan.FromMilliseconds(500))
                 .ObserveOn(RxApp.MainThreadScheduler)
-                .InvokeCommand(SearchCommand);
+                .InvokeCommand(SearchCommand)
+                .DisposeWith(Disposables);
 
             // Загрузка статистики при выборе курса
             this.WhenAnyValue(x => x.SelectedCourse)
                 .Where(course => course != null)
                 .Select(course => course!)
-                .InvokeCommand(LoadCourseStatisticsCommand);
+                .InvokeCommand(LoadCourseStatisticsCommand)
+                .DisposeWith(Disposables);
 
             // Применение фильтров при изменении
             this.WhenAnyValue(x => x.CategoryFilter, x => x.StatusFilter, x => x.DifficultyFilter)
                 .Throttle(TimeSpan.FromMilliseconds(300))
                 .ObserveOn(RxApp.MainThreadScheduler)
                 .Select(_ => Unit.Default)
-                .InvokeCommand(ApplyFiltersCommand);
+                .InvokeCommand(ApplyFiltersCommand)
+                .DisposeWith(Disposables);
 
             // Уведомления об изменении computed properties
             this.WhenAnyValue(x => x.SelectedCourse)
-                .Subscribe(_ => this.RaisePropertyChanged(nameof(HasSelectedCourse)));
+                .Subscribe(_ => this.RaisePropertyChanged(nameof(HasSelectedCourse)))
+                .DisposeWith(Disposables);
                 
             this.WhenAnyValue(x => x.SelectedCourseStatistics)
-                .Subscribe(_ => this.RaisePropertyChanged(nameof(HasSelectedCourseStatistics)));
+                .Subscribe(_ => this.RaisePropertyChanged(nameof(HasSelectedCourseStatistics)))
+                .DisposeWith(Disposables);
 
             this.WhenAnyValue(x => x.CurrentPage, x => x.TotalPages)
                 .Subscribe(_ => 
                 {
                     this.RaisePropertyChanged(nameof(CanGoToPreviousPage));
                     this.RaisePropertyChanged(nameof(CanGoToNextPage));
-                });
-
-            // Первоначальная загрузка
-            LoadTeachersAsync();
-            LoadCoursesCommand.Execute().Subscribe();
+                })
+                .DisposeWith(Disposables);
         }
-
-        // === МЕТОДЫ КОМАНД ===
 
         private async Task LoadCoursesAsync()
         {
-            try
-            {
-                IsLoading = true;
-                _statusService.ShowInfo("Загрузка курсов...", "Курсы");
+            LogInfo("Loading courses with filters: SearchText={SearchText}, CategoryFilter={CategoryFilter}, StatusFilter={StatusFilter}", SearchText, CategoryFilter, StatusFilter);
+            
+            IsLoading = true;
+            ShowInfo("Загрузка курсов...");
 
-                var teacherFilter = SelectedTeacherFilter?.Uid;
-                var (courses, totalCount) = await _courseService.GetCoursesPagedAsync(
-                    CurrentPage, PageSize, SearchText, CategoryFilter, StatusFilter, DifficultyFilter, teacherFilter);
-                
-                Courses.Clear();
-                foreach (var course in courses)
-                {
-                    Courses.Add(new CourseViewModel(course));
-                }
-
-                TotalCourses = totalCount;
-                TotalPages = (int)Math.Ceiling((double)totalCount / PageSize);
-                ActiveCourses = courses.Count(c => c.Status == CourseStatus.Active);
-
-                _statusService.ShowSuccess($"Загружено {Courses.Count} курсов", "Курсы");
-            }
-            catch (Exception ex)
+            var teacherFilter = SelectedTeacherFilter?.Uid;
+            var (courses, totalCount) = await _courseService.GetCoursesPagedAsync(
+                CurrentPage, PageSize, SearchText, CategoryFilter, StatusFilter, DifficultyFilter, teacherFilter);
+            
+            Courses.Clear();
+            foreach (var course in courses)
             {
-                _statusService.ShowError($"Ошибка загрузки курсов: {ex.Message}", "Курсы");
+                Courses.Add(new CourseViewModel(course));
             }
-            finally
-            {
-                IsLoading = false;
-            }
+
+            TotalCourses = totalCount;
+            TotalPages = (int)Math.Ceiling((double)totalCount / PageSize);
+            ActiveCourses = courses.Count(c => c.Status == CourseStatus.Active);
+
+            ShowSuccess($"Загружено {Courses.Count} курсов");
+            LogInfo("Loaded {CourseCount} courses, total: {TotalCount}", Courses.Count, totalCount);
+            
+            IsLoading = false;
         }
 
         private async Task LoadTeachersAsync()
         {
-            try
+            LogInfo("Loading teachers for filter");
+            
+            var teachers = await _teacherService.GetTeachersAsync();
+            Teachers.Clear();
+            foreach (var teacher in teachers)
             {
-                var teachers = await _teacherService.GetTeachersAsync();
-                Teachers.Clear();
-                foreach (var teacher in teachers)
-                {
-                    Teachers.Add(new TeacherViewModel(teacher));
-                }
+                Teachers.Add(new TeacherViewModel(teacher));
             }
-            catch (Exception ex)
-            {
-                _statusService.ShowWarning($"Не удалось загрузить список преподавателей: {ex.Message}", "Курсы");
-            }
+            
+            LogInfo("Loaded {TeacherCount} teachers for filter", teachers.Count());
         }
 
         private async Task RefreshAsync()
         {
-            try
-            {
-                IsRefreshing = true;
-                await LoadCoursesAsync();
-            }
-            finally
-            {
-                IsRefreshing = false;
-            }
+            LogInfo("Refreshing courses data");
+            IsRefreshing = true;
+            
+            await LoadCoursesAsync();
+            ShowSuccess("Данные обновлены");
+            
+            IsRefreshing = false;
         }
 
         private async Task CreateCourseAsync()
         {
-            try
+            LogInfo("Creating new course");
+            
+            var newCourse = new Course
             {
-                var newCourse = new Course
-                {
-                    Uid = Guid.NewGuid(),
-                    Name = string.Empty,
-                    Description = string.Empty,
-                    Status = CourseStatus.Draft,
-                    StartDate = DateTime.Today,
-                    EndDate = DateTime.Today.AddMonths(3),
-                    Credits = 3
-                };
+                Uid = Guid.NewGuid(),
+                Name = string.Empty,
+                Description = string.Empty,
+                Status = CourseStatus.Draft,
+                StartDate = DateTime.Today,
+                EndDate = DateTime.Today.AddMonths(3),
+                Credits = 3
+            };
 
-                var dialogResult = await _dialogService.ShowCourseEditDialogAsync(newCourse);
-                if (dialogResult == null) return;
-
-                await _courseService.AddCourseAsync(dialogResult);
-                Courses.Add(new CourseViewModel(dialogResult));
-
-                _statusService.ShowSuccess($"Курс '{dialogResult.Name}' создан", "Курсы");
-                
-                // Уведомление преподавателю
-                if (dialogResult.TeacherUid.HasValue)
-                {
-                    await _notificationService.CreateNotificationAsync(
-                        dialogResult.TeacherUid.Value,
-                        "Назначение на курс",
-                        $"Вы назначены преподавателем курса '{dialogResult.Name}'",
-                        NotificationType.Info);
-                }
+            var dialogResult = await _dialogService.ShowCourseEditDialogAsync(newCourse);
+            if (dialogResult == null)
+            {
+                LogDebug("Course creation cancelled by user");
+                return;
             }
-            catch (Exception ex)
+
+            await _courseService.AddCourseAsync(dialogResult);
+            Courses.Add(new CourseViewModel(dialogResult));
+
+            ShowSuccess($"Курс '{dialogResult.Name}' создан");
+            LogInfo("Course created successfully: {CourseName}", dialogResult.Name);
+            
+            // Уведомление преподавателю
+            if (dialogResult.TeacherUid.HasValue)
             {
-                _statusService.ShowError($"Ошибка создания курса: {ex.Message}", "Курсы");
+                await _notificationService.CreateNotificationAsync(
+                    dialogResult.TeacherUid.Value,
+                    "Назначение на курс",
+                    $"Вы назначены преподавателем курса '{dialogResult.Name}'",
+                    Domain.Models.System.NotificationType.Info);
             }
         }
 
         private async Task EditCourseAsync(CourseViewModel courseViewModel)
         {
-            try
+            LogInfo("Editing course: {CourseId}", courseViewModel.Uid);
+            
+            var dialogResult = await _dialogService.ShowCourseEditDialogAsync(courseViewModel.ToCourse());
+            if (dialogResult == null)
             {
-                var dialogResult = await _dialogService.ShowCourseEditDialogAsync(courseViewModel.ToCourse());
-                if (dialogResult == null) return;
-
-                var success = await _courseService.UpdateCourseAsync(dialogResult);
-                if (success)
-                {
-                    var index = Courses.IndexOf(courseViewModel);
-                    if (index >= 0)
-                    {
-                        Courses[index] = new CourseViewModel(dialogResult);
-                    }
-
-                    _statusService.ShowSuccess($"Курс '{dialogResult.Name}' обновлен", "Курсы");
-                }
-                else
-                {
-                    _statusService.ShowError("Не удалось обновить курс", "Курсы");
-                }
+                LogDebug("Course editing cancelled by user");
+                return;
             }
-            catch (Exception ex)
+
+            var success = await _courseService.UpdateCourseAsync(dialogResult);
+            if (success)
             {
-                _statusService.ShowError($"Ошибка обновления курса: {ex.Message}", "Курсы");
+                var index = Courses.IndexOf(courseViewModel);
+                if (index >= 0)
+                {
+                    Courses[index] = new CourseViewModel(dialogResult);
+                }
+
+                ShowSuccess($"Курс '{dialogResult.Name}' обновлен");
+                LogInfo("Course updated successfully: {CourseName}", dialogResult.Name);
+            }
+            else
+            {
+                ShowError("Не удалось обновить курс");
             }
         }
 
         private async Task DeleteCourseAsync(CourseViewModel courseViewModel)
         {
-            try
+            LogInfo("Deleting course: {CourseId}", courseViewModel.Uid);
+            
+            var confirmResult = await _dialogService.ShowConfirmationAsync(
+                "Удаление курса",
+                $"Вы уверены, что хотите удалить курс '{courseViewModel.Name}'?\nВсе связанные данные будут утеряны.");
+
+            if (!confirmResult)
             {
-                var confirmResult = await _dialogService.ShowConfirmationAsync(
-                    "Удаление курса",
-                    $"Вы уверены, что хотите удалить курс '{courseViewModel.Name}'?\nВсе связанные данные будут утеряны.");
-
-                if (!confirmResult) return;
-
-                var success = await _courseService.DeleteCourseAsync(courseViewModel.Uid);
-                if (success)
-                {
-                    Courses.Remove(courseViewModel);
-                    _statusService.ShowSuccess($"Курс '{courseViewModel.Name}' удален", "Курсы");
-                }
-                else
-                {
-                    _statusService.ShowError("Не удалось удалить курс", "Курсы");
-                }
+                LogDebug("Course deletion cancelled by user");
+                return;
             }
-            catch (Exception ex)
+
+            var success = await _courseService.DeleteCourseAsync(courseViewModel.Uid);
+            if (success)
             {
-                _statusService.ShowError($"Ошибка удаления курса: {ex.Message}", "Курсы");
+                Courses.Remove(courseViewModel);
+                ShowSuccess($"Курс '{courseViewModel.Name}' удален");
+                LogInfo("Course deleted successfully: {CourseName}", courseViewModel.Name);
+            }
+            else
+            {
+                ShowError("Не удалось удалить курс");
             }
         }
 
         private async Task ViewCourseDetailsAsync(CourseViewModel courseViewModel)
         {
-            try
-            {
-                SelectedCourse = courseViewModel;
-                await LoadCourseStatisticsAsync(courseViewModel);
-                
-                _statusService.ShowInfo($"Просмотр курса '{courseViewModel.Name}'", "Курсы");
-            }
-            catch (Exception ex)
-            {
-                _statusService.ShowError($"Ошибка отображения деталей курса: {ex.Message}", "Курсы");
-            }
+            LogInfo("Viewing course details: {CourseId}", courseViewModel.Uid);
+            
+            SelectedCourse = courseViewModel;
+            await LoadCourseStatisticsAsync(courseViewModel);
+            
+            ShowInfo($"Просмотр курса '{courseViewModel.Name}'");
         }
 
         private async Task LoadCourseStatisticsAsync(CourseViewModel courseViewModel)
@@ -388,7 +382,7 @@ namespace ViridiscaUi.ViewModels.Education
                         "Student",
                         "Новый курс доступен",
                         $"Опубликован новый курс '{courseViewModel.Name}'. Вы можете зарегистрироваться на него.",
-                        NotificationType.Info);
+                        Domain.Models.System.NotificationType.Info);
                 }
                 else
                 {
@@ -472,7 +466,7 @@ namespace ViridiscaUi.ViewModels.Education
                             studentUid,
                             "Запись на курс",
                             $"Вы записаны на курс '{courseViewModel.Name}'",
-                            NotificationType.Info);
+                            Domain.Models.System.NotificationType.Info);
                     }
                 }
                 else
@@ -651,21 +645,14 @@ namespace ViridiscaUi.ViewModels.Education
 
                 if (!string.IsNullOrEmpty(filePath))
                 {
-                    var importedCourses = await _importService.ImportCoursesAsync(filePath);
-                    if (importedCourses?.Any() == true)
-                    {
-                        await RefreshAsync();
-                        _statusService.ShowSuccess($"Импортировано {importedCourses.Count()} курсов", "Импорт");
-                        
-                        await _notificationService.SendNotificationAsync(
-                            "Курсы импортированы",
-                            $"Успешно импортировано {importedCourses.Count()} курсов",
-                            Domain.Models.System.NotificationType.Info);
-                    }
-                    else
-                    {
-                        _statusService.ShowWarning("Не удалось импортировать курсы", "Импорт");
-                    }
+                    // Заглушка - в реальной реализации здесь будет импорт курсов
+                    ShowInfo($"Импорт курсов из файла: {filePath}");
+                    LogInfo("Import courses requested from file: {FilePath}", filePath);
+                    
+                    await _notificationService.SendNotificationAsync(
+                        "Импорт курсов",
+                        "Функция импорта курсов будет реализована позже",
+                        Domain.Models.System.NotificationType.Info);
                 }
             }
             catch (Exception ex)
@@ -683,17 +670,31 @@ namespace ViridiscaUi.ViewModels.Education
                     StatusFilter,
                     DifficultyFilter);
 
-                var filePath = await _exportService.ExportCoursesToExcelAsync(courses, "Отчет по курсам");
-                if (!string.IsNullOrEmpty(filePath))
-                {
-                    _statusService.ShowSuccess($"Отчет экспортирован: {filePath}", "Экспорт");
-                }
+                // Заглушка - в реальной реализации здесь будет экспорт в Excel
+                _statusService.ShowInfo($"Экспорт отчета: {courses.Count()} курсов готовы к экспорту", "Экспорт");
+                LogInfo("Export report requested for {CourseCount} courses", courses.Count());
             }
             catch (Exception ex)
             {
                 _statusService.ShowError($"Ошибка экспорта отчета: {ex.Message}", "Экспорт");
             }
         }
+
+        #endregion
+
+        #region Lifecycle Methods
+
+        protected override async Task OnFirstTimeLoadedAsync()
+        {
+            await base.OnFirstTimeLoadedAsync();
+            LogInfo("CoursesViewModel loaded for the first time");
+            
+            // Load teachers and courses when view is loaded for the first time
+            await ExecuteWithErrorHandlingAsync(LoadTeachersAsync, "Ошибка загрузки списка преподавателей");
+            await LoadCoursesAsync();
+        }
+
+        #endregion
     }
 
     /// <summary>

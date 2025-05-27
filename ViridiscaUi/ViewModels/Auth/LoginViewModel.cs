@@ -1,25 +1,28 @@
-using System;
+﻿using System;
 using System.Reactive;
 using System.Threading.Tasks;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using ViridiscaUi.Services.Interfaces;
 using ViridiscaUi.ViewModels;
+using ViridiscaUi.Infrastructure;
+using ViridiscaUi.Infrastructure.Navigation;
 
 namespace ViridiscaUi.ViewModels.Auth;
 
 /// <summary>
 /// ViewModel для страницы входа в систему
 /// </summary>
+[Route("login", DisplayName = "Вход", IconKey = "🔑", Order = 1, ShowInMenu = false)]
 public class LoginViewModel : RoutableViewModelBase
 {
     private readonly IAuthService _authService;
-    private readonly INavigationService _navigationService;
+    private readonly IUnifiedNavigationService _navigationService;
 
     /// <summary>
     /// URL-сегмент для навигации
     /// </summary>
-    public override string UrlPathSegment => "login";
+    
 
     /// <summary>
     /// Имя пользователя (логин)
@@ -32,12 +35,6 @@ public class LoginViewModel : RoutableViewModelBase
     /// </summary>
     [Reactive]
     public string Password { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Сообщение об ошибке
-    /// </summary>
-    [Reactive]
-    public string ErrorMessage { get; set; } = string.Empty;
 
     /// <summary>
     /// Флаг, указывающий на процесс входа
@@ -61,7 +58,8 @@ public class LoginViewModel : RoutableViewModelBase
     /// <param name="authService">Сервис аутентификации</param>
     /// <param name="navigationService">Сервис навигации</param>
     /// <param name="hostScreen">Родительский экран</param>
-    public LoginViewModel(IAuthService authService, INavigationService navigationService, IScreen hostScreen) 
+    /// <param name="viewModelFactory">Фабрика ViewModel</param>
+    public LoginViewModel(IAuthService authService, IUnifiedNavigationService navigationService, IScreen hostScreen) 
         : base(hostScreen)
     {
         _authService = authService ?? throw new ArgumentNullException(nameof(authService));
@@ -96,7 +94,7 @@ public class LoginViewModel : RoutableViewModelBase
         try
         {
             IsLoggingIn = true;
-            ErrorMessage = string.Empty;
+            ClearError();
 
             var result = await _authService.AuthenticateAsync(Username, Password);
 
@@ -107,12 +105,12 @@ public class LoginViewModel : RoutableViewModelBase
             }
             else
             {
-                ErrorMessage = result.ErrorMessage;
+                SetError(result.ErrorMessage ?? "Ошибка входа в систему");
             }
         }
         catch (Exception ex)
         {
-            ErrorMessage = $"Ошибка входа: {ex.Message}";
+            SetError($"Ошибка входа: {ex.Message}", ex);
         }
         finally
         {

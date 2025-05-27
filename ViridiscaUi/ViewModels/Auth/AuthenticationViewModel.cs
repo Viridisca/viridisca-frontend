@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive;
@@ -10,23 +10,25 @@ using ViridiscaUi.Domain.Models.Auth;
 using ViridiscaUi.Infrastructure;
 using ViridiscaUi.Services.Interfaces;
 using ViridiscaUi.ViewModels;
+using ViridiscaUi.Infrastructure.Navigation;
 
 namespace ViridiscaUi.ViewModels.Auth
 {
     /// <summary>
     /// ViewModel для объединенного представления авторизации (вход + регистрация)
     /// </summary>
+    [Route("auth", 
+        DisplayName = "Авторизация", 
+        IconKey = "🔐", 
+        Order = 0,
+        ShowInMenu = false,
+        Description = "Страница входа и регистрации в системе")]
     public class AuthenticationViewModel : RoutableViewModelBase
     {
         private readonly IAuthService _authService;
-        private readonly INavigationService _navigationService;
+        private readonly IUnifiedNavigationService _navigationService;
         private readonly IRoleService _roleService;
         
-        /// <summary>
-        /// URL-сегмент для навигации
-        /// </summary>
-        public override string UrlPathSegment => "auth";
-
         /// <summary>
         /// Режим регистрации (false = вход, true = регистрация)
         /// </summary>
@@ -76,16 +78,10 @@ namespace ViridiscaUi.ViewModels.Auth
         public Role? SelectedRole { get; set; }
 
         /// <summary>
-        /// Список доступных ролей (для регистрации)
+        /// Доступные роли для регистрации
         /// </summary>
         [Reactive]
         public ObservableCollection<Role> AvailableRoles { get; set; } = new();
-
-        /// <summary>
-        /// Сообщение об ошибке
-        /// </summary>
-        [Reactive]
-        public string? ErrorMessage { get; set; }
 
         /// <summary>
         /// Флаг, указывающий на процесс обработки
@@ -108,47 +104,53 @@ namespace ViridiscaUi.ViewModels.Auth
         /// <summary>
         /// Команда основного действия (вход/регистрация)
         /// </summary>
-        public ReactiveCommand<Unit, Unit> ActionCommand { get; }
+        public ReactiveCommand<Unit, Unit> ActionCommand { get; private set; }
 
         /// <summary>
         /// Команда переключения на режим входа
         /// </summary>
-        public ReactiveCommand<Unit, Unit> SwitchToLoginCommand { get; }
+        public ReactiveCommand<Unit, Unit> SwitchToLoginCommand { get; private set; }
 
         /// <summary>
         /// Команда переключения на режим регистрации
         /// </summary>
-        public ReactiveCommand<Unit, Unit> SwitchToRegisterCommand { get; }
+        public ReactiveCommand<Unit, Unit> SwitchToRegisterCommand { get; private set; }
 
         /// <summary>
         /// Создает новый экземпляр ViewModel для авторизации
         /// </summary>
-        public AuthenticationViewModel(IAuthService authService, INavigationService navigationService, IRoleService roleService, IScreen hostScreen) 
+        public AuthenticationViewModel(IAuthService authService, IUnifiedNavigationService navigationService, IRoleService roleService, IScreen hostScreen) 
             : base(hostScreen)
         {
             _authService = authService ?? throw new ArgumentNullException(nameof(authService));
             _navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
             _roleService = roleService ?? throw new ArgumentNullException(nameof(roleService));
 
+            InitializeCommands();
+            SetupSubscriptions();
+            
+            LogInfo("AuthenticationViewModel initialized");
+        }
+
+        /// <summary>
+        /// Инициализирует команды
+        /// </summary>
+        private void InitializeCommands()
+        {
             // Команды переключения режимов
-            SwitchToLoginCommand = ReactiveCommand.Create(() => 
+            SwitchToLoginCommand = CreateSyncCommand(() => 
             {
                 IsRegistrationMode = false;
                 ClearErrors();
-            });
+            }, null, "Ошибка переключения на режим входа");
 
-            SwitchToRegisterCommand = ReactiveCommand.Create(() => 
+            SwitchToRegisterCommand = CreateSyncCommand(() => 
             {
                 IsRegistrationMode = true;
                 ClearErrors();
                 // Загружаем роли при переключении на режим регистрации
                 _ = LoadRolesAsync();
-            });
-
-            // Динамический текст кнопки действия
-            this.WhenAnyValue(x => x.IsRegistrationMode)
-                .Select(isReg => isReg ? "Зарегистрироваться" : "Войти")
-                .ToPropertyEx(this, x => x.ActionButtonText);
+            }, null, "Ошибка переключения на режим регистрации");
 
             // Проверка возможности выполнения команды действия
             var canExecuteAction = this.WhenAnyValue(
@@ -179,8 +181,19 @@ namespace ViridiscaUi.ViewModels.Auth
                     return true;
                 });
 
-            // Создание команды действия
-            ActionCommand = ReactiveCommand.CreateFromTask(ExecuteActionAsync, canExecuteAction);
+            // Используем стандартизированные методы создания команд из ViewModelBase
+            ActionCommand = CreateCommand(ExecuteActionAsync, canExecuteAction, "Ошибка выполнения действия");
+        }
+
+        /// <summary>
+        /// Настраивает подписки на изменения свойств
+        /// </summary>
+        private void SetupSubscriptions()
+        {
+            // Динамический текст кнопки действия
+            this.WhenAnyValue(x => x.IsRegistrationMode)
+                .Select(isReg => isReg ? "Зарегистрироваться" : "Войти")
+                .ToPropertyEx(this, x => x.ActionButtonText);
         }
 
         /// <summary>
@@ -191,43 +204,44 @@ namespace ViridiscaUi.ViewModels.Auth
             try
             {
                 IsLoadingRoles = true;
-                StatusLogger.LogInfo("Начинаем загрузку ролей...", "AuthenticationViewModel");
+                ShowInfo("Загрузка ролей...");
                 
                 var roles = await _roleService.GetAllRolesAsync();
-                StatusLogger.LogInfo($"Получено ролей: {roles.Count()}", "AuthenticationViewModel");
+                LogInfo("Получено ролей: {RoleCount}", roles.Count());
                 
                 AvailableRoles.Clear();
                 foreach (var role in roles)
                 {
                     AvailableRoles.Add(role);
-                    StatusLogger.LogInfo($"Добавлена роль: {role.Name}", "AuthenticationViewModel");
+                    LogDebug("Добавлена роль: {RoleName}", role.Name);
                 }
 
                 // Устанавливаем роль студента по умолчанию
                 SelectedRole = AvailableRoles.FirstOrDefault(r => r.Name == "Student");
-                StatusLogger.LogInfo($"Роль по умолчанию: {SelectedRole?.Name ?? "null"}", "AuthenticationViewModel");
+                LogInfo("Пользователь по умолчанию: {DefaultRole}", SelectedRole?.Name ?? "null");
+                ShowSuccess("Роли загружены успешно");
             }
             catch (Exception ex)
             {
-                StatusLogger.LogError($"Ошибка загрузки ролей: {ex.Message}", "AuthenticationViewModel");
-                ErrorMessage = $"Ошибка загрузки ролей: {ex.Message}";
+                var errorMessage = $"Ошибка загрузки ролей: {ex.Message}";
+                SetError(errorMessage, ex);
             }
             finally
             {
                 IsLoadingRoles = false;
-                StatusLogger.LogInfo("Загрузка ролей завершена", "AuthenticationViewModel");
+                LogDebug("Загрузка ролей завершена");
             }
         }
 
         /// <summary>
-        /// Выполняет основное действие (вход или регистрацию)
+        /// Выполняет основное действие (вход или регистрация)
         /// </summary>
         private async Task ExecuteActionAsync()
         {
             try
             {
                 IsProcessing = true;
-                ErrorMessage = null;
+                ClearError();
 
                 if (IsRegistrationMode)
                 {
@@ -240,7 +254,8 @@ namespace ViridiscaUi.ViewModels.Auth
             }
             catch (Exception ex)
             {
-                ErrorMessage = $"Ошибка: {ex.Message}";
+                var errorMessage = $"Ошибка: {ex.Message}";
+                SetError(errorMessage, ex);
             }
             finally
             {
@@ -253,53 +268,55 @@ namespace ViridiscaUi.ViewModels.Auth
         /// </summary>
         private async Task ExecuteLoginAsync()
         {
+            LogInfo("Attempting login for user: {Username}", Username);
+            ShowInfo("Выполняется вход в систему...");
+            
             var result = await _authService.AuthenticateAsync(Username, Password);
 
             if (result.Success)
             {
-                StatusLogger.LogSuccess($"Успешная авторизация пользователя: {result.User?.Email}", "AuthenticationViewModel");
-                // Навигация теперь происходит автоматически через MainViewModel при изменении CurrentUserObservable
-                // await _navigationService.NavigateToAsync("home"); - убираем эту строку
+                ShowSuccess($"Добро пожаловать, {result.User?.Email}!");
+                LogInfo("Login successful for user: {UserEmail}", result.User?.Email);
+                // Навигация теперь проходит через MainViewModel при изменении CurrentUserObservable
             }
             else
             {
-                ErrorMessage = result.ErrorMessage ?? "Неверное имя пользователя или пароль";
+                var errorMessage = result.ErrorMessage ?? "Неверное имя пользователя или пароль";
+                SetError(errorMessage);
+                ShowWarning(errorMessage);
+                LogWarning("Login failed for user {Username}: {ErrorMessage}", Username, errorMessage);
             }
         }
 
         /// <summary>
-        /// Выполняет регистрацию пользователя
+        /// Выполняет регистрацию нового пользователя
         /// </summary>
         private async Task ExecuteRegistrationAsync()
         {
-            // Дополнительная проверка на совпадение паролей
-            if (Password != ConfirmPassword)
-            {
-                ErrorMessage = "Пароли не совпадают";
-                return;
-            }
-
             if (SelectedRole == null)
             {
-                ErrorMessage = "Выберите роль";
+                SetError("Необходимо выбрать роль");
                 return;
             }
 
+            LogInfo("Attempting registration for user: {Username}", Username);
+            ShowInfo("Выполняется регистрация...");
+            
             var result = await _authService.RegisterAsync(Username, Email, Password, FirstName, LastName, SelectedRole.Uid);
 
             if (result.Success)
             {
-                // После успешной регистрации переключаемся на режим входа
-                IsRegistrationMode = false;
+                ShowSuccess("Регистрация прошла успешно! Теперь вы можете войти в систему.");
+                LogInfo("Registration successful for user: {UserEmail}", result.User?.Email);
+                IsRegistrationMode = false; // Переключаемся на режим входа
                 ClearForm();
-                ErrorMessage = null;
-                
-                // Можно также показать сообщение об успехе
-                // Или автоматически выполнить вход
             }
             else
             {
-                ErrorMessage = result.ErrorMessage ?? "Ошибка при регистрации";
+                var errorMessage = result.ErrorMessage ?? "Ошибка при регистрации";
+                SetError(errorMessage);
+                ShowWarning(errorMessage);
+                LogWarning("Registration failed for user {Username}: {ErrorMessage}", Username, errorMessage);
             }
         }
 
@@ -308,7 +325,7 @@ namespace ViridiscaUi.ViewModels.Auth
         /// </summary>
         private void ClearErrors()
         {
-            ErrorMessage = null;
+            ClearError();
         }
 
         /// <summary>
@@ -318,7 +335,7 @@ namespace ViridiscaUi.ViewModels.Auth
         {
             Password = string.Empty;
             ConfirmPassword = string.Empty;
-            // Оставляем остальные поля для удобства пользователя
+            // Остаемся с пустыми полями для удобства пользователя
         }
     }
-} 
+}

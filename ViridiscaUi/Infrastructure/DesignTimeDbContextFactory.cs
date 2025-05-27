@@ -23,8 +23,8 @@ public class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<Applicatio
 
         // Получаем connection string
         var connectionString = configuration.GetConnectionString("PostgreSQL")
-                               ?? configuration.GetConnectionString("DefaultConnection")
-                               ?? "Host=localhost;Port=5432;Database=viridisca_lms_production;Username=viridisca_user;Password=viridisca_password;Pooling=true;MinPoolSize=1;MaxPoolSize=20;Connection Lifetime=300;";
+            ?? configuration.GetConnectionString("DefaultConnection")
+            ?? "Host=localhost;Port=5432;Database=viridisca_lms_production;Username=viridisca_user;Password=viridisca_password;Pooling=true;MinPoolSize=1;MaxPoolSize=20;Connection Lifetime=300;";
 
         // Настраиваем DbContext options
         var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();

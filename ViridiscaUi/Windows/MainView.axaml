@@ -15,16 +15,13 @@
   </Design.DataContext>
 
   <!-- Контент без верхней панели навигации -->
-  <rxui:RoutedViewHost Router="{Binding Router}" 
+  <rxui:RoutedViewHost x:Name="RouterViewHost"
+                       Router="{Binding Router}" 
                        PageTransition="{x:Null}">
     <rxui:RoutedViewHost.DefaultContent>
       <TextBlock Text="Загрузка..." 
                  HorizontalAlignment="Center" 
                  VerticalAlignment="Center"/>
     </rxui:RoutedViewHost.DefaultContent>
-          
-    <rxui:RoutedViewHost.ViewLocator>
-	  <infrastructure:AppViewLocator />
-    </rxui:RoutedViewHost.ViewLocator>
   </rxui:RoutedViewHost>
 </UserControl>

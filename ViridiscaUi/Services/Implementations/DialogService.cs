@@ -10,11 +10,14 @@ using Avalonia.Layout;
 using ViridiscaUi.Domain.Models.Education;
 using ViridiscaUi.ViewModels;
 using ViridiscaUi.ViewModels.Students;
+using ViridiscaUi.ViewModels.Education;
 using ViridiscaUi.Views.Education.Students;
 using Microsoft.Extensions.DependencyInjection;
 using ViridiscaUi.Domain.Models.System;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia;
+using Avalonia.Data;
+using Avalonia.Controls.Templates;
 
 namespace ViridiscaUi.Services.Implementations;
 
@@ -405,24 +408,28 @@ public class DialogService(IServiceProvider serviceProvider) : IDialogService
 
     public async Task<Student?> ShowStudentEditorDialogAsync(Student? student = null)
     {
-        // TODO: Реализовать диалог редактирования студента
-        await Task.Delay(100);
-        return student;
+        var editorViewModel = new StudentEditorViewModel(_serviceProvider.GetRequiredService<IGroupService>(), student);
+        return await ShowDialogAsync<Student>(editorViewModel);
     }
 
     // Диалоги для групп
     public async Task<Group?> ShowGroupEditDialogAsync(Group group)
     {
-        // TODO: Реализовать диалог редактирования группы
-        await Task.Delay(100);
-        return group;
+        var editorViewModel = new GroupEditorViewModel(_serviceProvider.GetRequiredService<ITeacherService>(), group);
+        var result = await ShowEditorDialogAsync<Group>(editorViewModel);
+        return result;
     }
     
     public async Task<Teacher?> ShowTeacherSelectionDialogAsync(IEnumerable<Teacher> teachers)
     {
-        // TODO: Реализовать диалог выбора преподавателя
-        await Task.Delay(100);
-        return teachers.FirstOrDefault();
+        var teachersList = teachers.ToArray();
+        if (!teachersList.Any())
+        {
+            await ShowWarningAsync("Предупреждение", "Нет доступных преподавателей для выбора");
+            return null;
+        }
+
+        return await ShowSelectionDialogAsync("Выбор преподавателя", "Выберите преподавателя:", teachersList);
     }
     
     public async Task<object?> ShowGroupStudentsManagementDialogAsync(Group group, IEnumerable<Student> allStudents)
@@ -435,9 +442,9 @@ public class DialogService(IServiceProvider serviceProvider) : IDialogService
     // Диалоги для курсов
     public async Task<Course?> ShowCourseEditDialogAsync(Course course)
     {
-        // TODO: Реализовать диалог редактирования курса
-        await Task.Delay(100);
-        return course;
+        var editorViewModel = new CourseEditorViewModel(_serviceProvider.GetRequiredService<ITeacherService>(), course);
+        var result = await ShowEditorDialogAsync<Course>(editorViewModel);
+        return result;
     }
     
     public async Task<object?> ShowCourseEnrollmentDialogAsync(Course course, IEnumerable<Student> allStudents)
@@ -449,17 +456,22 @@ public class DialogService(IServiceProvider serviceProvider) : IDialogService
     
     public async Task<Group?> ShowGroupSelectionDialogAsync(IEnumerable<Group> groups)
     {
-        // TODO: Реализовать диалог выбора группы
-        await Task.Delay(100);
-        return groups.FirstOrDefault();
+        var groupsList = groups.ToArray();
+        if (!groupsList.Any())
+        {
+            await ShowWarningAsync("Предупреждение", "Нет доступных групп для выбора");
+            return null;
+        }
+
+        return await ShowSelectionDialogAsync("Выбор группы", "Выберите группу:", groupsList);
     }
     
     // Диалоги для заданий
     public async Task<Assignment?> ShowAssignmentEditDialogAsync(Assignment assignment)
     {
-        // TODO: Реализовать диалог редактирования задания
-        await Task.Delay(100);
-        return assignment;
+        var editorViewModel = new AssignmentEditorViewModel(_serviceProvider.GetRequiredService<ICourseService>(), assignment);
+        var result = await ShowEditorDialogAsync<Assignment>(editorViewModel);
+        return result;
     }
     
     public async Task<object?> ShowSubmissionsViewDialogAsync(Assignment assignment, IEnumerable<Submission> submissions)
@@ -644,9 +656,13 @@ public class DialogService(IServiceProvider serviceProvider) : IDialogService
     /// </summary>
     public async Task<Grade?> ShowGradeEditDialogAsync(Grade grade, IEnumerable<Student> students, IEnumerable<Assignment> assignments)
     {
-        // TODO: Реализовать диалог редактирования оценки
-        await Task.Delay(1);
-        return null;
+        var editorViewModel = new GradeEditorViewModel(
+            _serviceProvider.GetRequiredService<IStudentService>(),
+            _serviceProvider.GetRequiredService<IAssignmentService>(),
+            _serviceProvider.GetRequiredService<ITeacherService>(),
+            grade);
+        var result = await ShowEditorDialogAsync<Grade>(editorViewModel);
+        return result;
     }
 
     /// <summary>
@@ -654,9 +670,9 @@ public class DialogService(IServiceProvider serviceProvider) : IDialogService
     /// </summary>
     public async Task<IEnumerable<Grade>?> ShowBulkGradingDialogAsync(IEnumerable<Course> courses, IEnumerable<Assignment> assignments)
     {
-        // TODO: Реализовать диалог массового выставления оценок
-        await Task.Delay(1);
-        return null;
+        // TODO: Реализовать диалог массового оценивания
+        await Task.Delay(100);
+        return new List<Grade>();
     }
 
     /// <summary>
@@ -664,9 +680,9 @@ public class DialogService(IServiceProvider serviceProvider) : IDialogService
     /// </summary>
     public async Task<Teacher?> ShowTeacherEditDialogAsync(Teacher teacher)
     {
-        // TODO: Реализовать диалог редактирования преподавателя
-        await Task.Delay(1);
-        return null;
+        var editorViewModel = new TeacherEditorViewModel(teacher);
+        var result = await ShowEditorDialogAsync<Teacher>(editorViewModel);
+        return result;
     }
 
     /// <summary>
@@ -697,5 +713,411 @@ public class DialogService(IServiceProvider serviceProvider) : IDialogService
         // TODO: Реализовать диалог статистики преподавателя
         await Task.Delay(1);
         return null;
+    }
+
+    // === ДОПОЛНИТЕЛЬНЫЕ МЕТОДЫ ===
+
+    /// <summary>
+    /// Универсальный метод для показа диалогов редактирования
+    /// </summary>
+    private async Task<T?> ShowEditorDialogAsync<T>(ViewModelBase editorViewModel) where T : class
+    {
+        var window = new Window
+        {
+            Title = GetEditorTitle(editorViewModel),
+            Width = 600,
+            Height = 500,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            CanResize = true
+        };
+
+        ConfigureDialog(window);
+
+        var tcs = new TaskCompletionSource<T?>();
+
+        // Создаем универсальный контент для редактора
+        var content = CreateEditorContent(editorViewModel, tcs, window);
+        window.Content = content;
+
+        await window.ShowDialog(GetOwnerWindow());
+        return await tcs.Task;
+    }
+
+    /// <summary>
+    /// Получает заголовок для диалога редактирования
+    /// </summary>
+    private static string GetEditorTitle(ViewModelBase viewModel)
+    {
+        return viewModel switch
+        {
+            GroupEditorViewModel group => group.Title,
+            CourseEditorViewModel course => course.Title,
+            TeacherEditorViewModel teacher => teacher.Title,
+            AssignmentEditorViewModel assignment => assignment.WindowTitle,
+            GradeEditorViewModel grade => grade.Title,
+            _ => "Редактирование"
+        };
+    }
+
+    /// <summary>
+    /// Создает контент для диалога редактирования
+    /// </summary>
+    private static Grid CreateEditorContent<T>(ViewModelBase editorViewModel, TaskCompletionSource<T?> tcs, Window window) where T : class
+    {
+        var grid = new Grid
+        {
+            RowDefinitions = new RowDefinitions("*,Auto"),
+            Margin = new Thickness(16)
+        };
+
+        // Основной контент (будет заполнен в зависимости от типа ViewModel)
+        var contentArea = CreateEditorContentArea(editorViewModel);
+        Grid.SetRow(contentArea, 0);
+        grid.Children.Add(contentArea);
+
+        // Кнопки
+        var buttonPanel = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Spacing = 10,
+            Margin = new Thickness(0, 16, 0, 0)
+        };
+
+        var saveButton = new Button
+        {
+            Content = "Сохранить",
+            Padding = new Thickness(16, 8),
+            IsDefault = true
+        };
+
+        var cancelButton = new Button
+        {
+            Content = "Отмена",
+            Padding = new Thickness(16, 8),
+            IsCancel = true
+        };
+
+        // Привязываем команды
+        SetupEditorCommands(editorViewModel, saveButton, cancelButton, tcs, window);
+
+        buttonPanel.Children.Add(cancelButton);
+        buttonPanel.Children.Add(saveButton);
+
+        Grid.SetRow(buttonPanel, 1);
+        grid.Children.Add(buttonPanel);
+
+        return grid;
+    }
+
+    /// <summary>
+    /// Создает область контента для редактора
+    /// </summary>
+    private static Control CreateEditorContentArea(ViewModelBase editorViewModel)
+    {
+        return editorViewModel switch
+        {
+            GroupEditorViewModel => CreateGroupEditorContent(),
+            CourseEditorViewModel => CreateCourseEditorContent(),
+            TeacherEditorViewModel => CreateTeacherEditorContent(),
+            AssignmentEditorViewModel => CreateAssignmentEditorContent(),
+            GradeEditorViewModel => CreateGradeEditorContent(),
+            _ => new TextBlock { Text = "Редактор не реализован" }
+        };
+    }
+
+    /// <summary>
+    /// Настраивает команды для кнопок редактора
+    /// </summary>
+    private static void SetupEditorCommands<T>(ViewModelBase editorViewModel, Button saveButton, Button cancelButton, TaskCompletionSource<T?> tcs, Window window) where T : class
+    {
+        switch (editorViewModel)
+        {
+            case GroupEditorViewModel groupEditor:
+                saveButton.Command = groupEditor.SaveCommand;
+                cancelButton.Command = groupEditor.CancelCommand;
+                
+                groupEditor.SaveCommand.Subscribe(result =>
+                {
+                    tcs.SetResult(result as T);
+                    window.Close();
+                });
+                
+                groupEditor.CancelCommand.Subscribe(_ =>
+                {
+                    tcs.SetResult(null);
+                    window.Close();
+                });
+                break;
+
+            case CourseEditorViewModel courseEditor:
+                saveButton.Command = courseEditor.SaveCommand;
+                cancelButton.Command = courseEditor.CancelCommand;
+                
+                courseEditor.SaveCommand.Subscribe(result =>
+                {
+                    tcs.SetResult(result as T);
+                    window.Close();
+                });
+                
+                courseEditor.CancelCommand.Subscribe(_ =>
+                {
+                    tcs.SetResult(null);
+                    window.Close();
+                });
+                break;
+
+            case TeacherEditorViewModel teacherEditor:
+                saveButton.Command = teacherEditor.SaveCommand;
+                cancelButton.Command = teacherEditor.CancelCommand;
+                
+                teacherEditor.SaveCommand.Subscribe(result =>
+                {
+                    tcs.SetResult(result as T);
+                    window.Close();
+                });
+                
+                teacherEditor.CancelCommand.Subscribe(_ =>
+                {
+                    tcs.SetResult(null);
+                    window.Close();
+                });
+                break;
+
+            case AssignmentEditorViewModel assignmentEditor:
+                saveButton.Command = assignmentEditor.SaveCommand;
+                cancelButton.Command = assignmentEditor.CancelCommand;
+                
+                assignmentEditor.SaveCommand.Subscribe(result =>
+                {
+                    tcs.SetResult(result as T);
+                    window.Close();
+                });
+                
+                assignmentEditor.CancelCommand.Subscribe(_ =>
+                {
+                    tcs.SetResult(null);
+                    window.Close();
+                });
+                break;
+
+            case GradeEditorViewModel gradeEditor:
+                saveButton.Command = gradeEditor.SaveCommand;
+                cancelButton.Command = gradeEditor.CancelCommand;
+                
+                gradeEditor.SaveCommand.Subscribe(result =>
+                {
+                    tcs.SetResult(result as T);
+                    window.Close();
+                });
+                
+                gradeEditor.CancelCommand.Subscribe(_ =>
+                {
+                    tcs.SetResult(null);
+                    window.Close();
+                });
+                break;
+        }
+    }
+
+    // === СОЗДАНИЕ КОНТЕНТА ДЛЯ РЕДАКТОРОВ ===
+
+    private static Control CreateGroupEditorContent()
+    {
+        return new ScrollViewer
+        {
+            Content = new StackPanel
+            {
+                Spacing = 12,
+                Children =
+                {
+                    new TextBlock { Text = "Название группы:", FontWeight = FontWeight.SemiBold },
+                    new TextBox { [!TextBox.TextProperty] = new Binding("Name") },
+                    
+                    new TextBlock { Text = "Код группы:", FontWeight = FontWeight.SemiBold },
+                    new TextBox { [!TextBox.TextProperty] = new Binding("Code") },
+                    
+                    new TextBlock { Text = "Описание:", FontWeight = FontWeight.SemiBold },
+                    new TextBox { [!TextBox.TextProperty] = new Binding("Description"), AcceptsReturn = true, Height = 80 },
+                    
+                    new TextBlock { Text = "Год:", FontWeight = FontWeight.SemiBold },
+                    new NumericUpDown { [!NumericUpDown.ValueProperty] = new Binding("Year"), Minimum = 2020, Maximum = 2030 },
+                    
+                    new TextBlock { Text = "Максимум студентов:", FontWeight = FontWeight.SemiBold },
+                    new NumericUpDown { [!NumericUpDown.ValueProperty] = new Binding("MaxStudents"), Minimum = 1, Maximum = 100 },
+                    
+                    new TextBlock { Text = "Куратор:", FontWeight = FontWeight.SemiBold },
+                    new ComboBox 
+                    { 
+                        [!ItemsControl.ItemsSourceProperty] = new Binding("Teachers"),
+                        [!ComboBox.SelectedItemProperty] = new Binding("SelectedCurator"),
+                        DisplayMemberBinding = new Binding("FullName")
+                    }
+                }
+            }
+        };
+    }
+
+    private static Control CreateCourseEditorContent()
+    {
+        return new ScrollViewer
+        {
+            Content = new StackPanel
+            {
+                Spacing = 12,
+                Children =
+                {
+                    new TextBlock { Text = "Название курса:", FontWeight = FontWeight.SemiBold },
+                    new TextBox { [!TextBox.TextProperty] = new Binding("Name") },
+                    
+                    new TextBlock { Text = "Код курса:", FontWeight = FontWeight.SemiBold },
+                    new TextBox { [!TextBox.TextProperty] = new Binding("Code") },
+                    
+                    new TextBlock { Text = "Описание:", FontWeight = FontWeight.SemiBold },
+                    new TextBox { [!TextBox.TextProperty] = new Binding("Description"), AcceptsReturn = true, Height = 80 },
+                    
+                    new TextBlock { Text = "Категория:", FontWeight = FontWeight.SemiBold },
+                    new ComboBox 
+                    { 
+                        [!ItemsControl.ItemsSourceProperty] = new Binding("Categories"),
+                        [!ComboBox.SelectedItemProperty] = new Binding("Category")
+                    },
+                    
+                    new TextBlock { Text = "Кредиты:", FontWeight = FontWeight.SemiBold },
+                    new NumericUpDown { [!NumericUpDown.ValueProperty] = new Binding("Credits"), Minimum = 1, Maximum = 10 },
+                    
+                    new TextBlock { Text = "Преподаватель:", FontWeight = FontWeight.SemiBold },
+                    new ComboBox 
+                    { 
+                        [!ItemsControl.ItemsSourceProperty] = new Binding("Teachers"),
+                        [!ComboBox.SelectedItemProperty] = new Binding("SelectedTeacher"),
+                        DisplayMemberBinding = new Binding("FullName")
+                    }
+                }
+            }
+        };
+    }
+
+    private static Control CreateTeacherEditorContent()
+    {
+        return new ScrollViewer
+        {
+            Content = new StackPanel
+            {
+                Spacing = 12,
+                Children =
+                {
+                    new TextBlock { Text = "Имя:", FontWeight = FontWeight.SemiBold },
+                    new TextBox { [!TextBox.TextProperty] = new Binding("FirstName") },
+                    
+                    new TextBlock { Text = "Фамилия:", FontWeight = FontWeight.SemiBold },
+                    new TextBox { [!TextBox.TextProperty] = new Binding("LastName") },
+                    
+                    new TextBlock { Text = "Отчество:", FontWeight = FontWeight.SemiBold },
+                    new TextBox { [!TextBox.TextProperty] = new Binding("MiddleName") },
+                    
+                    new TextBlock { Text = "Email:", FontWeight = FontWeight.SemiBold },
+                    new TextBox { [!TextBox.TextProperty] = new Binding("Email") },
+                    
+                    new TextBlock { Text = "Телефон:", FontWeight = FontWeight.SemiBold },
+                    new TextBox { [!TextBox.TextProperty] = new Binding("PhoneNumber") },
+                    
+                    new TextBlock { Text = "Специализация:", FontWeight = FontWeight.SemiBold },
+                    new ComboBox 
+                    { 
+                        [!ItemsControl.ItemsSourceProperty] = new Binding("Specializations"),
+                        [!ComboBox.SelectedItemProperty] = new Binding("Specialization")
+                    },
+                    
+                    new TextBlock { Text = "Академическое звание:", FontWeight = FontWeight.SemiBold },
+                    new ComboBox 
+                    { 
+                        [!ItemsControl.ItemsSourceProperty] = new Binding("AcademicTitles"),
+                        [!ComboBox.SelectedItemProperty] = new Binding("AcademicTitle")
+                    }
+                }
+            }
+        };
+    }
+
+    private static Control CreateAssignmentEditorContent()
+    {
+        return new ScrollViewer
+        {
+            Content = new StackPanel
+            {
+                Spacing = 12,
+                Children =
+                {
+                    new TextBlock { Text = "Название задания:", FontWeight = FontWeight.SemiBold },
+                    new TextBox { [!TextBox.TextProperty] = new Binding("Title") },
+                    
+                    new TextBlock { Text = "Описание:", FontWeight = FontWeight.SemiBold },
+                    new TextBox { [!TextBox.TextProperty] = new Binding("Description"), AcceptsReturn = true, Height = 80 },
+                    
+                    new TextBlock { Text = "Курс:", FontWeight = FontWeight.SemiBold },
+                    new ComboBox 
+                    { 
+                        [!ItemsControl.ItemsSourceProperty] = new Binding("Courses"),
+                        [!ComboBox.SelectedItemProperty] = new Binding("SelectedCourse"),
+                        DisplayMemberBinding = new Binding("Name")
+                    },
+                    
+                    new TextBlock { Text = "Тип задания:", FontWeight = FontWeight.SemiBold },
+                    new ComboBox 
+                    { 
+                        [!ItemsControl.ItemsSourceProperty] = new Binding("AssignmentTypes"),
+                        [!ComboBox.SelectedItemProperty] = new Binding("Type")
+                    },
+                    
+                    new TextBlock { Text = "Максимальный балл:", FontWeight = FontWeight.SemiBold },
+                    new NumericUpDown { [!NumericUpDown.ValueProperty] = new Binding("MaxScore"), Minimum = 1, Maximum = 1000 },
+                    
+                    new TextBlock { Text = "Срок сдачи:", FontWeight = FontWeight.SemiBold },
+                    new DatePicker { [!DatePicker.SelectedDateProperty] = new Binding("DueDate") }
+                }
+            }
+        };
+    }
+
+    private static Control CreateGradeEditorContent()
+    {
+        return new ScrollViewer
+        {
+            Content = new StackPanel
+            {
+                Spacing = 12,
+                Children =
+                {
+                    new TextBlock { Text = "Студент:", FontWeight = FontWeight.SemiBold },
+                    new ComboBox 
+                    { 
+                        [!ItemsControl.ItemsSourceProperty] = new Binding("Students"),
+                        [!ComboBox.SelectedItemProperty] = new Binding("SelectedStudent"),
+                        DisplayMemberBinding = new Binding("FullName")
+                    },
+                    
+                    new TextBlock { Text = "Задание:", FontWeight = FontWeight.SemiBold },
+                    new ComboBox 
+                    { 
+                        [!ItemsControl.ItemsSourceProperty] = new Binding("Assignments"),
+                        [!ComboBox.SelectedItemProperty] = new Binding("SelectedAssignment"),
+                        DisplayMemberBinding = new Binding("Title")
+                    },
+                    
+                    new TextBlock { Text = "Оценка:", FontWeight = FontWeight.SemiBold },
+                    new NumericUpDown { [!NumericUpDown.ValueProperty] = new Binding("Value"), Minimum = 0 },
+                    
+                    new TextBlock { Text = "Максимальный балл:", FontWeight = FontWeight.SemiBold },
+                    new NumericUpDown { [!NumericUpDown.ValueProperty] = new Binding("MaxValue"), Minimum = 1 },
+                    
+                    new TextBlock { Text = "Комментарий:", FontWeight = FontWeight.SemiBold },
+                    new TextBox { [!TextBox.TextProperty] = new Binding("Comment"), AcceptsReturn = true, Height = 60 },
+                    
+                    new TextBlock { Text = "Обратная связь:", FontWeight = FontWeight.SemiBold },
+                    new TextBox { [!TextBox.TextProperty] = new Binding("Feedback"), AcceptsReturn = true, Height = 80 }
+                }
+            }
+        };
     }
 }

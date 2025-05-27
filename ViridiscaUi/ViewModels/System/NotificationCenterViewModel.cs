@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using DynamicData;
@@ -10,6 +11,8 @@ using ReactiveUI.Fody.Helpers;
 using ViridiscaUi.Domain.Models.System;
 using ViridiscaUi.Services.Interfaces;
 using ViridiscaUi.Services;
+using ViridiscaUi.Infrastructure;
+using ViridiscaUi.Infrastructure.Navigation;
 using System.Collections.Generic;
 using NotificationType = ViridiscaUi.Domain.Models.System.NotificationType;
 using NotificationPriority = ViridiscaUi.Domain.Models.System.NotificationPriority;
@@ -23,7 +26,9 @@ namespace ViridiscaUi.ViewModels.System
 {
     /// <summary>
     /// ViewModel для центра уведомлений
+    /// Следует принципам SOLID и чистой архитектуры
     /// </summary>
+    [Route("notifications", DisplayName = "Уведомления", IconKey = "🔔", Order = 10, Group = "System")]
     public class NotificationCenterViewModel : RoutableViewModelBase
     {
         private readonly INotificationService _notificationService;
@@ -31,7 +36,7 @@ namespace ViridiscaUi.ViewModels.System
         private readonly IStatusService _statusService;
         private readonly IAuthService _authService;
 
-        public override string UrlPathSegment => "notification-center";
+        
 
         // === СВОЙСТВА ===
         
@@ -46,8 +51,8 @@ namespace ViridiscaUi.ViewModels.System
         
         // Фильтры
         [Reactive] public bool? IsReadFilter { get; set; }
-        [Reactive] public NotificationType? TypeFilter { get; set; }
-        [Reactive] public NotificationPriority? PriorityFilter { get; set; }
+        [Reactive] public Domain.Models.System.NotificationType? TypeFilter { get; set; }
+        [Reactive] public Domain.Models.System.NotificationPriority? PriorityFilter { get; set; }
         [Reactive] public string? CategoryFilter { get; set; }
         [Reactive] public DateTime? FromDateFilter { get; set; }
         [Reactive] public DateTime? ToDateFilter { get; set; }
@@ -96,35 +101,35 @@ namespace ViridiscaUi.ViewModels.System
 
         // === КОМАНДЫ ===
         
-        public ReactiveCommand<Unit, Unit> LoadNotificationsCommand { get; }
-        public ReactiveCommand<Unit, Unit> RefreshCommand { get; }
-        public ReactiveCommand<NotificationViewModel, Unit> MarkAsReadCommand { get; }
-        public ReactiveCommand<Unit, Unit> MarkAllAsReadCommand { get; }
-        public ReactiveCommand<NotificationViewModel, Unit> MarkAsImportantCommand { get; }
-        public ReactiveCommand<NotificationViewModel, Unit> UnmarkAsImportantCommand { get; }
-        public ReactiveCommand<NotificationViewModel, Unit> DeleteNotificationCommand { get; }
-        public ReactiveCommand<NotificationViewModel, Unit> ViewNotificationDetailsCommand { get; }
-        public ReactiveCommand<string, Unit> SearchCommand { get; }
-        public ReactiveCommand<Unit, Unit> ApplyFiltersCommand { get; }
-        public ReactiveCommand<Unit, Unit> ClearFiltersCommand { get; }
-        public ReactiveCommand<Unit, Unit> LoadStatisticsCommand { get; }
-        public ReactiveCommand<Unit, Unit> LoadSystemStatisticsCommand { get; }
-        public ReactiveCommand<Unit, Unit> LoadUserSettingsCommand { get; }
-        public ReactiveCommand<Unit, Unit> SaveUserSettingsCommand { get; }
-        public ReactiveCommand<Unit, Unit> LoadTemplatesCommand { get; }
-        public ReactiveCommand<Unit, Unit> CreateTemplateCommand { get; }
-        public ReactiveCommand<NotificationTemplateViewModel, Unit> EditTemplateCommand { get; }
-        public ReactiveCommand<NotificationTemplateViewModel, Unit> DeleteTemplateCommand { get; }
-        public ReactiveCommand<NotificationTemplateViewModel, Unit> SendFromTemplateCommand { get; }
-        public ReactiveCommand<Unit, Unit> CreateReminderCommand { get; }
-        public ReactiveCommand<Unit, Unit> ShowUnreadOnlyCommand { get; }
-        public ReactiveCommand<Unit, Unit> ShowImportantOnlyCommand { get; }
-        public ReactiveCommand<Unit, Unit> ShowHighPriorityCommand { get; }
-        public ReactiveCommand<Unit, Unit> ShowTodayNotificationsCommand { get; }
-        public ReactiveCommand<Unit, Unit> ArchiveOldNotificationsCommand { get; }
-        public ReactiveCommand<int, Unit> GoToPageCommand { get; }
-        public ReactiveCommand<Unit, Unit> NextPageCommand { get; }
-        public ReactiveCommand<Unit, Unit> PreviousPageCommand { get; }
+        public ReactiveCommand<Unit, Unit> LoadNotificationsCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> RefreshCommand { get; private set; } = null!;
+        public ReactiveCommand<NotificationViewModel, Unit> MarkAsReadCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> MarkAllAsReadCommand { get; private set; } = null!;
+        public ReactiveCommand<NotificationViewModel, Unit> MarkAsImportantCommand { get; private set; } = null!;
+        public ReactiveCommand<NotificationViewModel, Unit> UnmarkAsImportantCommand { get; private set; } = null!;
+        public ReactiveCommand<NotificationViewModel, Unit> DeleteNotificationCommand { get; private set; } = null!;
+        public ReactiveCommand<NotificationViewModel, Unit> ViewNotificationDetailsCommand { get; private set; } = null!;
+        public ReactiveCommand<string, Unit> SearchCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> ApplyFiltersCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> ClearFiltersCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> LoadStatisticsCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> LoadSystemStatisticsCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> LoadUserSettingsCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> SaveUserSettingsCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> LoadTemplatesCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> CreateTemplateCommand { get; private set; } = null!;
+        public ReactiveCommand<NotificationTemplateViewModel, Unit> EditTemplateCommand { get; private set; } = null!;
+        public ReactiveCommand<NotificationTemplateViewModel, Unit> DeleteTemplateCommand { get; private set; } = null!;
+        public ReactiveCommand<NotificationTemplateViewModel, Unit> SendFromTemplateCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> CreateReminderCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> ShowUnreadOnlyCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> ShowImportantOnlyCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> ShowHighPriorityCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> ShowTodayNotificationsCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> ArchiveOldNotificationsCommand { get; private set; } = null!;
+        public ReactiveCommand<int, Unit> GoToPageCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> NextPageCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> PreviousPageCommand { get; private set; } = null!;
 
         public NotificationCenterViewModel(
             IScreen hostScreen,
@@ -133,50 +138,60 @@ namespace ViridiscaUi.ViewModels.System
             IStatusService statusService,
             IAuthService authService) : base(hostScreen)
         {
-            _notificationService = notificationService;
-            _dialogService = dialogService;
-            _statusService = statusService;
-            _authService = authService;
+            _notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
+            _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
+            _statusService = statusService ?? throw new ArgumentNullException(nameof(statusService));
+            _authService = authService ?? throw new ArgumentNullException(nameof(authService));
 
-            // === ИНИЦИАЛИЗАЦИЯ КОМАНД ===
+            InitializeCommands();
+            SetupSubscriptions();
+        }
 
-            LoadNotificationsCommand = ReactiveCommand.CreateFromTask(LoadNotificationsAsync);
-            RefreshCommand = ReactiveCommand.CreateFromTask(RefreshAsync);
-            MarkAsReadCommand = ReactiveCommand.CreateFromTask<NotificationViewModel>(MarkAsReadAsync);
-            MarkAllAsReadCommand = ReactiveCommand.CreateFromTask(MarkAllAsReadAsync);
-            MarkAsImportantCommand = ReactiveCommand.CreateFromTask<NotificationViewModel>(MarkAsImportantAsync);
-            UnmarkAsImportantCommand = ReactiveCommand.CreateFromTask<NotificationViewModel>(UnmarkAsImportantAsync);
-            DeleteNotificationCommand = ReactiveCommand.CreateFromTask<NotificationViewModel>(DeleteNotificationAsync);
-            ViewNotificationDetailsCommand = ReactiveCommand.CreateFromTask<NotificationViewModel>(ViewNotificationDetailsAsync);
-            SearchCommand = ReactiveCommand.CreateFromTask<string>(SearchNotificationsAsync);
-            ApplyFiltersCommand = ReactiveCommand.CreateFromTask(ApplyFiltersAsync);
-            ClearFiltersCommand = ReactiveCommand.CreateFromTask(ClearFiltersAsync);
-            LoadStatisticsCommand = ReactiveCommand.CreateFromTask(LoadStatisticsAsync);
-            LoadSystemStatisticsCommand = ReactiveCommand.CreateFromTask(LoadSystemStatisticsAsync);
-            LoadUserSettingsCommand = ReactiveCommand.CreateFromTask(LoadUserSettingsAsync);
-            SaveUserSettingsCommand = ReactiveCommand.CreateFromTask(SaveUserSettingsAsync);
-            LoadTemplatesCommand = ReactiveCommand.CreateFromTask(LoadTemplatesAsync);
-            CreateTemplateCommand = ReactiveCommand.CreateFromTask(CreateTemplateAsync);
-            EditTemplateCommand = ReactiveCommand.CreateFromTask<NotificationTemplateViewModel>(EditTemplateAsync);
-            DeleteTemplateCommand = ReactiveCommand.CreateFromTask<NotificationTemplateViewModel>(DeleteTemplateAsync);
-            SendFromTemplateCommand = ReactiveCommand.CreateFromTask<NotificationTemplateViewModel>(SendFromTemplateAsync);
-            CreateReminderCommand = ReactiveCommand.CreateFromTask(CreateReminderAsync);
-            ShowUnreadOnlyCommand = ReactiveCommand.CreateFromTask(ShowUnreadOnlyAsync);
-            ShowImportantOnlyCommand = ReactiveCommand.CreateFromTask(ShowImportantOnlyAsync);
-            ShowHighPriorityCommand = ReactiveCommand.CreateFromTask(ShowHighPriorityAsync);
-            ShowTodayNotificationsCommand = ReactiveCommand.CreateFromTask(ShowTodayNotificationsAsync);
-            ArchiveOldNotificationsCommand = ReactiveCommand.CreateFromTask(ArchiveOldNotificationsAsync);
-            GoToPageCommand = ReactiveCommand.CreateFromTask<int>(GoToPageAsync);
-            NextPageCommand = ReactiveCommand.CreateFromTask(NextPageAsync, this.WhenAnyValue(x => x.CurrentPage, x => x.TotalPages, (current, total) => current < total));
-            PreviousPageCommand = ReactiveCommand.CreateFromTask(PreviousPageAsync, this.WhenAnyValue(x => x.CurrentPage, current => current > 1));
+        private void InitializeCommands()
+        {
+            LoadNotificationsCommand = CreateCommand(LoadNotificationsAsync);
+            RefreshCommand = CreateCommand(RefreshAsync);
+            MarkAsReadCommand = CreateCommand<NotificationViewModel>(MarkAsReadAsync);
+            MarkAllAsReadCommand = CreateCommand(MarkAllAsReadAsync);
+            MarkAsImportantCommand = CreateCommand<NotificationViewModel>(MarkAsImportantAsync);
+            UnmarkAsImportantCommand = CreateCommand<NotificationViewModel>(UnmarkAsImportantAsync);
+            DeleteNotificationCommand = CreateCommand<NotificationViewModel>(DeleteNotificationAsync);
+            ViewNotificationDetailsCommand = CreateCommand<NotificationViewModel>(ViewNotificationDetailsAsync);
+            SearchCommand = CreateCommand<string>(SearchNotificationsAsync);
+            ApplyFiltersCommand = CreateCommand(ApplyFiltersAsync);
+            ClearFiltersCommand = CreateCommand(ClearFiltersAsync);
+            LoadStatisticsCommand = CreateCommand(LoadStatisticsAsync);
+            LoadSystemStatisticsCommand = CreateCommand(LoadSystemStatisticsAsync);
+            LoadUserSettingsCommand = CreateCommand(LoadUserSettingsAsync);
+            SaveUserSettingsCommand = CreateCommand(SaveUserSettingsAsync);
+            LoadTemplatesCommand = CreateCommand(LoadTemplatesAsync);
+            CreateTemplateCommand = CreateCommand(CreateTemplateAsync);
+            EditTemplateCommand = CreateCommand<NotificationTemplateViewModel>(EditTemplateAsync);
+            DeleteTemplateCommand = CreateCommand<NotificationTemplateViewModel>(DeleteTemplateAsync);
+            SendFromTemplateCommand = CreateCommand<NotificationTemplateViewModel>(SendFromTemplateAsync);
+            CreateReminderCommand = CreateCommand(CreateReminderAsync);
+            ShowUnreadOnlyCommand = CreateCommand(ShowUnreadOnlyAsync);
+            ShowImportantOnlyCommand = CreateCommand(ShowImportantOnlyAsync);
+            ShowHighPriorityCommand = CreateCommand(ShowHighPriorityAsync);
+            ShowTodayNotificationsCommand = CreateCommand(ShowTodayNotificationsAsync);
+            ArchiveOldNotificationsCommand = CreateCommand(ArchiveOldNotificationsAsync);
+            GoToPageCommand = CreateCommand<int>(GoToPageAsync);
+            
+            var canGoNext = this.WhenAnyValue(x => x.CurrentPage, x => x.TotalPages, (current, total) => current < total);
+            var canGoPrevious = this.WhenAnyValue(x => x.CurrentPage, current => current > 1);
+            
+            NextPageCommand = CreateCommand(NextPageAsync, canGoNext, "Ошибка перехода на следующую страницу");
+            PreviousPageCommand = CreateCommand(PreviousPageAsync, canGoPrevious, "Ошибка перехода на предыдущую страницу");
+        }
 
-            // === ПОДПИСКИ ===
-
+        private void SetupSubscriptions()
+        {
             // Автопоиск при изменении текста поиска
             this.WhenAnyValue(x => x.SearchText)
                 .Throttle(TimeSpan.FromMilliseconds(500))
                 .ObserveOn(RxApp.MainThreadScheduler)
-                .InvokeCommand(SearchCommand);
+                .InvokeCommand(SearchCommand)
+                .DisposeWith(Disposables);
 
             // Применение фильтров при изменении
             var filterObservables = new[]
@@ -194,55 +209,68 @@ namespace ViridiscaUi.ViewModels.System
             Observable.Merge(filterObservables)
                 .Throttle(TimeSpan.FromMilliseconds(300))
                 .ObserveOn(RxApp.MainThreadScheduler)
-                .Subscribe(_ => ApplyFiltersCommand.Execute().Subscribe());
-
-            // Обновление счетчика непрочитанных при изменении уведомлений
-            this.WhenAnyValue(x => x.Notifications)
-                .Subscribe(_ => UpdateUnreadCount());
-
-            // Уведомление об изменении HasUnreadNotifications при изменении UnreadCount
-            this.WhenAnyValue(x => x.UnreadCount)
-                .Subscribe(_ => this.RaisePropertyChanged(nameof(HasUnreadNotifications)));
+                .Select(_ => Unit.Default)
+                .InvokeCommand(ApplyFiltersCommand)
+                .DisposeWith(Disposables);
 
             // Уведомления об изменении computed properties
+            this.WhenAnyValue(x => x.UnreadCount)
+                .Subscribe(_ => this.RaisePropertyChanged(nameof(HasUnreadNotifications)))
+                .DisposeWith(Disposables);
+                
             this.WhenAnyValue(x => x.UserStatistics)
-                .Subscribe(_ => this.RaisePropertyChanged(nameof(HasUserStatistics)));
+                .Subscribe(_ => this.RaisePropertyChanged(nameof(HasUserStatistics)))
+                .DisposeWith(Disposables);
                 
             this.WhenAnyValue(x => x.SelectedNotification)
-                .Subscribe(_ => {
+                .Subscribe(_ => 
+                {
                     this.RaisePropertyChanged(nameof(HasSelectedNotification));
                     this.RaisePropertyChanged(nameof(HasSelectedNotificationReadAt));
                     this.RaisePropertyChanged(nameof(HasSelectedNotificationExpiresAt));
                     this.RaisePropertyChanged(nameof(HasSelectedNotificationActionUrl));
-                });
+                })
+                .DisposeWith(Disposables);
                 
             this.WhenAnyValue(x => x.SystemStatistics)
-                .Subscribe(_ => this.RaisePropertyChanged(nameof(HasSystemStatistics)));
+                .Subscribe(_ => this.RaisePropertyChanged(nameof(HasSystemStatistics)))
+                .DisposeWith(Disposables);
                 
             this.WhenAnyValue(x => x.UserSettings)
-                .Subscribe(_ => this.RaisePropertyChanged(nameof(HasUserSettings)));
-
-            // Первоначальная загрузка
-            InitializeAsync();
+                .Subscribe(_ => this.RaisePropertyChanged(nameof(HasUserSettings)))
+                .DisposeWith(Disposables);
         }
 
-        // === МЕТОДЫ КОМАНД ===
+        #region Lifecycle Methods
+
+        protected override async Task OnFirstTimeLoadedAsync()
+        {
+            await base.OnFirstTimeLoadedAsync();
+            LogInfo("NotificationCenterViewModel loaded for the first time");
+            
+            // Initialize current user and load data when view is loaded for the first time
+            await ExecuteWithErrorHandlingAsync(InitializeAsync, "Ошибка инициализации центра уведомлений");
+        }
+
+        #endregion
 
         private async Task InitializeAsync()
         {
-            try
+            LogInfo("Initializing NotificationCenterViewModel");
+            
+            var currentUser = await _authService.GetCurrentUserAsync();
+            if (currentUser != null)
             {
-                CurrentUserUid = await _authService.GetCurrentUserUidAsync();
-                await LoadNotificationsAsync();
-                await LoadStatisticsAsync();
-                await LoadUserSettingsAsync();
-                await LoadTemplatesAsync();
-                await LoadCategoriesAsync();
+                CurrentUserUid = currentUser.Uid;
+                LogInfo("Current user set: {UserUid}", CurrentUserUid);
             }
-            catch (Exception ex)
-            {
-                _statusService.ShowError($"Ошибка инициализации центра уведомлений: {ex.Message}", "Уведомления");
-            }
+
+            // Load initial data
+            await LoadCategoriesAsync();
+            await LoadNotificationsAsync();
+            await ExecuteWithErrorHandlingAsync(LoadStatisticsAsync, "Ошибка загрузки статистики");
+            await ExecuteWithErrorHandlingAsync(LoadUserSettingsAsync, "Ошибка загрузки настроек пользователя");
+            await ExecuteWithErrorHandlingAsync(LoadTemplatesAsync, "Ошибка загрузки шаблонов");
         }
 
         private async Task LoadNotificationsAsync()
@@ -250,7 +278,7 @@ namespace ViridiscaUi.ViewModels.System
             try
             {
                 IsLoading = true;
-                _statusService.ShowInfo("Загрузка уведомлений...", "Уведомления");
+                ShowInfo("Загрузка уведомлений...");
 
                 var filter = new NotificationFilter
                 {
@@ -279,11 +307,11 @@ namespace ViridiscaUi.ViewModels.System
 
                 await UpdateUnreadCountAsync();
 
-                _statusService.ShowSuccess($"Загружено {Notifications.Count} уведомлений", "Уведомления");
+                ShowSuccess($"Загружено {Notifications.Count} уведомлений");
             }
             catch (Exception ex)
             {
-                _statusService.ShowError($"Ошибка загрузки уведомлений: {ex.Message}", "Уведомления");
+                SetError($"Ошибка загрузки уведомлений: {ex.Message}", ex);
             }
             finally
             {
@@ -311,7 +339,7 @@ namespace ViridiscaUi.ViewModels.System
             }
             catch (Exception ex)
             {
-                _statusService.ShowWarning($"Не удалось загрузить категории: {ex.Message}", "Уведомления");
+                ShowWarning($"Не удалось загрузить категории: {ex.Message}");
             }
         }
 
@@ -339,16 +367,16 @@ namespace ViridiscaUi.ViewModels.System
                     notificationViewModel.IsRead = true;
                     notificationViewModel.ReadAt = DateTime.UtcNow;
                     await UpdateUnreadCountAsync();
-                    _statusService.ShowSuccess("Уведомление отмечено как прочитанное", "Уведомления");
+                    ShowSuccess("Уведомление отмечено как прочитанное");
                 }
                 else
                 {
-                    _statusService.ShowError("Не удалось отметить уведомление как прочитанное", "Уведомления");
+                    ShowError("Не удалось отметить уведомление как прочитанное");
                 }
             }
             catch (Exception ex)
             {
-                _statusService.ShowError($"Ошибка отметки уведомления: {ex.Message}", "Уведомления");
+                SetError($"Ошибка отметки уведомления: {ex.Message}", ex);
             }
         }
 
@@ -365,16 +393,16 @@ namespace ViridiscaUi.ViewModels.System
                         notification.ReadAt = DateTime.UtcNow;
                     }
                     await UpdateUnreadCountAsync();
-                    _statusService.ShowSuccess($"Все уведомления отмечены как прочитанные", "Уведомления");
+                    ShowSuccess($"Все уведомления отмечены как прочитанные");
                 }
                 else
                 {
-                    _statusService.ShowError("Не удалось отметить все уведомления как прочитанные", "Уведомления");
+                    ShowError("Не удалось отметить все уведомления как прочитанные");
                 }
             }
             catch (Exception ex)
             {
-                _statusService.ShowError($"Ошибка отметки всех уведомлений: {ex.Message}", "Уведомления");
+                SetError($"Ошибка отметки всех уведомлений: {ex.Message}", ex);
             }
         }
 
@@ -386,16 +414,16 @@ namespace ViridiscaUi.ViewModels.System
                 if (success)
                 {
                     notificationViewModel.IsImportant = true;
-                    _statusService.ShowSuccess("Уведомление отмечено как важное", "Уведомления");
+                    ShowSuccess("Уведомление отмечено как важное");
                 }
                 else
                 {
-                    _statusService.ShowError("Не удалось отметить уведомление как важное", "Уведомления");
+                    ShowError("Не удалось отметить уведомление как важное");
                 }
             }
             catch (Exception ex)
             {
-                _statusService.ShowError($"Ошибка отметки важности: {ex.Message}", "Уведомления");
+                SetError($"Ошибка отметки важности: {ex.Message}", ex);
             }
         }
 
@@ -407,16 +435,16 @@ namespace ViridiscaUi.ViewModels.System
                 if (success)
                 {
                     notificationViewModel.IsImportant = false;
-                    _statusService.ShowSuccess("Отметка важности снята", "Уведомления");
+                    ShowSuccess("Отметка важности снята");
                 }
                 else
                 {
-                    _statusService.ShowError("Не удалось снять отметку важности", "Уведомления");
+                    ShowError("Не удалось снять отметку важности");
                 }
             }
             catch (Exception ex)
             {
-                _statusService.ShowError($"Ошибка снятия отметки важности: {ex.Message}", "Уведомления");
+                SetError($"Ошибка снятия отметки важности: {ex.Message}", ex);
             }
         }
 
@@ -435,16 +463,16 @@ namespace ViridiscaUi.ViewModels.System
                 {
                     Notifications.Remove(notificationViewModel);
                     await UpdateUnreadCountAsync();
-                    _statusService.ShowSuccess("Уведомление удалено", "Уведомления");
+                    ShowSuccess("Уведомление удалено");
                 }
                 else
                 {
-                    _statusService.ShowError("Не удалось удалить уведомление", "Уведомления");
+                    ShowError("Не удалось удалить уведомление");
                 }
             }
             catch (Exception ex)
             {
-                _statusService.ShowError($"Ошибка удаления уведомления: {ex.Message}", "Уведомления");
+                SetError($"Ошибка удаления уведомления: {ex.Message}", ex);
             }
         }
 
@@ -460,11 +488,11 @@ namespace ViridiscaUi.ViewModels.System
                     await MarkAsReadAsync(notificationViewModel);
                 }
 
-                _statusService.ShowInfo($"Просмотр уведомления '{notificationViewModel.Title}'", "Уведомления");
+                ShowInfo($"Просмотр уведомления '{notificationViewModel.Title}'");
             }
             catch (Exception ex)
             {
-                _statusService.ShowError($"Ошибка просмотра уведомления: {ex.Message}", "Уведомления");
+                SetError($"Ошибка просмотра уведомления: {ex.Message}", ex);
             }
         }
 
@@ -473,10 +501,12 @@ namespace ViridiscaUi.ViewModels.System
             try
             {
                 UserStatistics = await _notificationService.GetUserNotificationStatisticsAsync(CurrentUserUid);
+                LogInfo("User notification statistics loaded");
             }
             catch (Exception ex)
             {
-                _statusService.ShowWarning($"Не удалось загрузить статистику: {ex.Message}", "Уведомления");
+                ShowWarning($"Не удалось загрузить статистику: {ex.Message}");
+                LogError(ex, "Failed to load user notification statistics");
             }
         }
 
@@ -485,10 +515,12 @@ namespace ViridiscaUi.ViewModels.System
             try
             {
                 SystemStatistics = await _notificationService.GetSystemNotificationStatisticsAsync();
+                LogInfo("System notification statistics loaded");
             }
             catch (Exception ex)
             {
-                _statusService.ShowWarning($"Не удалось загрузить системную статистику: {ex.Message}", "Уведомления");
+                ShowWarning($"Не удалось загрузить системную статистику: {ex.Message}");
+                LogError(ex, "Failed to load system notification statistics");
             }
         }
 
@@ -497,10 +529,12 @@ namespace ViridiscaUi.ViewModels.System
             try
             {
                 UserSettings = await _notificationService.GetUserSettingsAsync(CurrentUserUid);
+                LogInfo("User notification settings loaded");
             }
             catch (Exception ex)
             {
-                _statusService.ShowWarning($"Не удалось загрузить настройки: {ex.Message}", "Уведомления");
+                ShowWarning($"Не удалось загрузить настройки: {ex.Message}");
+                LogError(ex, "Failed to load user notification settings");
             }
         }
 
@@ -510,19 +544,13 @@ namespace ViridiscaUi.ViewModels.System
             {
                 if (UserSettings == null) return;
 
-                var success = await _notificationService.UpdateUserSettingsAsync(CurrentUserUid, UserSettings);
-                if (success)
-                {
-                    _statusService.ShowSuccess("Настройки сохранены", "Уведомления");
-                }
-                else
-                {
-                    _statusService.ShowError("Не удалось сохранить настройки", "Уведомления");
-                }
+                await _notificationService.UpdateUserSettingsAsync(CurrentUserUid, UserSettings);
+                ShowSuccess("Настройки уведомлений сохранены");
+                LogInfo("User notification settings saved successfully");
             }
             catch (Exception ex)
             {
-                _statusService.ShowError($"Ошибка сохранения настроек: {ex.Message}", "Уведомления");
+                SetError($"Ошибка сохранения настроек: {ex.Message}", ex);
             }
         }
 
@@ -539,7 +567,7 @@ namespace ViridiscaUi.ViewModels.System
             }
             catch (Exception ex)
             {
-                _statusService.ShowWarning($"Не удалось загрузить шаблоны: {ex.Message}", "Уведомления");
+                ShowWarning($"Не удалось загрузить шаблоны: {ex.Message}");
             }
         }
 
@@ -552,8 +580,8 @@ namespace ViridiscaUi.ViewModels.System
                     Name = "Новый шаблон",
                     TitleTemplate = "Заголовок",
                     MessageTemplate = "Сообщение",
-                    Type = NotificationType.Info,
-                    Priority = NotificationPriority.Normal,
+                    Type = Domain.Models.System.NotificationType.Info,
+                    Priority = Domain.Models.System.NotificationPriority.Normal,
                     IsActive = true
                 };
 
@@ -563,11 +591,11 @@ namespace ViridiscaUi.ViewModels.System
                 var createdTemplate = await _notificationService.CreateTemplateAsync(dialogResult);
                 Templates.Add(new NotificationTemplateViewModel(createdTemplate));
 
-                _statusService.ShowSuccess($"Шаблон '{createdTemplate.Name}' создан", "Уведомления");
+                ShowSuccess($"Шаблон '{createdTemplate.Name}' создан");
             }
             catch (Exception ex)
             {
-                _statusService.ShowError($"Ошибка создания шаблона: {ex.Message}", "Уведомления");
+                SetError($"Ошибка создания шаблона: {ex.Message}", ex);
             }
         }
 
@@ -579,11 +607,11 @@ namespace ViridiscaUi.ViewModels.System
                 if (dialogResult == null) return;
 
                 // В реальной системе здесь был бы метод UpdateTemplateAsync
-                _statusService.ShowSuccess($"Шаблон '{dialogResult.Name}' обновлен", "Уведомления");
+                ShowSuccess($"Шаблон '{dialogResult.Name}' обновлен");
             }
             catch (Exception ex)
             {
-                _statusService.ShowError($"Ошибка обновления шаблона: {ex.Message}", "Уведомления");
+                SetError($"Ошибка обновления шаблона: {ex.Message}", ex);
             }
         }
 
@@ -599,11 +627,11 @@ namespace ViridiscaUi.ViewModels.System
 
                 // В реальной системе здесь был бы метод DeleteTemplateAsync
                 Templates.Remove(templateViewModel);
-                _statusService.ShowSuccess($"Шаблон '{templateViewModel.Name}' удален", "Уведомления");
+                ShowSuccess($"Шаблон '{templateViewModel.Name}' удален");
             }
             catch (Exception ex)
             {
-                _statusService.ShowError($"Ошибка удаления шаблона: {ex.Message}", "Уведомления");
+                SetError($"Ошибка удаления шаблона: {ex.Message}", ex);
             }
         }
 
@@ -617,11 +645,11 @@ namespace ViridiscaUi.ViewModels.System
                 var notification = await _notificationService.SendFromTemplateAsync(
                     templateViewModel.Uid, CurrentUserUid, parameters);
 
-                _statusService.ShowSuccess($"Уведомление отправлено по шаблону '{templateViewModel.Name}'", "Уведомления");
+                ShowSuccess($"Уведомление отправлено по шаблону '{templateViewModel.Name}'");
             }
             catch (Exception ex)
             {
-                _statusService.ShowError($"Ошибка отправки по шаблону: {ex.Message}", "Уведомления");
+                SetError($"Ошибка отправки по шаблону: {ex.Message}", ex);
             }
         }
 
@@ -639,11 +667,11 @@ namespace ViridiscaUi.ViewModels.System
                     reminderData.RemindAt,
                     reminderData.RepeatInterval);
 
-                _statusService.ShowSuccess($"Напоминание '{reminderData.Title}' создано", "Уведомления");
+                ShowSuccess($"Напоминание '{reminderData.Title}' создано");
             }
             catch (Exception ex)
             {
-                _statusService.ShowError($"Ошибка создания напоминания: {ex.Message}", "Уведомления");
+                SetError($"Ошибка создания напоминания: {ex.Message}", ex);
             }
         }
 
@@ -663,7 +691,7 @@ namespace ViridiscaUi.ViewModels.System
 
         private async Task ShowHighPriorityAsync()
         {
-            PriorityFilter = NotificationPriority.High;
+            PriorityFilter = Domain.Models.System.NotificationPriority.High;
             CurrentPage = 1;
             await LoadNotificationsAsync();
         }
@@ -686,15 +714,15 @@ namespace ViridiscaUi.ViewModels.System
 
                 if (!confirmResult) return;
 
-                var olderThan = DateTime.UtcNow.AddDays(-30);
-                var archivedCount = await _notificationService.ArchiveOldNotificationsAsync(olderThan);
+                var archivedCount = await _notificationService.ArchiveOldNotificationsAsync(
+                    DateTime.UtcNow.AddDays(-30));
 
-                await RefreshAsync();
-                _statusService.ShowSuccess($"Архивировано {archivedCount} уведомлений", "Уведомления");
+                ShowSuccess($"Архивировано {archivedCount} уведомлений");
+                await LoadNotificationsAsync();
             }
             catch (Exception ex)
             {
-                _statusService.ShowError($"Ошибка архивирования: {ex.Message}", "Уведомления");
+                SetError($"Ошибка архивирования: {ex.Message}", ex);
             }
         }
 
@@ -759,7 +787,7 @@ namespace ViridiscaUi.ViewModels.System
             }
             catch (Exception ex)
             {
-                _statusService.ShowWarning($"Не удалось обновить счетчик непрочитанных: {ex.Message}", "Уведомления");
+                ShowWarning($"Не удалось обновить счетчик непрочитанных: {ex.Message}");
             }
         }
 
@@ -777,8 +805,8 @@ namespace ViridiscaUi.ViewModels.System
         public Guid Uid { get; }
         [Reactive] public string Title { get; set; } = string.Empty;
         [Reactive] public string Message { get; set; } = string.Empty;
-        [Reactive] public NotificationType Type { get; set; }
-        [Reactive] public NotificationPriority Priority { get; set; }
+        [Reactive] public Domain.Models.System.NotificationType Type { get; set; }
+        [Reactive] public Domain.Models.System.NotificationPriority Priority { get; set; }
         [Reactive] public string? Category { get; set; }
         [Reactive] public string? ActionUrl { get; set; }
         [Reactive] public bool IsRead { get; set; }
@@ -791,20 +819,20 @@ namespace ViridiscaUi.ViewModels.System
         // Computed properties
         public string TypeIcon => Type switch
         {
-            NotificationType.Info => "ℹ️",
-            NotificationType.Warning => "⚠️",
-            NotificationType.Error => "❌",
-            NotificationType.Success => "✅",
-            NotificationType.Reminder => "⏰",
+            Domain.Models.System.NotificationType.Info => "ℹ️",
+            Domain.Models.System.NotificationType.Warning => "⚠️",
+            Domain.Models.System.NotificationType.Error => "❌",
+            Domain.Models.System.NotificationType.Success => "✅",
+            Domain.Models.System.NotificationType.Reminder => "⏰",
             _ => "📢"
         };
 
         public string PriorityIcon => Priority switch
         {
-            NotificationPriority.Low => "🔵",
-            NotificationPriority.Normal => "🟡",
-            NotificationPriority.High => "🟠",
-            NotificationPriority.Critical => "🔴",
+            Domain.Models.System.NotificationPriority.Low => "🔵",
+            Domain.Models.System.NotificationPriority.Normal => "🟡",
+            Domain.Models.System.NotificationPriority.High => "🟠",
+            Domain.Models.System.NotificationPriority.Critical => "🔴",
             _ => "⚪"
         };
 
@@ -842,19 +870,19 @@ namespace ViridiscaUi.ViewModels.System
         [Reactive] public string Description { get; set; } = string.Empty;
         [Reactive] public string TitleTemplate { get; set; } = string.Empty;
         [Reactive] public string MessageTemplate { get; set; } = string.Empty;
-        [Reactive] public NotificationType Type { get; set; }
-        [Reactive] public NotificationPriority Priority { get; set; }
+        [Reactive] public Domain.Models.System.NotificationType Type { get; set; }
+        [Reactive] public Domain.Models.System.NotificationPriority Priority { get; set; }
         [Reactive] public string? Category { get; set; }
         [Reactive] public bool IsActive { get; set; }
         [Reactive] public DateTime CreatedAt { get; set; }
 
         public string TypeIcon => Type switch
         {
-            NotificationType.Info => "ℹ️",
-            NotificationType.Warning => "⚠️",
-            NotificationType.Error => "❌",
-            NotificationType.Success => "✅",
-            NotificationType.Reminder => "⏰",
+            Domain.Models.System.NotificationType.Info => "ℹ️",
+            Domain.Models.System.NotificationType.Warning => "⚠️",
+            Domain.Models.System.NotificationType.Error => "❌",
+            Domain.Models.System.NotificationType.Success => "✅",
+            Domain.Models.System.NotificationType.Reminder => "⏰",
             _ => "📢"
         };
 

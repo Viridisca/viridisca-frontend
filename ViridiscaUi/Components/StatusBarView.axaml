@@ -136,9 +136,9 @@
 
     <!-- Основной StatusBar с современным дизайном -->
     <Border Classes="modern-statusbar">
-        <Grid ColumnDefinitions="*,Auto,Auto">
+        <Grid ColumnDefinitions="*,Auto,Auto,Auto">
             
-            <!-- Секция текущего сообщения -->
+            <!-- Секция текущего сообщения (занимает всё доступное место) -->
             <Border Grid.Column="0" 
                     Classes="status-current"
                     IsVisible="{Binding IsStatusMessageVisible}">
@@ -155,15 +155,10 @@
                         </TextBlock.Transitions>
                     </TextBlock>
                     
-                    <!-- Текст сообщения -->
+                    <!-- Текст сообщения (без ограничения ширины) -->
                     <TextBlock Text="{Binding CurrentMessage.FormattedMessage}"
                                Classes="status-text"
-                               MaxWidth="300" />
-                    
-                    <!-- Timestamp -->
-                    <TextBlock Text="{Binding CurrentMessage.Timestamp, StringFormat='HH:mm:ss'}"
-                               Classes="status-timestamp"
-                               Margin="12,0,0,0" />
+                               TextWrapping="NoWrap" />
                 </StackPanel>
             </Border>
 
@@ -228,8 +223,23 @@
                 </Button>
             </StackPanel>
 
+            <!-- Время сообщения (отдельная колонка) -->
+            <Border Grid.Column="2"
+                    Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+                    CornerRadius="6"
+                    Padding="8,4"
+                    Margin="8,0"
+                    IsVisible="{Binding IsStatusMessageVisible}">
+                <TextBlock Text="{Binding CurrentMessage.Timestamp, StringFormat='HH:mm:ss'}"
+                           Classes="status-timestamp"
+                           FontFamily="Consolas"
+                           FontSize="11"
+                           FontWeight="SemiBold"
+                           Opacity="0.9" />
+            </Border>
+
             <!-- Индикатор состояния системы -->
-            <StackPanel Grid.Column="2"
+            <StackPanel Grid.Column="3"
                         Orientation="Horizontal"
                         VerticalAlignment="Center"
                         Margin="12,0,0,0">

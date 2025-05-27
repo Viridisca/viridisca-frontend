@@ -117,6 +117,11 @@ namespace ViridiscaUi.Services.Interfaces
         /// Получает рекомендованные курсы для студента
         /// </summary>
         Task<IEnumerable<Course>> GetRecommendedCoursesAsync(Guid studentUid);
+
+        /// <summary>
+        /// Получает управляемые курсы (для академических руководителей)
+        /// </summary>
+        Task<IEnumerable<Course>> GetManagedCoursesAsync();
     }
 
     /// <summary>

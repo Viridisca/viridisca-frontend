@@ -2,31 +2,30 @@ using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using ViridiscaUi.Domain.Models.Education;
 using ViridiscaUi.Services.Interfaces;
-using ViridiscaUi.ViewModels;
+using ViridiscaUi.Infrastructure.Navigation;
 
 namespace ViridiscaUi.ViewModels.Education
 {
     /// <summary>
     /// ViewModel для управления преподавателями
+    /// Следует принципам SOLID и чистой архитектуры
     /// </summary>
-    public class TeachersViewModel : ViewModelBase, IRoutableViewModel
-    {
-        public string? UrlPathSegment => "teachers";
-        public IScreen HostScreen { get; }
-
+    [Route("teachers", DisplayName = "Преподаватели", IconKey = "Teacher", Order = 4, Group = "Education")]
+    public class TeachersViewModel : RoutableViewModelBase
+    { 
         private readonly ITeacherService _teacherService;
         private readonly ICourseService _courseService;
         private readonly IGroupService _groupService;
         private readonly IDialogService _dialogService;
         private readonly IStatusService _statusService;
         private readonly INotificationService _notificationService;
-        private readonly IServiceProvider _serviceProvider;
 
         // === СВОЙСТВА ===
         
@@ -55,343 +54,381 @@ namespace ViridiscaUi.ViewModels.Education
 
         // === КОМАНДЫ ===
         
-        public ReactiveCommand<Unit, Unit> LoadTeachersCommand { get; }
-        public ReactiveCommand<Unit, Unit> RefreshCommand { get; }
-        public ReactiveCommand<Unit, Unit> CreateTeacherCommand { get; }
-        public ReactiveCommand<TeacherViewModel, Unit> EditTeacherCommand { get; }
-        public ReactiveCommand<TeacherViewModel, Unit> DeleteTeacherCommand { get; }
-        public ReactiveCommand<TeacherViewModel, Unit> ViewTeacherDetailsCommand { get; }
-        public ReactiveCommand<TeacherViewModel, Unit> ViewStatisticsCommand { get; }
-        public ReactiveCommand<TeacherViewModel, Unit> ManageCoursesCommand { get; }
-        public ReactiveCommand<TeacherViewModel, Unit> ManageGroupsCommand { get; }
-        public ReactiveCommand<string, Unit> SearchCommand { get; }
-        public ReactiveCommand<Unit, Unit> ApplyFiltersCommand { get; }
-        public ReactiveCommand<Unit, Unit> ClearFiltersCommand { get; }
-        public ReactiveCommand<int, Unit> GoToPageCommand { get; }
-        public ReactiveCommand<Unit, Unit> NextPageCommand { get; }
-        public ReactiveCommand<Unit, Unit> PreviousPageCommand { get; }
+        public ReactiveCommand<Unit, Unit> LoadTeachersCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> RefreshCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> CreateTeacherCommand { get; private set; } = null!;
+        public ReactiveCommand<TeacherViewModel, Unit> EditTeacherCommand { get; private set; } = null!;
+        public ReactiveCommand<TeacherViewModel, Unit> DeleteTeacherCommand { get; private set; } = null!;
+        public ReactiveCommand<TeacherViewModel, Unit> ViewTeacherDetailsCommand { get; private set; } = null!;
+        public ReactiveCommand<TeacherViewModel, Unit> ViewStatisticsCommand { get; private set; } = null!;
+        public ReactiveCommand<TeacherViewModel, Unit> ManageCoursesCommand { get; private set; } = null!;
+        public ReactiveCommand<TeacherViewModel, Unit> ManageGroupsCommand { get; private set; } = null!;
+        public ReactiveCommand<string, Unit> SearchCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> ApplyFiltersCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> ClearFiltersCommand { get; private set; } = null!;
+        public ReactiveCommand<int, Unit> GoToPageCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> NextPageCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> PreviousPageCommand { get; private set; } = null!;
 
         /// <summary>
         /// Конструктор
         /// </summary>
         public TeachersViewModel(
+            IScreen hostScreen,
             ITeacherService teacherService,
             ICourseService courseService,
             IGroupService groupService,
             IDialogService dialogService,
             IStatusService statusService,
-            INotificationService notificationService,
-            IServiceProvider serviceProvider,
-            IScreen hostScreen)
+            INotificationService notificationService) : base(hostScreen)
         {
-            _teacherService = teacherService;
-            _courseService = courseService;
-            _groupService = groupService;
-            _dialogService = dialogService;
-            _statusService = statusService;
-            _notificationService = notificationService;
-            _serviceProvider = serviceProvider;
-            HostScreen = hostScreen;
+            _teacherService = teacherService ?? throw new ArgumentNullException(nameof(teacherService));
+            _courseService = courseService ?? throw new ArgumentNullException(nameof(courseService));
+            _groupService = groupService ?? throw new ArgumentNullException(nameof(groupService));
+            _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
+            _statusService = statusService ?? throw new ArgumentNullException(nameof(statusService));
+            _notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
 
-            // === ИНИЦИАЛИЗАЦИЯ КОМАНД ===
+            InitializeCommands();
+            SetupSubscriptions();
+            
+            LogInfo("TeachersViewModel initialized");
+        }
 
-            LoadTeachersCommand = ReactiveCommand.CreateFromTask(LoadTeachersAsync);
-            RefreshCommand = ReactiveCommand.CreateFromTask(RefreshAsync);
-            CreateTeacherCommand = ReactiveCommand.CreateFromTask(CreateTeacherAsync);
-            EditTeacherCommand = ReactiveCommand.CreateFromTask<TeacherViewModel>(EditTeacherAsync);
-            DeleteTeacherCommand = ReactiveCommand.CreateFromTask<TeacherViewModel>(DeleteTeacherAsync);
-            ViewTeacherDetailsCommand = ReactiveCommand.CreateFromTask<TeacherViewModel>(ViewTeacherDetailsAsync);
-            ViewStatisticsCommand = ReactiveCommand.CreateFromTask<TeacherViewModel>(ViewStatisticsAsync);
-            ManageCoursesCommand = ReactiveCommand.CreateFromTask<TeacherViewModel>(ManageCoursesAsync);
-            ManageGroupsCommand = ReactiveCommand.CreateFromTask<TeacherViewModel>(ManageGroupsAsync);
-            SearchCommand = ReactiveCommand.CreateFromTask<string>(SearchTeachersAsync);
-            ApplyFiltersCommand = ReactiveCommand.CreateFromTask(ApplyFiltersAsync);
-            ClearFiltersCommand = ReactiveCommand.CreateFromTask(ClearFiltersAsync);
-            GoToPageCommand = ReactiveCommand.CreateFromTask<int>(GoToPageAsync);
-            NextPageCommand = ReactiveCommand.CreateFromTask(NextPageAsync, this.WhenAnyValue(x => x.CurrentPage, x => x.TotalPages, (current, total) => current < total));
-            PreviousPageCommand = ReactiveCommand.CreateFromTask(PreviousPageAsync, this.WhenAnyValue(x => x.CurrentPage, current => current > 1));
+        #region Private Methods
 
-            // === ПОДПИСКИ ===
+        private void InitializeCommands()
+        {
+            // Используем стандартизированные методы создания команд из ViewModelBase
+            LoadTeachersCommand = CreateCommand(LoadTeachersAsync, null, "Ошибка загрузки преподавателей");
+            RefreshCommand = CreateCommand(RefreshAsync, null, "Ошибка обновления данных");
+            CreateTeacherCommand = CreateCommand(CreateTeacherAsync, null, "Ошибка создания преподавателя");
+            EditTeacherCommand = CreateCommand<TeacherViewModel>(EditTeacherAsync, null, "Ошибка редактирования преподавателя");
+            DeleteTeacherCommand = CreateCommand<TeacherViewModel>(DeleteTeacherAsync, null, "Ошибка удаления преподавателя");
+            ViewTeacherDetailsCommand = CreateCommand<TeacherViewModel>(ViewTeacherDetailsAsync, null, "Ошибка просмотра деталей преподавателя");
+            ViewStatisticsCommand = CreateCommand<TeacherViewModel>(ViewStatisticsAsync, null, "Ошибка загрузки статистики");
+            ManageCoursesCommand = CreateCommand<TeacherViewModel>(ManageCoursesAsync, null, "Ошибка управления курсами");
+            ManageGroupsCommand = CreateCommand<TeacherViewModel>(ManageGroupsAsync, null, "Ошибка управления группами");
+            SearchCommand = CreateCommand<string>(SearchTeachersAsync, null, "Ошибка поиска преподавателей");
+            ApplyFiltersCommand = CreateCommand(ApplyFiltersAsync, null, "Ошибка применения фильтров");
+            ClearFiltersCommand = CreateCommand(ClearFiltersAsync, null, "Ошибка очистки фильтров");
+            GoToPageCommand = CreateCommand<int>(GoToPageAsync, null, "Ошибка навигации по страницам");
+            
+            var canGoNext = this.WhenAnyValue(x => x.CurrentPage, x => x.TotalPages, (current, total) => current < total);
+            var canGoPrevious = this.WhenAnyValue(x => x.CurrentPage, current => current > 1);
+            
+            NextPageCommand = CreateCommand(NextPageAsync, canGoNext, "Ошибка перехода на следующую страницу");
+            PreviousPageCommand = CreateCommand(PreviousPageAsync, canGoPrevious, "Ошибка перехода на предыдущую страницу");
+        }
 
+        private void SetupSubscriptions()
+        {
             // Автоматический поиск при изменении текста
             this.WhenAnyValue(x => x.SearchText)
                 .Throttle(TimeSpan.FromMilliseconds(500))
                 .ObserveOn(RxApp.MainThreadScheduler)
-                .InvokeCommand(SearchCommand);
+                .InvokeCommand(SearchCommand)
+                .DisposeWith(Disposables);
 
             // Обновление computed properties
             this.WhenAnyValue(x => x.SelectedTeacher)
-                .Subscribe(_ => this.RaisePropertyChanged(nameof(HasSelectedTeacher)));
+                .Subscribe(_ => this.RaisePropertyChanged(nameof(HasSelectedTeacher)))
+                .DisposeWith(Disposables);
 
             this.WhenAnyValue(x => x.SelectedTeacherStatistics)
-                .Subscribe(_ => this.RaisePropertyChanged(nameof(HasSelectedTeacherStatistics)));
+                .Subscribe(_ => this.RaisePropertyChanged(nameof(HasSelectedTeacherStatistics)))
+                .DisposeWith(Disposables);
 
             this.WhenAnyValue(x => x.CurrentPage, x => x.TotalPages)
                 .Subscribe(_ => 
                 {
                     this.RaisePropertyChanged(nameof(CanGoToPreviousPage));
                     this.RaisePropertyChanged(nameof(CanGoToNextPage));
-                });
+                })
+                .DisposeWith(Disposables);
 
             // Загрузка статистики при выборе преподавателя
             this.WhenAnyValue(x => x.SelectedTeacher)
                 .Where(teacher => teacher != null)
                 .SelectMany(teacher => ViewStatisticsCommand.Execute(teacher!))
-                .Subscribe();
-
-            // Инициализация
-            LoadTeachersCommand.Execute().Subscribe();
+                .Subscribe()
+                .DisposeWith(Disposables);
         }
-
-        // === МЕТОДЫ КОМАНД ===
 
         private async Task LoadTeachersAsync()
         {
-            try
-            {
-                IsLoading = true;
-                
-                var (teachers, totalCount) = await _teacherService.GetTeachersPagedAsync(
-                    CurrentPage, 
-                    PageSize, 
-                    SearchText,
-                    SpecializationFilter,
-                    StatusFilter);
+            LogInfo("Loading teachers with filters: SearchText={SearchText}, SpecializationFilter={SpecializationFilter}, StatusFilter={StatusFilter}", SearchText, SpecializationFilter, StatusFilter);
+            
+            IsLoading = true;
+            
+            var (teachers, totalCount) = await _teacherService.GetTeachersPagedAsync(
+                CurrentPage, 
+                PageSize, 
+                SearchText,
+                SpecializationFilter,
+                StatusFilter);
 
-                Teachers.Clear();
-                foreach (var teacher in teachers)
-                {
-                    Teachers.Add(new TeacherViewModel(teacher));
-                }
-
-                TotalTeachers = totalCount;
-                TotalPages = (int)Math.Ceiling((double)totalCount / PageSize);
-
-                _statusService.ShowSuccess($"Загружено {teachers.Count()} преподавателей", "Преподаватели");
-            }
-            catch (Exception ex)
+            Teachers.Clear();
+            foreach (var teacher in teachers)
             {
-                _statusService.ShowError($"Ошибка загрузки преподавателей: {ex.Message}", "Преподаватели");
+                Teachers.Add(new TeacherViewModel(teacher));
             }
-            finally
-            {
-                IsLoading = false;
-            }
+
+            TotalTeachers = totalCount;
+            TotalPages = (int)Math.Ceiling((double)totalCount / PageSize);
+
+            ShowSuccess($"Загружено {teachers.Count()} преподавателей");
+            LogInfo("Loaded {TeacherCount} teachers, total: {TotalCount}", teachers.Count(), totalCount);
+            
+            IsLoading = false;
         }
 
         private async Task RefreshAsync()
         {
-            try
-            {
-                IsRefreshing = true;
-                await LoadTeachersAsync();
-                _statusService.ShowSuccess("Данные обновлены", "Преподаватели");
-            }
-            catch (Exception ex)
-            {
-                _statusService.ShowError($"Ошибка обновления: {ex.Message}", "Преподаватели");
-            }
-            finally
-            {
-                IsRefreshing = false;
-            }
+            LogInfo("Refreshing teachers data");
+            IsRefreshing = true;
+            
+            await LoadTeachersAsync();
+            ShowSuccess("Данные обновлены");
+            
+            IsRefreshing = false;
         }
 
         private async Task CreateTeacherAsync()
         {
-            try
+            LogInfo("Creating new teacher");
+            
+            var newTeacher = new Teacher
             {
-                var result = await _dialogService.ShowTeacherEditDialogAsync(new Teacher());
-                if (result != null)
-                {
-                    await _teacherService.AddTeacherAsync(result);
-                    await RefreshAsync();
-                    _statusService.ShowSuccess($"Преподаватель '{result.FullName}' добавлен", "Преподаватели");
-                    
-                    await _notificationService.SendNotificationAsync(
-                        "Новый преподаватель",
-                        $"В систему добавлен новый преподаватель: {result.FullName}",
-                        Domain.Models.System.NotificationType.Info);
-                }
-            }
-            catch (Exception ex)
+                Uid = Guid.NewGuid(),
+                FirstName = string.Empty,
+                LastName = string.Empty,
+                Status = TeacherStatus.Active,
+                HireDate = DateTime.Today
+            };
+
+            var dialogResult = await _dialogService.ShowTeacherEditDialogAsync(newTeacher);
+            if (dialogResult == null)
             {
-                _statusService.ShowError($"Ошибка создания преподавателя: {ex.Message}", "Преподаватели");
+                LogDebug("Teacher creation cancelled by user");
+                return;
             }
+
+            await _teacherService.CreateTeacherAsync(dialogResult);
+            Teachers.Add(new TeacherViewModel(dialogResult));
+
+            ShowSuccess($"Преподаватель '{dialogResult.FirstName} {dialogResult.LastName}' создан");
+            LogInfo("Teacher created successfully: {TeacherName}", $"{dialogResult.FirstName} {dialogResult.LastName}");
+            
+            // Уведомление о создании нового преподавателя
+            await _notificationService.CreateNotificationAsync(
+                dialogResult.Uid,
+                "Добро пожаловать!",
+                $"Добро пожаловать в систему, {dialogResult.FirstName}! Ваш аккаунт преподавателя создан.",
+                Domain.Models.System.NotificationType.Info);
         }
 
         private async Task EditTeacherAsync(TeacherViewModel teacherViewModel)
         {
-            try
+            LogInfo("Editing teacher: {TeacherId}", teacherViewModel.Uid);
+            
+            var teacher = await _teacherService.GetTeacherAsync(teacherViewModel.Uid);
+            if (teacher == null)
             {
-                var teacher = await _teacherService.GetTeacherAsync(teacherViewModel.Uid);
-                if (teacher == null)
+                ShowError("Преподаватель не найден");
+                return;
+            }
+
+            var dialogResult = await _dialogService.ShowTeacherEditDialogAsync(teacher);
+            if (dialogResult == null)
+            {
+                LogDebug("Teacher editing cancelled by user");
+                return;
+            }
+
+            var success = await _teacherService.UpdateTeacherAsync(dialogResult);
+            if (success)
+            {
+                var index = Teachers.IndexOf(teacherViewModel);
+                if (index >= 0)
                 {
-                    _statusService.ShowError("Преподаватель не найден", "Преподаватели");
-                    return;
+                    Teachers[index] = new TeacherViewModel(dialogResult);
                 }
 
-                var result = await _dialogService.ShowTeacherEditDialogAsync(teacher);
-                if (result != null)
-                {
-                    var success = await _teacherService.UpdateTeacherAsync(result);
-                    if (success)
-                    {
-                        await RefreshAsync();
-                        _statusService.ShowSuccess($"Преподаватель '{result.FullName}' обновлен", "Преподаватели");
-                    }
-                    else
-                    {
-                        _statusService.ShowError("Не удалось обновить преподавателя", "Преподаватели");
-                    }
-                }
+                ShowSuccess($"Преподаватель '{dialogResult.FirstName} {dialogResult.LastName}' обновлен");
+                LogInfo("Teacher updated successfully: {TeacherName}", $"{dialogResult.FirstName} {dialogResult.LastName}");
             }
-            catch (Exception ex)
+            else
             {
-                _statusService.ShowError($"Ошибка редактирования преподавателя: {ex.Message}", "Преподаватели");
+                ShowError("Не удалось обновить преподавателя");
             }
         }
 
         private async Task DeleteTeacherAsync(TeacherViewModel teacherViewModel)
         {
-            try
+            LogInfo("Deleting teacher: {TeacherId}", teacherViewModel.Uid);
+            
+            // Проверяем, есть ли у преподавателя активные курсы или группы
+            var courses = await _courseService.GetCoursesByTeacherAsync(teacherViewModel.Uid);
+            var groups = await _groupService.GetGroupsByCuratorAsync(teacherViewModel.Uid);
+            
+            var hasActiveCourses = courses.Any();
+            var hasActiveGroups = groups.Any();
+            
+            string warningMessage = $"Вы уверены, что хотите удалить преподавателя '{teacherViewModel.FullName}'?";
+            
+            if (hasActiveCourses || hasActiveGroups)
             {
-                var confirmation = await _dialogService.ShowConfirmationDialogAsync(
-                    "Удаление преподавателя",
-                    $"Вы уверены, что хотите удалить преподавателя '{teacherViewModel.FullName}'?\n\nЭто действие нельзя отменить.",
-                    "Удалить",
-                    "Отмена");
-
-                if (confirmation)
-                {
-                    var success = await _teacherService.DeleteTeacherAsync(teacherViewModel.Uid);
-                    if (success)
-                    {
-                        await RefreshAsync();
-                        _statusService.ShowSuccess($"Преподаватель '{teacherViewModel.FullName}' удален", "Преподаватели");
-                        
-                        await _notificationService.SendNotificationAsync(
-                            "Преподаватель удален",
-                            $"Преподаватель {teacherViewModel.FullName} был удален из системы",
-                            Domain.Models.System.NotificationType.Warning);
-                    }
-                    else
-                    {
-                        _statusService.ShowError("Не удалось удалить преподавателя", "Преподаватели");
-                    }
-                }
+                warningMessage += "\n\nВНИМАНИЕ: У преподавателя есть:";
+                if (hasActiveCourses)
+                    warningMessage += $"\n• {courses.Count()} активных курсов";
+                if (hasActiveGroups)
+                    warningMessage += $"\n• {groups.Count()} курируемых групп";
+                warningMessage += "\n\nВсе связи будут удалены!";
             }
-            catch (Exception ex)
+
+            var confirmResult = await _dialogService.ShowConfirmationAsync(
+                "Удаление преподавателя", warningMessage);
+
+            if (!confirmResult)
             {
-                _statusService.ShowError($"Ошибка удаления преподавателя: {ex.Message}", "Преподаватели");
+                LogDebug("Teacher deletion cancelled by user");
+                return;
+            }
+
+            var success = await _teacherService.DeleteTeacherAsync(teacherViewModel.Uid);
+            if (success)
+            {
+                Teachers.Remove(teacherViewModel);
+                ShowSuccess($"Преподаватель '{teacherViewModel.FullName}' удален");
+                LogInfo("Teacher deleted successfully: {TeacherName}", teacherViewModel.FullName);
+                
+                // Уведомляем администраторов об удалении
+                await _notificationService.SendNotificationToRoleAsync(
+                    "Administrator",
+                    "Преподаватель удален",
+                    $"Преподаватель '{teacherViewModel.FullName}' был удален из системы",
+                    Domain.Models.System.NotificationType.Warning);
+            }
+            else
+            {
+                ShowError("Не удалось удалить преподавателя");
             }
         }
 
         private async Task ViewTeacherDetailsAsync(TeacherViewModel teacherViewModel)
         {
-            try
+            LogInfo("Viewing teacher details: {TeacherId}", teacherViewModel.Uid);
+            
+            var teacher = await _teacherService.GetTeacherAsync(teacherViewModel.Uid);
+            if (teacher != null)
             {
-                var teacher = await _teacherService.GetTeacherAsync(teacherViewModel.Uid);
-                if (teacher != null)
-                {
-                    SelectedTeacher = new TeacherViewModel(teacher);
-                    await ViewStatisticsAsync(SelectedTeacher);
-                }
+                SelectedTeacher = new TeacherViewModel(teacher);
+                await ViewStatisticsAsync(SelectedTeacher);
+                ShowInfo($"Просмотр деталей преподавателя: {teacher.FullName}");
             }
-            catch (Exception ex)
+            else
             {
-                _statusService.ShowError($"Ошибка загрузки деталей преподавателя: {ex.Message}", "Преподаватели");
+                ShowError("Преподаватель не найден");
             }
         }
 
         private async Task ViewStatisticsAsync(TeacherViewModel teacherViewModel)
         {
-            try
+            LogInfo("Loading teacher statistics: {TeacherId}", teacherViewModel.Uid);
+            
+            var statistics = await _teacherService.GetTeacherStatisticsAsync(teacherViewModel.Uid);
+            SelectedTeacherStatistics = statistics as TeacherStatistics;
+            
+            if (SelectedTeacherStatistics != null)
             {
-                var statistics = await _teacherService.GetTeacherStatisticsAsync(teacherViewModel.Uid);
-                SelectedTeacherStatistics = statistics as TeacherStatistics;
-            }
-            catch (Exception ex)
-            {
-                _statusService.ShowError($"Ошибка загрузки статистики: {ex.Message}", "Преподаватели");
+                LogInfo("Teacher statistics loaded successfully");
             }
         }
 
         private async Task ManageCoursesAsync(TeacherViewModel teacherViewModel)
         {
-            try
+            LogInfo("Managing courses for teacher: {TeacherId}", teacherViewModel.Uid);
+            
+            var teacher = await _teacherService.GetTeacherAsync(teacherViewModel.Uid);
+            if (teacher == null)
             {
-                var teacher = await _teacherService.GetTeacherAsync(teacherViewModel.Uid);
-                if (teacher == null)
-                {
-                    _statusService.ShowError("Преподаватель не найден", "Преподаватели");
-                    return;
-                }
-
-                var allCourses = await _courseService.GetAllCoursesAsync();
-                var result = await _dialogService.ShowTeacherCoursesManagementDialogAsync(teacher, allCourses);
-                
-                if (result != null)
-                {
-                    await RefreshAsync();
-                    _statusService.ShowSuccess("Курсы преподавателя обновлены", "Преподаватели");
-                }
+                ShowError("Преподаватель не найден");
+                return;
             }
-            catch (Exception ex)
+
+            var allCourses = await _courseService.GetAllCoursesAsync();
+            
+            var result = await _dialogService.ShowTeacherCoursesManagementDialogAsync(teacher, allCourses);
+            if (result != null)
             {
-                _statusService.ShowError($"Ошибка управления курсами: {ex.Message}", "Преподаватели");
+                // TODO: Implement course assignment logic when service method is available
+                await RefreshAsync();
+                ShowSuccess($"Курсы преподавателя '{teacherViewModel.FullName}' обновлены");
+                LogInfo("Teacher courses updated successfully");
+            }
+            else
+            {
+                LogDebug("Course management cancelled by user");
             }
         }
 
         private async Task ManageGroupsAsync(TeacherViewModel teacherViewModel)
         {
-            try
+            LogInfo("Managing groups for teacher: {TeacherId}", teacherViewModel.Uid);
+            
+            var teacher = await _teacherService.GetTeacherAsync(teacherViewModel.Uid);
+            if (teacher == null)
             {
-                var teacher = await _teacherService.GetTeacherAsync(teacherViewModel.Uid);
-                if (teacher == null)
-                {
-                    _statusService.ShowError("Преподаватель не найден", "Преподаватели");
-                    return;
-                }
-
-                var allGroups = await _groupService.GetAllGroupsAsync();
-                var result = await _dialogService.ShowTeacherGroupsManagementDialogAsync(teacher, allGroups);
-                
-                if (result != null)
-                {
-                    await RefreshAsync();
-                    _statusService.ShowSuccess("Группы преподавателя обновлены", "Преподаватели");
-                }
+                ShowError("Преподаватель не найден");
+                return;
             }
-            catch (Exception ex)
+
+            var allGroups = await _groupService.GetGroupsAsync();
+            
+            var result = await _dialogService.ShowTeacherGroupsManagementDialogAsync(teacher, allGroups);
+            if (result != null)
             {
-                _statusService.ShowError($"Ошибка управления группами: {ex.Message}", "Преподаватели");
+                // TODO: Implement group assignment logic when service method is available
+                await RefreshAsync();
+                ShowSuccess($"Группы преподавателя '{teacherViewModel.FullName}' обновлены");
+                LogInfo("Teacher groups updated successfully");
+            }
+            else
+            {
+                LogDebug("Group management cancelled by user");
             }
         }
 
         private async Task SearchTeachersAsync(string searchTerm)
         {
-            CurrentPage = 1;
+            LogInfo("Searching teachers with term: {SearchTerm}", searchTerm);
+            SearchText = searchTerm;
+            CurrentPage = 1; // Сброс на первую страницу при поиске
             await LoadTeachersAsync();
         }
 
         private async Task ApplyFiltersAsync()
         {
-            CurrentPage = 1;
+            LogInfo("Applying filters");
+            CurrentPage = 1; // Сброс на первую страницу при применении фильтров
             await LoadTeachersAsync();
         }
 
         private async Task ClearFiltersAsync()
         {
+            LogInfo("Clearing filters");
             SpecializationFilter = null;
             StatusFilter = null;
             SearchText = string.Empty;
             CurrentPage = 1;
             await LoadTeachersAsync();
+            ShowInfo("Фильтры очищены");
         }
 
         private async Task GoToPageAsync(int page)
         {
+            LogInfo("Navigating to page: {Page}", page);
             if (page >= 1 && page <= TotalPages)
             {
                 CurrentPage = page;
@@ -401,19 +438,30 @@ namespace ViridiscaUi.ViewModels.Education
 
         private async Task NextPageAsync()
         {
-            if (CurrentPage < TotalPages)
-            {
-                await GoToPageAsync(CurrentPage + 1);
-            }
+            LogInfo("Navigating to next page");
+            await GoToPageAsync(CurrentPage + 1);
         }
 
         private async Task PreviousPageAsync()
         {
-            if (CurrentPage > 1)
-            {
-                await GoToPageAsync(CurrentPage - 1);
-            }
+            LogInfo("Navigating to previous page");
+            await GoToPageAsync(CurrentPage - 1);
         }
+
+        #endregion
+
+        #region Lifecycle Methods
+
+        protected override async Task OnFirstTimeLoadedAsync()
+        {
+            await base.OnFirstTimeLoadedAsync();
+            LogInfo("TeachersViewModel loaded for the first time");
+            
+            // Load teachers when view is loaded for the first time
+            await LoadTeachersAsync();
+        }
+
+        #endregion
     }
 
     /// <summary>

@@ -1,7 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using Avalonia.ReactiveUI;
-using ViridiscaUi.ViewModels.Pages;
+using ViridiscaUi.ViewModels;
 
 namespace ViridiscaUi.Views.Common;
 

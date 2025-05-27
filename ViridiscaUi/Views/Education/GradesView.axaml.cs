@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Markup.Xaml;
 using Avalonia.ReactiveUI;
 using ReactiveUI;
 using ViridiscaUi.ViewModels.Education;
@@ -11,5 +12,10 @@ public partial class GradesView : ReactiveUserControl<GradesViewModel>
     {
         InitializeComponent();
         this.WhenActivated(disposables => { });
+    }
+
+    private void InitializeComponent()
+    {
+        AvaloniaXamlLoader.Load(this);
     }
 } 

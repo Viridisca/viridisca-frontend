@@ -1,5 +1,5 @@
-using Avalonia.Controls;
-using ReactiveUI;
+using Avalonia.Markup.Xaml;
+using Avalonia.ReactiveUI;
 using ViridiscaUi.ViewModels.Education;
 
 namespace ViridiscaUi.Views.Education;
@@ -7,22 +7,15 @@ namespace ViridiscaUi.Views.Education;
 /// <summary>
 /// Представление для управления курсами
 /// </summary>
-public partial class CoursesView : UserControl, IViewFor<CoursesViewModel>
+public partial class CoursesView : ReactiveUserControl<CoursesViewModel>
 {
     public CoursesView()
     {
         InitializeComponent();
     }
 
-    public CoursesViewModel? ViewModel
+    private void InitializeComponent()
     {
-        get => DataContext as CoursesViewModel;
-        set => DataContext = value;
-    }
-
-    object? IViewFor.ViewModel
-    {
-        get => ViewModel;
-        set => ViewModel = value as CoursesViewModel;
+        AvaloniaXamlLoader.Load(this);
     }
 } 

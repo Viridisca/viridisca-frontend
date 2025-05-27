@@ -2,8 +2,8 @@ using System;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
-using BCrypt.Net;
 using ViridiscaUi.Domain.Models.Auth;
+using ViridiscaUi.Infrastructure;
 using ViridiscaUi.Services.Interfaces;
 
 namespace ViridiscaUi.Services.Implementations
@@ -11,27 +11,19 @@ namespace ViridiscaUi.Services.Implementations
     /// <summary>
     /// Сервис аутентификации
     /// </summary>
-    public class AuthService : IAuthService
+    /// <remarks>
+    /// Создает новый экземпляр сервиса аутентификации
+    /// </remarks>
+    public class AuthService(
+        IUserService userService,
+        IPermissionService permissionService,
+        IRoleService roleService,
+        IUserSessionService userSessionService) : IAuthService
     {
-        private readonly IUserService _userService;
-        private readonly IPermissionService _permissionService;
-        private readonly IRoleService _roleService;
-        private readonly IUserSessionService _userSessionService;
-
-        /// <summary>
-        /// Создает новый экземпляр сервиса аутентификации
-        /// </summary>
-        public AuthService(
-            IUserService userService,
-            IPermissionService permissionService,
-            IRoleService roleService,
-            IUserSessionService userSessionService)
-        {
-            _userService = userService;
-            _permissionService = permissionService;
-            _roleService = roleService;
-            _userSessionService = userSessionService;
-        }
+        private readonly IUserService _userService = userService;
+        private readonly IPermissionService _permissionService = permissionService;
+        private readonly IRoleService _roleService = roleService;
+        private readonly IUserSessionService _userSessionService = userSessionService;
 
         /// <summary>
         /// Аутентифицирует пользователя по логину и паролю
@@ -41,14 +33,9 @@ namespace ViridiscaUi.Services.Implementations
             try
             {
                 // Попробуем найти пользователя сначала по username, затем по email
-                var user = await _userService.GetUserByUsernameAsync(username);
-                if (user == null)
-                {
-                    // Если не нашли по username, попробуем найти по email
-                    user = await _userService.GetUserByEmailAsync(username);
-                }
-                
-                if (user == null)
+                var user = await _userService.GetUserByUsernameAsync(username) ?? await _userService.GetUserByEmailAsync(username);
+
+                if (user is null)
                 {
                     _userSessionService.ClearSession();
                     return (false, null, "Пользователь не найден");
@@ -67,20 +54,20 @@ namespace ViridiscaUi.Services.Implementations
                 }
 
                 // Логируем информацию о загруженном пользователе для отладки
-                Console.WriteLine($"[AuthService] Пользователь успешно аутентифицирован:");
-                Console.WriteLine($"  - Email: {user.Email}");
-                Console.WriteLine($"  - FullName: {user.FullName}");
-                Console.WriteLine($"  - RoleId: {user.RoleId}");
-                Console.WriteLine($"  - Role: {user.Role?.Name ?? "null"}");
-                Console.WriteLine($"  - UserRoles count: {user.UserRoles?.Count ?? 0}");
+                StatusLogger.LogInfo($"[AuthService] Пользователь успешно аутентифицирован:", "AuthService");
+                StatusLogger.LogInfo($"  - Email: {user.Email}", "AuthService");
+                StatusLogger.LogInfo($"  - FullName: {user.FullName}", "AuthService");
+                StatusLogger.LogInfo($"  - RoleId: {user.RoleId}", "AuthService");
+                StatusLogger.LogInfo($"  - Role: {user.Role?.Name ?? "null"}", "AuthService");
+                StatusLogger.LogInfo($"  - UserRoles count: {user.UserRoles?.Count ?? 0}", "AuthService");
 
                 _userSessionService.SetCurrentUser(user);
                 return (true, user, string.Empty);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[AuthService] Ошибка аутентификации: {ex.Message}");
-                Console.WriteLine($"[AuthService] StackTrace: {ex.StackTrace}");
+                StatusLogger.LogError($"Ошибка аутентификации: {ex.Message}", "AuthService");
+                StatusLogger.LogError($"StackTrace: {ex.StackTrace}", "AuthService");
                 _userSessionService.ClearSession();
                 return (false, null, $"Ошибка аутентификации: {ex.Message}");
             }
@@ -93,7 +80,8 @@ namespace ViridiscaUi.Services.Implementations
         {
             // Используем роль студента по умолчанию
             var studentRole = await _roleService.GetRoleByNameAsync("Student");
-            if (studentRole == null)
+
+            if (studentRole is null)
             {
                 return (false, null, "Системная ошибка: роль студента не найдена");
             }
@@ -107,12 +95,14 @@ namespace ViridiscaUi.Services.Implementations
         public async Task<(bool Success, User? User, string ErrorMessage)> RegisterAsync(string username, string email, string password, string firstName, string lastName, Guid roleId)
         {
             var existingUser = await _userService.GetUserByUsernameAsync(username);
+          
             if (existingUser != null)
             {
                 return (false, null, "Пользователь с таким именем уже существует");
             }
 
             var existingEmail = await _userService.GetUserByEmailAsync(email);
+           
             if (existingEmail != null)
             {
                 return (false, null, "Пользователь с таким email уже существует");
@@ -120,6 +110,7 @@ namespace ViridiscaUi.Services.Implementations
 
             // Проверяем, что роль существует
             var role = await _roleService.GetRoleAsync(roleId);
+            
             if (role == null)
             {
                 return (false, null, "Указанная роль не найдена");
@@ -170,15 +161,18 @@ namespace ViridiscaUi.Services.Implementations
         public async Task<bool> HasPermissionAsync(Guid userUid, string permissionName)
         {
             var user = await _userService.GetUserAsync(userUid);
+          
             if (user == null)
             {
                 return false;
             }
 
             var roles = await _roleService.GetUserRolesAsync(userUid);
+
             foreach (var role in roles)
             {
                 var permissions = await _permissionService.GetRolePermissionsAsync(role.Uid);
+          
                 foreach (var permission in permissions)
                 {
                     if (permission.Name == permissionName)
@@ -206,6 +200,7 @@ namespace ViridiscaUi.Services.Implementations
         public async Task<bool> ChangePasswordAsync(Guid userUid, string currentPassword, string newPassword)
         {
             var user = await _userService.GetUserAsync(userUid);
+           
             if (user == null)
             {
                 return false;
@@ -228,6 +223,7 @@ namespace ViridiscaUi.Services.Implementations
         public async Task<bool> RequestPasswordResetAsync(string email)
         {
             var user = await _userService.GetUserByEmailAsync(email);
+           
             if (user == null)
             {
                 return false;
@@ -252,4 +248,4 @@ namespace ViridiscaUi.Services.Implementations
             return user?.Uid ?? Guid.Empty;
         }
     }
-} 
+}

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive;
@@ -7,22 +7,25 @@ using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using ViridiscaUi.Domain.Models.Auth;
 using ViridiscaUi.Services.Interfaces;
+using ViridiscaUi.Infrastructure;
+using ViridiscaUi.Infrastructure.Navigation;
 
 namespace ViridiscaUi.ViewModels.Auth
 {
     /// <summary>
     /// ViewModel для страницы регистрации пользователя
     /// </summary>
+    [Route("register", DisplayName = "Регистрация", IconKey = "📝", Order = 2, ShowInMenu = false)]
     public class RegisterViewModel : RoutableViewModelBase
     {
         private readonly IAuthService _authService;
-        private readonly INavigationService _navigationService;
+        private readonly IUnifiedNavigationService _navigationService;
         private readonly IRoleService _roleService;
 
         /// <summary>
         /// URL-сегмент для навигации
         /// </summary>
-        public override string UrlPathSegment => "register";
+        
 
         /// <summary>
         /// Имя пользователя (логин)
@@ -73,12 +76,6 @@ namespace ViridiscaUi.ViewModels.Auth
         public ObservableCollection<Role> AvailableRoles { get; set; } = new();
 
         /// <summary>
-        /// Сообщение об ошибке
-        /// </summary>
-        [Reactive]
-        public string ErrorMessage { get; set; } = string.Empty;
-
-        /// <summary>
         /// Флаг, указывающий на процесс регистрации
         /// </summary>
         [Reactive]
@@ -93,12 +90,12 @@ namespace ViridiscaUi.ViewModels.Auth
         /// <summary>
         /// Команда для регистрации пользователя
         /// </summary>
-        public ReactiveCommand<Unit, Unit> RegisterCommand { get; }
+        public ReactiveCommand<Unit, Unit> RegisterCommand { get; private set; }
 
         /// <summary>
         /// Команда для перехода на страницу входа
         /// </summary>
-        public ReactiveCommand<Unit, Unit> GoToLoginCommand { get; }
+        public ReactiveCommand<Unit, Unit> GoToLoginCommand { get; private set; }
 
         /// <summary>
         /// Создает новый экземпляр ViewModel для регистрации пользователя
@@ -107,13 +104,27 @@ namespace ViridiscaUi.ViewModels.Auth
         /// <param name="navigationService">Сервис навигации</param>
         /// <param name="roleService">Сервис ролей</param>
         /// <param name="hostScreen">Родительский экран</param>
-        public RegisterViewModel(IAuthService authService, INavigationService navigationService, IRoleService roleService, IScreen hostScreen) 
+        /// <param name="viewModelFactory">Фабрика ViewModel</param>
+        public RegisterViewModel(IAuthService authService, IUnifiedNavigationService navigationService, IRoleService roleService, IScreen hostScreen) 
             : base(hostScreen)
         {
             _authService = authService ?? throw new ArgumentNullException(nameof(authService));
             _navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
             _roleService = roleService ?? throw new ArgumentNullException(nameof(roleService));
 
+            InitializeCommands();
+            
+            // Загружаем роли при создании ViewModel
+            _ = LoadRolesAsync();
+            
+            LogInfo("RegisterViewModel initialized");
+        }
+
+        /// <summary>
+        /// Инициализирует команды
+        /// </summary>
+        private void InitializeCommands()
+        {
             // Проверка возможности выполнения команды регистрации
             var canRegister = this.WhenAnyValue(
                 x => x.Username,
@@ -135,17 +146,12 @@ namespace ViridiscaUi.ViewModels.Auth
                     !isRegistering
             );
 
-            // Создание команды регистрации
-            RegisterCommand = ReactiveCommand.CreateFromTask(RegisterAsync, canRegister);
-            
-            // Команда для перехода на страницу входа
-            GoToLoginCommand = ReactiveCommand.CreateFromTask(async () =>
+            // Используем стандартизированные методы создания команд из ViewModelBase
+            RegisterCommand = CreateCommand(RegisterAsync, canRegister, "Ошибка регистрации");
+            GoToLoginCommand = CreateCommand(async () =>
             {
                 await _navigationService.NavigateToAsync("login");
-            });
-
-            // Загружаем роли при создании ViewModel
-            _ = LoadRolesAsync();
+            }, null, "Ошибка навигации");
         }
 
         /// <summary>
@@ -169,7 +175,7 @@ namespace ViridiscaUi.ViewModels.Auth
             }
             catch (Exception ex)
             {
-                ErrorMessage = $"Ошибка загрузки ролей: {ex.Message}";
+                SetError($"Ошибка загрузки ролей: {ex.Message}", ex);
             }
             finally
             {
@@ -185,18 +191,18 @@ namespace ViridiscaUi.ViewModels.Auth
             try
             {
                 IsRegistering = true;
-                ErrorMessage = string.Empty;
+                ClearError();
 
                 // Дополнительная проверка на совпадение паролей
                 if (Password != ConfirmPassword)
                 {
-                    ErrorMessage = "Пароли не совпадают";
+                    SetError("Пароли не совпадают");
                     return;
                 }
 
                 if (SelectedRole == null)
                 {
-                    ErrorMessage = "Выберите роль";
+                    SetError("Выберите роль");
                     return;
                 }
 
@@ -215,12 +221,12 @@ namespace ViridiscaUi.ViewModels.Auth
                 }
                 else
                 {
-                    ErrorMessage = result.ErrorMessage;
+                    SetError(result.ErrorMessage ?? "Ошибка регистрации");
                 }
             }
             catch (Exception ex)
             {
-                ErrorMessage = $"Ошибка регистрации: {ex.Message}";
+                SetError($"Ошибка регистрации: {ex.Message}", ex);
             }
             finally
             {
@@ -228,4 +234,4 @@ namespace ViridiscaUi.ViewModels.Auth
             }
         }
     }
-} 
+}

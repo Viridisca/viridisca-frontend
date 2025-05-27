@@ -155,7 +155,8 @@
         <!-- Область контента -->
         <Grid Grid.Column="1" Grid.Row="0">
             <!-- RouterView для страниц -->
-            <reactiveUi:RoutedViewHost Router="{Binding Router}"
+            <reactiveUi:RoutedViewHost x:Name="MainRouterViewHost"
+                                       Router="{Binding Router}"
                                        HorizontalContentAlignment="Stretch"
                                        VerticalContentAlignment="Stretch" />
         </Grid>

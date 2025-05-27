@@ -57,7 +57,7 @@ namespace ViridiscaUi.Services.Implementations
         {
             student.CreatedAt = DateTime.UtcNow;
             student.LastModifiedAt = DateTime.UtcNow;
-            
+
             await _dbContext.Students.AddAsync(student);
             await _dbContext.SaveChangesAsync();
         }
@@ -132,9 +132,9 @@ namespace ViridiscaUi.Services.Implementations
             var totalAssignments = assignments.Count;
             var completedAssignments = submissions.Count(s => s.Score != null);
             var pendingAssignments = submissions.Count(s => s.Score == null);
-            var overdueAssignments = assignments.Count(a => 
-                a.DueDate.HasValue && 
-                a.DueDate < DateTime.UtcNow && 
+            var overdueAssignments = assignments.Count(a =>
+                a.DueDate.HasValue &&
+                a.DueDate < DateTime.UtcNow &&
                 !submissions.Any(s => s.AssignmentId == a.Uid && s.Score != null));
 
             // Получаем оценки по предметам
@@ -176,6 +176,12 @@ namespace ViridiscaUi.Services.Implementations
             return true;
         }
 
+        public async Task<bool> AssignToGroupAsync(Guid studentUid, Guid groupUid)
+        {
+            // Используем тот же механизм, что и TransferStudentToGroupAsync
+            return await TransferStudentToGroupAsync(studentUid, groupUid);
+        }
+
         public async Task<IEnumerable<Course>> GetStudentCoursesAsync(Guid studentUid)
         {
             return await _dbContext.Enrollments
@@ -206,7 +212,7 @@ namespace ViridiscaUi.Services.Implementations
 
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
-                query = query.Where(s => 
+                query = query.Where(s =>
                     s.FirstName.Contains(searchTerm) ||
                     s.LastName.Contains(searchTerm) ||
                     s.Email.Contains(searchTerm) ||
@@ -214,7 +220,7 @@ namespace ViridiscaUi.Services.Implementations
             }
 
             var totalCount = await query.CountAsync();
-            
+
             var students = await query
                 .OrderBy(s => s.LastName)
                 .ThenBy(s => s.FirstName)
@@ -239,7 +245,7 @@ namespace ViridiscaUi.Services.Implementations
 
             var totalSubmissions = submissions.Count;
             var gradedSubmissions = submissions.Count(s => s.Score != null);
-            var averageScore = gradedSubmissions > 0 ? 
+            var averageScore = gradedSubmissions > 0 ?
                 submissions.Where(s => s.Score != null).Average(s => s.Score!.Value) : 0.0;
 
             // Получаем статистику по типам заданий
@@ -268,7 +274,7 @@ namespace ViridiscaUi.Services.Implementations
                 .Where(a => a.StudentUid == studentUid)
                 .ToListAsync();
 
-            var attendanceRate = attendanceRecords.Any() ? 
+            var attendanceRate = attendanceRecords.Any() ?
                 (int)(attendanceRecords.Count(a => a.IsPresent) * 100.0 / attendanceRecords.Count) : 100;
 
             return new StudentStatistics
@@ -299,7 +305,7 @@ namespace ViridiscaUi.Services.Implementations
 
             return await _dbContext.Assignments
                 .Include(a => a.Course)
-                .Where(a => courseUids.Contains(a.CourseId) && 
+                .Where(a => courseUids.Contains(a.CourseId) &&
                            !submittedAssignmentIds.Contains(a.Uid) &&
                            (!a.DueDate.HasValue || a.DueDate > DateTime.UtcNow))
                 .OrderBy(a => a.DueDate)
@@ -320,7 +326,7 @@ namespace ViridiscaUi.Services.Implementations
 
             return await _dbContext.Assignments
                 .Include(a => a.Course)
-                .Where(a => courseUids.Contains(a.CourseId) && 
+                .Where(a => courseUids.Contains(a.CourseId) &&
                            !submittedAssignmentIds.Contains(a.Uid) &&
                            a.DueDate.HasValue && a.DueDate < DateTime.UtcNow)
                 .OrderBy(a => a.DueDate)

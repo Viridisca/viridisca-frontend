@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using ReactiveUI;
@@ -9,6 +10,8 @@ using ReactiveUI.Fody.Helpers;
 using ViridiscaUi.Domain.Models.Education;
 using ViridiscaUi.Services.Interfaces;
 using ViridiscaUi.ViewModels;
+using ViridiscaUi.Infrastructure;
+using ViridiscaUi.Infrastructure.Navigation;
 using NotificationType = ViridiscaUi.Domain.Models.System.NotificationType;
 using static ViridiscaUi.Services.Interfaces.IGroupService;
 
@@ -16,7 +19,9 @@ namespace ViridiscaUi.ViewModels.Education
 {
     /// <summary>
     /// ViewModel для управления группами
+    /// Следует принципам SOLID и чистой архитектуры
     /// </summary>
+    [Route("groups", DisplayName = "Группы", IconKey = "👥", Order = 3, Group = "Education")]
     public class GroupsViewModel : RoutableViewModelBase
     {
         private readonly IGroupService _groupService;
@@ -26,7 +31,7 @@ namespace ViridiscaUi.ViewModels.Education
         private readonly IStatusService _statusService;
         private readonly INotificationService _notificationService;
 
-        public override string UrlPathSegment => "groups";
+        
 
         // === СВОЙСТВА ===
         
@@ -49,19 +54,19 @@ namespace ViridiscaUi.ViewModels.Education
 
         // === КОМАНДЫ ===
         
-        public ReactiveCommand<Unit, Unit> LoadGroupsCommand { get; }
-        public ReactiveCommand<Unit, Unit> RefreshCommand { get; }
-        public ReactiveCommand<Unit, Unit> CreateGroupCommand { get; }
-        public ReactiveCommand<GroupViewModel, Unit> EditGroupCommand { get; }
-        public ReactiveCommand<GroupViewModel, Unit> DeleteGroupCommand { get; }
-        public ReactiveCommand<GroupViewModel, Unit> ViewGroupDetailsCommand { get; }
-        public ReactiveCommand<GroupViewModel, Unit> LoadGroupStatisticsCommand { get; }
-        public ReactiveCommand<GroupViewModel, Unit> AssignCuratorCommand { get; }
-        public ReactiveCommand<GroupViewModel, Unit> ManageStudentsCommand { get; }
-        public ReactiveCommand<string, Unit> SearchCommand { get; }
-        public ReactiveCommand<int, Unit> GoToPageCommand { get; }
-        public ReactiveCommand<Unit, Unit> NextPageCommand { get; }
-        public ReactiveCommand<Unit, Unit> PreviousPageCommand { get; }
+        public ReactiveCommand<Unit, Unit> LoadGroupsCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> RefreshCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> CreateGroupCommand { get; private set; } = null!;
+        public ReactiveCommand<GroupViewModel, Unit> EditGroupCommand { get; private set; } = null!;
+        public ReactiveCommand<GroupViewModel, Unit> DeleteGroupCommand { get; private set; } = null!;
+        public ReactiveCommand<GroupViewModel, Unit> ViewGroupDetailsCommand { get; private set; } = null!;
+        public ReactiveCommand<GroupViewModel, Unit> LoadGroupStatisticsCommand { get; private set; } = null!;
+        public ReactiveCommand<GroupViewModel, Unit> AssignCuratorCommand { get; private set; } = null!;
+        public ReactiveCommand<GroupViewModel, Unit> ManageStudentsCommand { get; private set; } = null!;
+        public ReactiveCommand<string, Unit> SearchCommand { get; private set; } = null!;
+        public ReactiveCommand<int, Unit> GoToPageCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> NextPageCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> PreviousPageCommand { get; private set; } = null!;
 
         public GroupsViewModel(
             IScreen hostScreen,
@@ -72,255 +77,257 @@ namespace ViridiscaUi.ViewModels.Education
             IStatusService statusService,
             INotificationService notificationService) : base(hostScreen)
         {
-            _groupService = groupService;
-            _studentService = studentService;
-            _teacherService = teacherService;
-            _dialogService = dialogService;
-            _statusService = statusService;
-            _notificationService = notificationService;
+            _groupService = groupService ?? throw new ArgumentNullException(nameof(groupService));
+            _studentService = studentService ?? throw new ArgumentNullException(nameof(studentService));
+            _teacherService = teacherService ?? throw new ArgumentNullException(nameof(teacherService));
+            _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
+            _statusService = statusService ?? throw new ArgumentNullException(nameof(statusService));
+            _notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
 
-            // === ИНИЦИАЛИЗАЦИЯ КОМАНД ===
+            InitializeCommands();
+            SetupSubscriptions();
+            
+            LogInfo("GroupsViewModel initialized");
+        }
 
-            LoadGroupsCommand = ReactiveCommand.CreateFromTask(LoadGroupsAsync);
-            RefreshCommand = ReactiveCommand.CreateFromTask(RefreshAsync);
-            CreateGroupCommand = ReactiveCommand.CreateFromTask(CreateGroupAsync);
-            EditGroupCommand = ReactiveCommand.CreateFromTask<GroupViewModel>(EditGroupAsync);
-            DeleteGroupCommand = ReactiveCommand.CreateFromTask<GroupViewModel>(DeleteGroupAsync);
-            ViewGroupDetailsCommand = ReactiveCommand.CreateFromTask<GroupViewModel>(ViewGroupDetailsAsync);
-            LoadGroupStatisticsCommand = ReactiveCommand.CreateFromTask<GroupViewModel>(LoadGroupStatisticsAsync);
-            AssignCuratorCommand = ReactiveCommand.CreateFromTask<GroupViewModel>(AssignCuratorAsync);
-            ManageStudentsCommand = ReactiveCommand.CreateFromTask<GroupViewModel>(ManageStudentsAsync);
-            SearchCommand = ReactiveCommand.CreateFromTask<string>(SearchGroupsAsync);
-            GoToPageCommand = ReactiveCommand.CreateFromTask<int>(GoToPageAsync);
-            NextPageCommand = ReactiveCommand.CreateFromTask(NextPageAsync, this.WhenAnyValue(x => x.CurrentPage, x => x.TotalPages, (current, total) => current < total));
-            PreviousPageCommand = ReactiveCommand.CreateFromTask(PreviousPageAsync, this.WhenAnyValue(x => x.CurrentPage, current => current > 1));
+        #region Private Methods
 
-            // === ПОДПИСКИ ===
+        /// <summary>
+        /// Инициализирует команды
+        /// </summary>
+        private void InitializeCommands()
+        {
+            // Используем стандартизированные методы создания команд из ViewModelBase
+            LoadGroupsCommand = CreateCommand(LoadGroupsAsync, null, "Ошибка загрузки групп");
+            RefreshCommand = CreateCommand(RefreshAsync, null, "Ошибка обновления данных");
+            CreateGroupCommand = CreateCommand(CreateGroupAsync, null, "Ошибка создания группы");
+            EditGroupCommand = CreateCommand<GroupViewModel>(EditGroupAsync, null, "Ошибка редактирования группы");
+            DeleteGroupCommand = CreateCommand<GroupViewModel>(DeleteGroupAsync, null, "Ошибка удаления группы");
+            ViewGroupDetailsCommand = CreateCommand<GroupViewModel>(ViewGroupDetailsAsync, null, "Ошибка просмотра деталей группы");
+            LoadGroupStatisticsCommand = CreateCommand<GroupViewModel>(LoadGroupStatisticsAsync, null, "Ошибка загрузки статистики группы");
+            AssignCuratorCommand = CreateCommand<GroupViewModel>(AssignCuratorAsync, null, "Ошибка назначения куратора");
+            ManageStudentsCommand = CreateCommand<GroupViewModel>(ManageStudentsAsync, null, "Ошибка управления студентами");
+            SearchCommand = CreateCommand<string>(SearchGroupsAsync, null, "Ошибка поиска групп");
+            GoToPageCommand = CreateCommand<int>(GoToPageAsync, null, "Ошибка навигации по страницам");
+            
+            var canGoNext = this.WhenAnyValue(x => x.CurrentPage, x => x.TotalPages, (current, total) => current < total);
+            var canGoPrevious = this.WhenAnyValue(x => x.CurrentPage, current => current > 1);
+            
+            NextPageCommand = CreateCommand(NextPageAsync, canGoNext, "Ошибка перехода на следующую страницу");
+            PreviousPageCommand = CreateCommand(PreviousPageAsync, canGoPrevious, "Ошибка перехода на предыдущую страницу");
+        }
 
+        /// <summary>
+        /// Настраивает подписки на изменения свойств
+        /// </summary>
+        private void SetupSubscriptions()
+        {
             // Автопоиск при изменении текста поиска
             this.WhenAnyValue(x => x.SearchText)
                 .Throttle(TimeSpan.FromMilliseconds(500))
                 .ObserveOn(RxApp.MainThreadScheduler)
-                .InvokeCommand(SearchCommand);
+                .InvokeCommand(SearchCommand)
+                .DisposeWith(Disposables);
 
             // Загрузка статистики при выборе группы
             this.WhenAnyValue(x => x.SelectedGroup)
                 .Where(group => group != null)
                 .Select(group => group!)
-                .InvokeCommand(LoadGroupStatisticsCommand);
+                .InvokeCommand(LoadGroupStatisticsCommand)
+                .DisposeWith(Disposables);
 
             // Уведомления об изменении computed properties
             this.WhenAnyValue(x => x.SelectedGroup)
-                .Subscribe(_ => this.RaisePropertyChanged(nameof(HasSelectedGroup)));
+                .Subscribe(_ => this.RaisePropertyChanged(nameof(HasSelectedGroup)))
+                .DisposeWith(Disposables);
                 
             this.WhenAnyValue(x => x.SelectedGroupStatistics)
-                .Subscribe(_ => this.RaisePropertyChanged(nameof(HasSelectedGroupStatistics)));
-
-            // Первоначальная загрузка
-            LoadGroupsCommand.Execute().Subscribe();
+                .Subscribe(_ => this.RaisePropertyChanged(nameof(HasSelectedGroupStatistics)))
+                .DisposeWith(Disposables);
         }
-
-        // === МЕТОДЫ КОМАНД ===
 
         private async Task LoadGroupsAsync()
         {
-            try
-            {
-                IsLoading = true;
-                _statusService.ShowInfo("Загрузка групп...", "Группы");
+            LogInfo("Loading groups with search text: {SearchText}", SearchText);
+            
+            IsLoading = true;
+            ShowInfo("Загрузка групп...");
 
-                var (groups, totalCount) = await _groupService.GetGroupsPagedAsync(CurrentPage, PageSize, SearchText);
-                
-                Groups.Clear();
-                foreach (var group in groups)
-                {
-                    Groups.Add(new GroupViewModel(group));
-                }
-
-                TotalGroups = totalCount;
-                TotalPages = (int)Math.Ceiling((double)totalCount / PageSize);
-
-                _statusService.ShowSuccess($"Загружено {Groups.Count} групп", "Группы");
-            }
-            catch (Exception ex)
+            var (groups, totalCount) = await _groupService.GetGroupsPagedAsync(CurrentPage, PageSize, SearchText);
+            
+            Groups.Clear();
+            foreach (var group in groups)
             {
-                _statusService.ShowError($"Ошибка загрузки групп: {ex.Message}", "Группы");
+                Groups.Add(new GroupViewModel(group));
             }
-            finally
-            {
-                IsLoading = false;
-            }
+
+            TotalGroups = totalCount;
+            TotalPages = (int)Math.Ceiling((double)totalCount / PageSize);
+
+            ShowSuccess($"Загружено {Groups.Count} групп");
+            LogInfo("Loaded {GroupCount} groups, total: {TotalCount}", Groups.Count, totalCount);
+            
+            IsLoading = false;
         }
 
         private async Task RefreshAsync()
         {
-            try
-            {
-                IsRefreshing = true;
-                await LoadGroupsAsync();
-            }
-            finally
-            {
-                IsRefreshing = false;
-            }
+            LogInfo("Refreshing groups data");
+            IsRefreshing = true;
+            
+            await LoadGroupsAsync();
+            ShowSuccess("Данные обновлены");
+            
+            IsRefreshing = false;
         }
 
         private async Task CreateGroupAsync()
         {
-            try
+            LogInfo("Creating new group");
+            
+            var newGroup = new Group
             {
-                var newGroup = new Group
-                {
-                    Uid = Guid.NewGuid(),
-                    Name = string.Empty,
-                    Description = string.Empty
-                };
+                Uid = Guid.NewGuid(),
+                Name = string.Empty,
+                Description = string.Empty
+            };
 
-                var dialogResult = await _dialogService.ShowGroupEditDialogAsync(newGroup);
-                if (dialogResult == null) return;
-
-                var createdGroup = await _groupService.CreateGroupAsync(dialogResult);
-                Groups.Add(new GroupViewModel(createdGroup));
-
-                _statusService.ShowSuccess($"Группа '{createdGroup.Name}' создана", "Группы");
-                
-                // Уведомление куратору, если он назначен
-                if (createdGroup.CuratorUid.HasValue)
-                {
-                    await _notificationService.CreateNotificationAsync(
-                        createdGroup.CuratorUid.Value,
-                        "Назначение куратором",
-                        $"Вы назначены куратором группы '{createdGroup.Name}'",
-                        NotificationType.Info);
-                }
+            var dialogResult = await _dialogService.ShowGroupEditDialogAsync(newGroup);
+            if (dialogResult == null)
+            {
+                LogDebug("Group creation cancelled by user");
+                return;
             }
-            catch (Exception ex)
+
+            await _groupService.CreateGroupAsync(dialogResult);
+            Groups.Add(new GroupViewModel(dialogResult));
+
+            ShowSuccess($"Группа '{dialogResult.Name}' создана");
+            LogInfo("Group created successfully: {GroupName}", dialogResult.Name);
+            
+            // Уведомление куратору, если он назначен
+            if (dialogResult.CuratorUid.HasValue)
             {
-                _statusService.ShowError($"Ошибка создания группы: {ex.Message}", "Группы");
+                await _notificationService.CreateNotificationAsync(
+                    dialogResult.CuratorUid.Value,
+                    "Назначение куратором",
+                    $"Вы назначены куратором группы '{dialogResult.Name}'",
+                    Domain.Models.System.NotificationType.Info);
             }
         }
 
         private async Task EditGroupAsync(GroupViewModel groupViewModel)
         {
-            try
+            LogInfo("Editing group: {GroupId}", groupViewModel.Uid);
+            
+            var dialogResult = await _dialogService.ShowGroupEditDialogAsync(groupViewModel.ToGroup());
+            if (dialogResult == null)
             {
-                var dialogResult = await _dialogService.ShowGroupEditDialogAsync(groupViewModel.ToGroup());
-                if (dialogResult == null) return;
-
-                var updatedGroup = await _groupService.UpdateGroupAsync(dialogResult);
-                var index = Groups.IndexOf(groupViewModel);
-                if (index >= 0)
-                {
-                    Groups[index] = new GroupViewModel(updatedGroup);
-                }
-
-                _statusService.ShowSuccess($"Группа '{updatedGroup.Name}' обновлена", "Группы");
+                LogDebug("Group editing cancelled by user");
+                return;
             }
-            catch (Exception ex)
+
+            var updatedGroup = await _groupService.UpdateGroupAsync(dialogResult);
+            var index = Groups.IndexOf(groupViewModel);
+            if (index >= 0)
             {
-                _statusService.ShowError($"Ошибка обновления группы: {ex.Message}", "Группы");
+                Groups[index] = new GroupViewModel(updatedGroup);
             }
+
+            ShowSuccess($"Группа '{updatedGroup.Name}' обновлена");
+            LogInfo("Group updated successfully: {GroupName}", updatedGroup.Name);
         }
 
         private async Task DeleteGroupAsync(GroupViewModel groupViewModel)
         {
-            try
+            LogInfo("Deleting group: {GroupId}", groupViewModel.Uid);
+            
+            var confirmResult = await _dialogService.ShowConfirmationAsync(
+                "Удаление группы",
+                $"Вы уверены, что хотите удалить группу '{groupViewModel.Name}'?\nВсе студенты будут исключены из группы.");
+
+            if (!confirmResult)
             {
-                var confirmResult = await _dialogService.ShowConfirmationAsync(
-                    "Удаление группы",
-                    $"Вы уверены, что хотите удалить группу '{groupViewModel.Name}'?");
-
-                if (!confirmResult) return;
-
-                await _groupService.DeleteGroupAsync(groupViewModel.Uid);
-                Groups.Remove(groupViewModel);
-
-                _statusService.ShowSuccess($"Группа '{groupViewModel.Name}' удалена", "Группы");
+                LogDebug("Group deletion cancelled by user");
+                return;
             }
-            catch (Exception ex)
-            {
-                _statusService.ShowError($"Ошибка удаления группы: {ex.Message}", "Группы");
-            }
+
+            await _groupService.DeleteGroupAsync(groupViewModel.Uid);
+            Groups.Remove(groupViewModel);
+            ShowSuccess($"Группа '{groupViewModel.Name}' удалена");
+            LogInfo("Group deleted successfully: {GroupName}", groupViewModel.Name);
         }
 
         private async Task ViewGroupDetailsAsync(GroupViewModel groupViewModel)
         {
-            try
-            {
-                SelectedGroup = groupViewModel;
-                await LoadGroupStatisticsAsync(groupViewModel);
-                
-                // Здесь можно добавить навигацию к детальному представлению группы
-                _statusService.ShowInfo($"Просмотр группы '{groupViewModel.Name}'", "Группы");
-            }
-            catch (Exception ex)
-            {
-                _statusService.ShowError($"Ошибка отображения деталей группы: {ex.Message}", "Группы");
-            }
+            LogInfo("Viewing group details: {GroupId}", groupViewModel.Uid);
+            
+            SelectedGroup = groupViewModel;
+            await LoadGroupStatisticsAsync(groupViewModel);
+            
+            ShowInfo($"Просмотр группы '{groupViewModel.Name}'");
         }
 
         private async Task LoadGroupStatisticsAsync(GroupViewModel groupViewModel)
         {
             try
             {
-                SelectedGroupStatistics = await _groupService.GetGroupStatisticsAsync(groupViewModel.Uid);
+                var statistics = await _groupService.GetGroupStatisticsAsync(groupViewModel.Uid);
+                SelectedGroupStatistics = statistics;
+                LogInfo("Group statistics loaded for: {GroupName}", groupViewModel.Name);
             }
             catch (Exception ex)
             {
-                _statusService.ShowWarning($"Не удалось загрузить статистику группы: {ex.Message}", "Группы");
+                ShowWarning($"Не удалось загрузить статистику группы: {ex.Message}");
+                LogError(ex, "Failed to load group statistics for: {GroupName}", groupViewModel.Name);
             }
         }
 
         private async Task AssignCuratorAsync(GroupViewModel groupViewModel)
         {
-            try
+            LogInfo("Assigning curator to group: {GroupId}", groupViewModel.Uid);
+            
+            var teachers = await _teacherService.GetAllTeachersAsync();
+            var selectedTeacher = await _dialogService.ShowTeacherSelectionDialogAsync(teachers);
+            
+            if (selectedTeacher == null)
             {
-                var teachers = await _teacherService.GetTeachersAsync();
-                var selectedTeacher = await _dialogService.ShowTeacherSelectionDialogAsync(teachers);
-                
-                if (selectedTeacher == null) return;
-
-                var success = await _groupService.AssignCuratorAsync(groupViewModel.Uid, selectedTeacher.Uid);
-                if (success)
-                {
-                    groupViewModel.CuratorName = $"{selectedTeacher.FirstName} {selectedTeacher.LastName}";
-                    _statusService.ShowSuccess($"Куратор назначен группе '{groupViewModel.Name}'", "Группы");
-                    
-                    // Уведомление новому куратору
-                    await _notificationService.CreateNotificationAsync(
-                        selectedTeacher.UserUid,
-                        "Назначение куратором",
-                        $"Вы назначены куратором группы '{groupViewModel.Name}'",
-                        NotificationType.Info);
-                }
-                else
-                {
-                    _statusService.ShowError("Не удалось назначить куратора", "Группы");
-                }
+                LogDebug("Curator assignment cancelled by user");
+                return;
             }
-            catch (Exception ex)
+
+            var success = await _groupService.AssignCuratorAsync(groupViewModel.Uid, selectedTeacher.Uid);
+            if (success)
             {
-                _statusService.ShowError($"Ошибка назначения куратора: {ex.Message}", "Группы");
+                groupViewModel.CuratorName = $"{selectedTeacher.FirstName} {selectedTeacher.LastName}";
+                ShowSuccess($"Куратор назначен для группы '{groupViewModel.Name}'");
+                LogInfo("Curator assigned to group {GroupName}: {CuratorName}", groupViewModel.Name, groupViewModel.CuratorName);
+                
+                // Уведомление куратору
+                await _notificationService.CreateNotificationAsync(
+                    selectedTeacher.Uid,
+                    "Назначение куратором",
+                    $"Вы назначены куратором группы '{groupViewModel.Name}'",
+                    Domain.Models.System.NotificationType.Info);
+            }
+            else
+            {
+                ShowError("Не удалось назначить куратора");
             }
         }
 
         private async Task ManageStudentsAsync(GroupViewModel groupViewModel)
         {
-            try
+            LogInfo("Managing students for group: {GroupId}", groupViewModel.Uid);
+            
+            var allStudents = await _studentService.GetAllStudentsAsync();
+            var result = await _dialogService.ShowGroupStudentsManagementDialogAsync(groupViewModel.ToGroup(), allStudents);
+            
+            if (result != null)
             {
-                var allStudents = await _studentService.GetStudentsAsync();
-                var groupStudents = allStudents.Where(s => s.GroupUid == groupViewModel.Uid).ToList();
-                
-                var result = await _dialogService.ShowGroupStudentsManagementDialogAsync(groupViewModel.ToGroup(), allStudents);
-                if (result != null)
-                {
-                    await RefreshAsync();
-                    _statusService.ShowSuccess($"Состав группы '{groupViewModel.Name}' обновлен", "Группы");
-                }
-            }
-            catch (Exception ex)
-            {
-                _statusService.ShowError($"Ошибка управления студентами: {ex.Message}", "Группы");
+                await RefreshAsync();
+                ShowSuccess($"Список студентов группы '{groupViewModel.Name}' обновлен");
+                LogInfo("Students list updated for group: {GroupName}", groupViewModel.Name);
             }
         }
 
@@ -355,6 +362,21 @@ namespace ViridiscaUi.ViewModels.Education
                 await GoToPageAsync(CurrentPage - 1);
             }
         }
+
+        #endregion
+
+        #region Lifecycle Methods
+
+        protected override async Task OnFirstTimeLoadedAsync()
+        {
+            await base.OnFirstTimeLoadedAsync();
+            LogInfo("GroupsViewModel loaded for the first time");
+            
+            // Load groups when view is loaded for the first time
+            await LoadGroupsAsync();
+        }
+
+        #endregion
     }
 
     /// <summary>

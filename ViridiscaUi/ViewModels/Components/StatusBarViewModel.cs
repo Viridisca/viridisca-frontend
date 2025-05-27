@@ -19,10 +19,9 @@ namespace ViridiscaUi.ViewModels.Components;
 /// <summary>
 /// ViewModel для StatusBar компонента
 /// </summary>
-public class StatusBarViewModel : ReactiveObject, IDisposable
+public class StatusBarViewModel : ViewModelBase
 {
     private readonly IStatusService _statusService;
-    private readonly IDisposable _subscriptions;
     private StatusHistoryWindow? _historyWindow;
 
     public ReadOnlyObservableCollection<StatusMessage> Messages => _statusService.Messages;
@@ -35,16 +34,49 @@ public class StatusBarViewModel : ReactiveObject, IDisposable
     [Reactive] public int WarningsCount { get; private set; }
     [Reactive] public int InfoCount { get; private set; }
 
-    public ReactiveCommand<Unit, Unit> ToggleHistoryCommand { get; }
-    public ReactiveCommand<Unit, Unit> ClearHistoryCommand { get; }
-    public ReactiveCommand<StatusMessage, Unit> CopyMessageCommand { get; }
-    public ReactiveCommand<Unit, Unit> CopyAllMessagesCommand { get; }
-    public ReactiveCommand<Unit, Unit> CloseHistoryCommand { get; }
+    public ReactiveCommand<Unit, Unit> ToggleHistoryCommand { get; private set; }
+    public ReactiveCommand<Unit, Unit> ClearHistoryCommand { get; private set; }
+    public ReactiveCommand<StatusMessage, Unit> CopyMessageCommand { get; private set; }
+    public ReactiveCommand<Unit, Unit> CopyAllMessagesCommand { get; private set; }
+    public ReactiveCommand<Unit, Unit> CloseHistoryCommand { get; private set; }
 
     public StatusBarViewModel(IStatusService statusService)
     {
         _statusService = statusService;
 
+        InitializeCommands();
+        SetupSubscriptions();
+
+        // Инициализация начальных значений
+        CurrentMessage = _statusService.CurrentMessage;
+        IsStatusMessageVisible = CurrentMessage != null;
+        UpdateCounts();
+    }
+
+    /// <summary>
+    /// Инициализирует команды
+    /// </summary>
+    private void InitializeCommands()
+    {
+        // Используем стандартизированные методы создания команд из ViewModelBase
+        ToggleHistoryCommand = CreateSyncCommand(ToggleHistory, null, "Ошибка переключения истории");
+        CloseHistoryCommand = CreateSyncCommand(CloseHistory, null, "Ошибка закрытия истории");
+
+        ClearHistoryCommand = CreateSyncCommand(() =>
+        {
+            _statusService.Clear();
+            UpdateCounts();
+        }, null, "Ошибка очистки истории");
+
+        CopyMessageCommand = CreateCommand<StatusMessage>(CopyMessageAsync, null, "Ошибка копирования сообщения");
+        CopyAllMessagesCommand = CreateCommand(CopyAllMessagesAsync, null, "Ошибка копирования всех сообщений");
+    }
+
+    /// <summary>
+    /// Настраивает подписки на изменения
+    /// </summary>
+    private void SetupSubscriptions()
+    {
         // Подписка на изменения текущего сообщения через событие
         var currentMessageSubscription = Observable.FromEventPattern<EventHandler<StatusMessage?>, StatusMessage?>(
                 h => _statusService.CurrentMessageChanged += h,
@@ -62,28 +94,8 @@ public class StatusBarViewModel : ReactiveObject, IDisposable
                 h => _statusService.MessageAdded -= h)
             .Subscribe(_ => UpdateCounts());
 
-        _subscriptions = new CompositeDisposable(
-            currentMessageSubscription,
-            messageAddedSubscription
-        );
-
-        // Команды
-        ToggleHistoryCommand = ReactiveCommand.Create(ToggleHistory);
-        CloseHistoryCommand = ReactiveCommand.Create(CloseHistory);
-
-        ClearHistoryCommand = ReactiveCommand.Create(() =>
-        {
-            _statusService.Clear();
-            UpdateCounts();
-        });
-
-        CopyMessageCommand = ReactiveCommand.CreateFromTask<StatusMessage>(CopyMessageAsync);
-        CopyAllMessagesCommand = ReactiveCommand.CreateFromTask(CopyAllMessagesAsync);
-
-        // Инициализация начальных значений
-        CurrentMessage = _statusService.CurrentMessage;
-        IsStatusMessageVisible = CurrentMessage != null;
-        UpdateCounts();
+        currentMessageSubscription.DisposeWith(Disposables);
+        messageAddedSubscription.DisposeWith(Disposables);
     }
 
     private void ToggleHistory()
@@ -211,11 +223,5 @@ public class StatusBarViewModel : ReactiveObject, IDisposable
         {
             _statusService?.ShowError($"Ошибка копирования всех сообщений: {ex.Message}", "StatusBar");
         }
-    }
-
-    public void Dispose()
-    {
-        CloseHistory();
-        _subscriptions?.Dispose();
     }
 } 
