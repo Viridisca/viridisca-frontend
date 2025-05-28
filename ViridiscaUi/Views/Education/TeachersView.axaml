@@ -5,6 +5,7 @@
              xmlns:vm="clr-namespace:ViridiscaUi.ViewModels.Education"
              xmlns:domain="clr-namespace:ViridiscaUi.Domain.Models.Education;assembly=ViridiscaUi.Domain"
              xmlns:local="clr-namespace:ViridiscaUi.Converters"
+             xmlns:material="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              mc:Ignorable="d" d:DesignWidth="1800" d:DesignHeight="1200"
              x:Class="ViridiscaUi.Views.Education.TeachersView"
              x:DataType="vm:TeachersViewModel">
@@ -13,332 +14,581 @@
         <local:EnumEqualityConverter x:Key="EnumEqualityConverter" />
     </UserControl.Resources>
 
+    <UserControl.Styles>
+        <!-- Modern Card Style -->
+        <Style Selector="Border.card">
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeMediumBrush}" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+            <Setter Property="BoxShadow" Value="0 2 8 0 #10000000" />
+        </Style>
+        
+        <!-- Action Button Style -->
+        <Style Selector="Button.action">
+            <Setter Property="Padding" Value="12,8" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        
+        <!-- Primary Action Button -->
+        <Style Selector="Button.primary">
+            <Setter Property="Background" Value="{DynamicResource SystemAccentColor}" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        
+        <!-- Secondary Action Button -->
+        <Style Selector="Button.secondary">
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseLowBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+        </Style>
+        
+        <!-- Danger Action Button -->
+        <Style Selector="Button.danger">
+            <Setter Property="Background" Value="#E74C3C" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        
+        <!-- Filter Panel Style -->
+        <Style Selector="StackPanel.filter-panel">
+            <Setter Property="Spacing" Value="8" />
+            <Setter Property="MinWidth" Value="120" />
+        </Style>
+        
+        <!-- Status Badge Style -->
+        <Style Selector="Border.status-badge">
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+        </Style>
+    </UserControl.Styles>
+
     <Design.DataContext>
         <vm:TeachersViewModel />
     </Design.DataContext>
 
-    <Grid RowDefinitions="Auto,*" ColumnDefinitions="2*,*" Margin="16">
+    <Grid RowDefinitions="Auto,*,Auto" Margin="16">
         
-        <!-- Заголовок и панель управления -->
-        <Border Grid.Row="0" Grid.ColumnSpan="2" 
-                Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
-                CornerRadius="8" Padding="16" Margin="0,0,0,16">
+        <!-- Header Section with Actions -->
+        <Border Grid.Row="0" Classes="card" Padding="20" Margin="0,0,0,16">
             <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto">
                 
-                <!-- Заголовок -->
-                <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="12">
-                    <TextBlock Text="👨‍🏫" FontSize="24" VerticalAlignment="Center"/>
+                <!-- Title and Statistics -->
+                <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="16">
+                    <material:MaterialIcon Kind="AccountTie" 
+                                               Width="28" Height="28" 
+                                               VerticalAlignment="Center"
+                                               Foreground="{DynamicResource SystemAccentColor}"/>
                     <TextBlock Text="Управление преподавателями" 
-                               FontSize="24" FontWeight="Bold" 
+                               FontSize="28" FontWeight="Bold" 
                                VerticalAlignment="Center"/>
-                    <Border Background="{DynamicResource SystemAccentColor}" 
-                            CornerRadius="12" Padding="8,4">
-                        <TextBlock Text="{Binding TotalTeachers, StringFormat='{}{0} преподавателей'}" 
-                                   Foreground="White" FontSize="12" FontWeight="SemiBold"/>
-                    </Border>
-                </StackPanel>
-
-                <!-- Кнопки действий -->
-                <StackPanel Grid.Row="0" Grid.Column="1" 
-                            Orientation="Horizontal" Spacing="8">
-                    <Button Content="➕ Добавить преподавателя" 
-                            Command="{Binding CreateTeacherCommand}"
-                            Classes="accent" Padding="12,8"/>
-                    <Button Content="🔄 Обновить" 
-                            Command="{Binding RefreshCommand}"
-                            Padding="12,8"/>
-                    <Button Content="🧹 Очистить фильтры" 
-                            Command="{Binding ClearFiltersCommand}"
-                            Padding="12,8"/>
-                </StackPanel>
-
-                <!-- Поиск -->
-                <Grid Grid.Row="1" Grid.ColumnSpan="2" Margin="0,12,0,0">
-                    <TextBox Text="{Binding SearchText}" 
-                             Watermark="🔍 Поиск преподавателей по имени, email или специализации..."
-                             MinWidth="400"/>
-                </Grid>
-
-                <!-- Фильтры -->
-                <Grid Grid.Row="2" Grid.ColumnSpan="2" Margin="0,12,0,0"
-                      ColumnDefinitions="Auto,*,Auto,*,Auto,*">
                     
-                    <!-- Специализация -->
-                    <TextBlock Grid.Column="0" Text="Специализация:" 
-                               VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <ComboBox Grid.Column="1" SelectedItem="{Binding SpecializationFilter}" 
-                              MinWidth="200" Margin="0,0,16,0">
-                        <ComboBoxItem Content="Все специализации"/>
-                        <ComboBoxItem Content="Математика"/>
-                        <ComboBoxItem Content="Физика"/>
-                        <ComboBoxItem Content="Информатика"/>
-                        <ComboBoxItem Content="Химия"/>
-                        <ComboBoxItem Content="Биология"/>
-                        <ComboBoxItem Content="История"/>
-                        <ComboBoxItem Content="Литература"/>
-                        <ComboBoxItem Content="Иностранные языки"/>
-                    </ComboBox>
-                    
-                    <!-- Статус активности -->
-                    <TextBlock Grid.Column="2" Text="Статус:" 
-                               VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <ComboBox Grid.Column="3" SelectedItem="{Binding StatusFilter}" 
-                              MinWidth="150" Margin="0,0,16,0">
-                        <ComboBoxItem Content="Все"/>
-                        <ComboBoxItem Content="✅ Активные"/>
-                        <ComboBoxItem Content="⏸️ Неактивные"/>
-                    </ComboBox>
-                    
-                    <!-- Размер страницы -->
-                    <TextBlock Grid.Column="4" Text="Размер страницы:" 
-                               VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <ComboBox Grid.Column="5" SelectedItem="{Binding PageSize}" 
-                              Width="80">
-                        <ComboBoxItem Content="10"/>
-                        <ComboBoxItem Content="15"/>
-                        <ComboBoxItem Content="25"/>
-                        <ComboBoxItem Content="50"/>
-                    </ComboBox>
-                </Grid>
-            </Grid>
-        </Border>
-
-        <!-- Список преподавателей -->
-        <Border Grid.Row="1" Grid.Column="0" 
-                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
-                CornerRadius="8" Padding="0" Margin="0,0,8,0">
-            <Grid RowDefinitions="*,Auto">
-                
-                <!-- DataGrid с преподавателями -->
-                <DataGrid Grid.Row="0" ItemsSource="{Binding Teachers}" 
-                          SelectedItem="{Binding SelectedTeacher}"
-                          IsReadOnly="True" GridLinesVisibility="Horizontal"
-                          AutoGenerateColumns="False" CanUserReorderColumns="True"
-                          CanUserResizeColumns="True" CanUserSortColumns="True">
-                    
-                    <DataGrid.Columns>
-                        <!-- ФИО -->
-                        <DataGridTextColumn Header="ФИО" 
-                                            Binding="{Binding FullName}" 
-                                            Width="250" FontWeight="SemiBold"/>
-                        
-                        <!-- Email -->
-                        <DataGridTextColumn Header="Email" 
-                                            Binding="{Binding Email}" 
-                                            Width="200"/>
-                        
-                        <!-- Телефон -->
-                        <DataGridTextColumn Header="Телефон" 
-                                            Binding="{Binding Phone}" 
-                                            Width="140"/>
-                        
-                        <!-- Специализация -->
-                        <DataGridTextColumn Header="Специализация" 
-                                            Binding="{Binding Specialization}" 
-                                            Width="160"/>
-                        
-                        <!-- Курсов ведет -->
-                        <DataGridTemplateColumn Header="Курсов" 
-                                                Width="80">
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
-                                    <Border Background="{DynamicResource SystemAccentColorLight3}" 
-                                            CornerRadius="12" Padding="8,4"
-                                            HorizontalAlignment="Center">
-                                        <TextBlock Text="{Binding CoursesCount}" 
-                                                   Foreground="{DynamicResource SystemAccentColorDark1}"
-                                                   FontWeight="SemiBold" HorizontalAlignment="Center"/>
-                                    </Border>
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
-                        
-                        <!-- Групп курирует -->
-                        <DataGridTemplateColumn Header="Групп" 
-                                                Width="80">
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
-                                    <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}" 
-                                            CornerRadius="12" Padding="8,4"
-                                            HorizontalAlignment="Center">
-                                        <TextBlock Text="{Binding CuratedGroupsCount}" 
-                                                   FontWeight="SemiBold" HorizontalAlignment="Center"/>
-                                    </Border>
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
-                        
-                        <!-- Действия -->
-                        <DataGridTemplateColumn Header="Действия" Width="300">
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate DataType="vm:TeacherViewModel">
-                                    <StackPanel Orientation="Horizontal" Spacing="4">
-                                        <Button Content="👁" ToolTip.Tip="Просмотр профиля"
-                                                Command="{Binding $parent[DataGrid].DataContext.ViewTeacherDetailsCommand}"
-                                                CommandParameter="{Binding}" Padding="8,4" FontSize="12"/>
-                                        <Button Content="✏️" ToolTip.Tip="Редактировать"
-                                                Command="{Binding $parent[DataGrid].DataContext.EditTeacherCommand}"
-                                                CommandParameter="{Binding}" Padding="8,4" FontSize="12"/>
-                                        <Button Content="📚" ToolTip.Tip="Управление курсами"
-                                                Command="{Binding $parent[DataGrid].DataContext.ManageCoursesCommand}"
-                                                CommandParameter="{Binding}" Padding="8,4" FontSize="12"/>
-                                        <Button Content="👥" ToolTip.Tip="Управление группами"
-                                                Command="{Binding $parent[DataGrid].DataContext.ManageGroupsCommand}"
-                                                CommandParameter="{Binding}" Padding="8,4" FontSize="12"/>
-                                        <Button Content="📊" ToolTip.Tip="Статистика"
-                                                Command="{Binding $parent[DataGrid].DataContext.ViewStatisticsCommand}"
-                                                CommandParameter="{Binding}" Padding="8,4" FontSize="12"/>
-                                        <Button Content="🗑️" ToolTip.Tip="Удалить"
-                                                Command="{Binding $parent[DataGrid].DataContext.DeleteTeacherCommand}"
-                                                CommandParameter="{Binding}" Padding="8,4" FontSize="12"
-                                                Classes="danger"/>
-                                    </StackPanel>
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
-                    </DataGrid.Columns>
-                </DataGrid>
-
-                <!-- Пагинация -->
-                <Border Grid.Row="1" Background="{DynamicResource SystemControlBackgroundAltHighBrush}" 
-                        Padding="16,8">
-                    <Grid ColumnDefinitions="Auto,*,Auto">
-                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
-                            <Button Content="⏮️" Command="{Binding GoToPageCommand}" CommandParameter="1"
-                                    IsEnabled="{Binding CanGoToPreviousPage}" Padding="8,4"/>
-                            <Button Content="⏪" Command="{Binding PreviousPageCommand}"
-                                    IsEnabled="{Binding CanGoToPreviousPage}" Padding="8,4"/>
-                        </StackPanel>
-                        
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" 
-                                    HorizontalAlignment="Center">
-                            <TextBlock Text="Страница" VerticalAlignment="Center"/>
-                            <TextBox Text="{Binding CurrentPage}" Width="60" 
-                                     HorizontalContentAlignment="Center"/>
-                            <TextBlock Text="{Binding TotalPages, StringFormat='из {0}'}" 
-                                       VerticalAlignment="Center"/>
-                        </StackPanel>
-                        
-                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
-                            <Button Content="⏩" Command="{Binding NextPageCommand}"
-                                    IsEnabled="{Binding CanGoToNextPage}" Padding="8,4"/>
-                            <Button Content="⏭️" Command="{Binding GoToPageCommand}" CommandParameter="{Binding TotalPages}"
-                                    IsEnabled="{Binding CanGoToNextPage}" Padding="8,4"/>
-                        </StackPanel>
-                    </Grid>
-                </Border>
-            </Grid>
-        </Border>
-
-        <!-- Панель деталей преподавателя -->
-        <Border Grid.Row="1" Grid.Column="1" 
-                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
-                CornerRadius="8" Padding="16"
-                IsVisible="{Binding HasSelectedTeacher}">
-            <ScrollViewer>
-                <StackPanel Spacing="16">
-                    <!-- Заголовок панели деталей -->
-                    <TextBlock Text="📋 Детали преподавателя" 
-                               FontSize="18" FontWeight="Bold"/>
-                    
-                    <!-- Основная информация -->
-                    <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}" 
-                            CornerRadius="8" Padding="12">
-                        <StackPanel Spacing="8">
-                            <TextBlock Text="👤 Основная информация" 
-                                       FontWeight="SemiBold" FontSize="14"/>
-                            <TextBlock Text="{Binding SelectedTeacher.FullName}" 
-                                       FontSize="16" FontWeight="Bold"/>
-                            <TextBlock Text="{Binding SelectedTeacher.Email}"/>
-                            <TextBlock Text="{Binding SelectedTeacher.Phone}"/>
-                            <TextBlock Text="{Binding SelectedTeacher.Specialization}"/>
-                        </StackPanel>
-                    </Border>
-                    
-                    <!-- Биография -->
-                    <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}" 
-                            CornerRadius="8" Padding="12"
-                            IsVisible="{Binding SelectedTeacher.Bio, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                        <StackPanel Spacing="8">
-                            <TextBlock Text="📝 Биография" 
-                                       FontWeight="SemiBold" FontSize="14"/>
-                            <TextBlock Text="{Binding SelectedTeacher.Bio}" 
-                                       TextWrapping="Wrap"/>
-                        </StackPanel>
-                    </Border>
-                    
-                    <!-- Статистика -->
-                    <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}" 
-                            CornerRadius="8" Padding="12">
-                        <StackPanel Spacing="8">
-                            <TextBlock Text="📊 Статистика" 
-                                       FontWeight="SemiBold" FontSize="14"/>
-                            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto">
-                                <Border Grid.Row="0" Grid.Column="0" 
-                                        Background="{DynamicResource SystemAccentColorLight3}" 
-                                        CornerRadius="8" Padding="12">
-                                    <StackPanel HorizontalAlignment="Center">
-                                        <TextBlock Text="{Binding SelectedTeacher.CoursesCount}" 
-                                                   FontSize="24" FontWeight="Bold" 
-                                                   HorizontalAlignment="Center"/>
-                                        <TextBlock Text="Курсов" FontSize="12" 
-                                                   HorizontalAlignment="Center"/>
-                                    </StackPanel>
-                                </Border>
-                                <Border Grid.Row="0" Grid.Column="1" 
-                                        Background="{DynamicResource SystemControlBackgroundAltMediumBrush}" 
-                                        CornerRadius="8" Padding="12">
-                                    <StackPanel HorizontalAlignment="Center">
-                                        <TextBlock Text="{Binding SelectedTeacher.CuratedGroupsCount}" 
-                                                   FontSize="24" FontWeight="Bold" 
-                                                   HorizontalAlignment="Center"/>
-                                        <TextBlock Text="Групп" FontSize="12" 
-                                                   HorizontalAlignment="Center"/>
-                                    </StackPanel>
-                                </Border>
-                            </Grid>
-                        </StackPanel>
-                    </Border>
-                    
-                    <!-- Быстрые действия -->
-                    <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}" 
-                            CornerRadius="8" Padding="12">
-                        <StackPanel Spacing="8">
-                            <TextBlock Text="⚡ Быстрые действия" 
-                                       FontWeight="SemiBold" FontSize="14"/>
-                            <StackPanel Spacing="4">
-                                <Button Content="✏️ Редактировать профиль" 
-                                        Command="{Binding EditTeacherCommand}"
-                                        CommandParameter="{Binding SelectedTeacher}"
-                                        HorizontalAlignment="Stretch"/>
-                                <Button Content="📚 Управление курсами" 
-                                        Command="{Binding ManageCoursesCommand}"
-                                        CommandParameter="{Binding SelectedTeacher}"
-                                        HorizontalAlignment="Stretch"/>
-                                <Button Content="👥 Управление группами" 
-                                        Command="{Binding ManageGroupsCommand}"
-                                        CommandParameter="{Binding SelectedTeacher}"
-                                        HorizontalAlignment="Stretch"/>
-                                <Button Content="📊 Подробная статистика" 
-                                        Command="{Binding ViewStatisticsCommand}"
-                                        CommandParameter="{Binding SelectedTeacher}"
-                                        HorizontalAlignment="Stretch"/>
+                    <!-- Statistics Badges -->
+                    <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                        <Border Background="{DynamicResource SystemAccentColor}" 
+                                CornerRadius="16" Padding="12,6">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <material:MaterialIcon Kind="AccountTie" 
+                                                           Width="16" Height="16" 
+                                                           Foreground="White"/>
+                                <TextBlock Text="{Binding TotalTeachers, StringFormat='{}{0} всего'}" 
+                                           Foreground="White" FontSize="13" FontWeight="SemiBold"/>
                             </StackPanel>
+                        </Border>
+                        <Border Background="{DynamicResource SystemControlBackgroundAccentBrush}" 
+                                CornerRadius="16" Padding="12,6">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <material:MaterialIcon Kind="AccountCheck" 
+                                                           Width="16" Height="16" 
+                                                           Foreground="{DynamicResource SystemAccentColorDark1}"/>
+                                <TextBlock Text="{Binding ActiveTeachers, StringFormat='{}{0} активных'}" 
+                                           Foreground="{DynamicResource SystemAccentColorDark1}" 
+                                           FontSize="13" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Action Buttons -->
+                <StackPanel Grid.Row="0" Grid.Column="1" 
+                            Orientation="Horizontal" Spacing="12">
+                    <Button Command="{Binding CreateTeacherCommand}"
+                            Classes="action primary">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <material:MaterialIcon Kind="Plus" 
+                                                       Width="18" Height="18"/>
+                            <TextBlock Text="Добавить преподавателя"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding ImportTeachersCommand}" 
+                            Classes="action secondary">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <material:MaterialIcon Kind="Import" 
+                                                       Width="18" Height="18"/>
+                            <TextBlock Text="Импорт"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding ExportReportCommand}" 
+                            Classes="action secondary">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <material:MaterialIcon Kind="Export" 
+                                                       Width="18" Height="18"/>
+                            <TextBlock Text="Экспорт"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding RefreshCommand}" 
+                            Classes="action secondary">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <material:MaterialIcon Kind="Refresh" 
+                                                       Width="18" Height="18"/>
+                            <TextBlock Text="Обновить"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <!-- Advanced Search -->
+                <Grid Grid.Row="1" Grid.ColumnSpan="2" Margin="0,20,0,0">
+                    <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                            CornerRadius="8" Padding="16">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBox Grid.Column="0"
+                                     Text="{Binding SearchText}" 
+                                     Watermark="Поиск преподавателей по имени, email, специализации или кафедре..."
+                                     FontSize="14"
+                                     Padding="12,10">
+                                <TextBox.InnerLeftContent>
+                                    <material:MaterialIcon Kind="Magnify" 
+                                                               Width="20" Height="20" 
+                                                               Margin="12,0,8,0"
+                                                               Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                                </TextBox.InnerLeftContent>
+                                <TextBox.InnerRightContent>
+                                    <Button Command="{Binding ClearFiltersCommand}"
+                                            IsVisible="{Binding SearchText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Padding="8"
+                                            Margin="0,0,8,0">
+                                        <material:MaterialIcon Kind="Close" 
+                                                                   Width="16" Height="16"/>
+                                    </Button>
+                                </TextBox.InnerRightContent>
+                            </TextBox>
+                            
+                            <!-- Loading Indicator -->
+                            <ProgressBar Grid.Column="1"
+                                         IsIndeterminate="True"
+                                         IsVisible="{Binding IsLoading}"
+                                         Width="24" Height="24"
+                                         Margin="12,0"/>
+                        </Grid>
+                    </Border>
+                </Grid>
+
+                <!-- Advanced Filters -->
+                <ScrollViewer Grid.Row="2" Grid.ColumnSpan="2" 
+                              Margin="0,16,0,0"
+                              HorizontalScrollBarVisibility="Auto" 
+                              VerticalScrollBarVisibility="Disabled">
+                    <StackPanel Orientation="Horizontal" Spacing="20">
+                        
+                        <!-- Department Filter -->
+                        <StackPanel Classes="filter-panel">
+                            <TextBlock Text="Кафедра:" FontWeight="SemiBold" FontSize="13"/>
+                            <ComboBox SelectedItem="{Binding DepartmentFilter}" 
+                                      ItemsSource="{Binding Departments}"
+                                      DisplayMemberBinding="{Binding Name}"
+                                      PlaceholderText="Все кафедры"
+                                      MinWidth="150">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <material:MaterialIcon Kind="Domain" 
+                                                                       Width="16" Height="16"/>
+                                            <TextBlock Text="{Binding Name}"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </StackPanel>
+                        
+                        <!-- Specialization Filter -->
+                        <StackPanel Classes="filter-panel">
+                            <TextBlock Text="Специализация:" FontWeight="SemiBold" FontSize="13"/>
+                            <ComboBox SelectedItem="{Binding SpecializationFilter}" 
+                                      PlaceholderText="Все специализации"
+                                      MinWidth="180">
+                                <ComboBoxItem Content="Все"/>
+                                <ComboBoxItem Content="Математика"/>
+                                <ComboBoxItem Content="Физика"/>
+                                <ComboBoxItem Content="Информатика"/>
+                                <ComboBoxItem Content="Химия"/>
+                                <ComboBoxItem Content="Биология"/>
+                                <ComboBoxItem Content="История"/>
+                                <ComboBoxItem Content="Литература"/>
+                                <ComboBoxItem Content="Иностранные языки"/>
+                                <ComboBoxItem Content="Экономика"/>
+                                <ComboBoxItem Content="Философия"/>
+                            </ComboBox>
+                        </StackPanel>
+                        
+                        <!-- Status Filter -->
+                        <StackPanel Classes="filter-panel">
+                            <TextBlock Text="Статус:" FontWeight="SemiBold" FontSize="13"/>
+                            <ComboBox SelectedItem="{Binding StatusFilter}" 
+                                      PlaceholderText="Все статусы"
+                                      MinWidth="150">
+                                <ComboBoxItem Content="Все" Tag="{x:Null}"/>
+                                <ComboBoxItem Content="Активные" Tag="{x:Static domain:TeacherStatus.Active}"/>
+                                <ComboBoxItem Content="Неактивные" Tag="{x:Static domain:TeacherStatus.Inactive}"/>
+                                <ComboBoxItem Content="В отпуске" Tag="{x:Static domain:TeacherStatus.OnLeave}"/>
+                                <ComboBoxItem Content="Уволены" Tag="{x:Static domain:TeacherStatus.Terminated}"/>
+                            </ComboBox>
+                        </StackPanel>
+                        
+                        <!-- Academic Degree Filter -->
+                        <StackPanel Classes="filter-panel">
+                            <TextBlock Text="Степень:" FontWeight="SemiBold" FontSize="13"/>
+                            <ComboBox SelectedItem="{Binding DegreeFilter}" 
+                                      PlaceholderText="Все степени"
+                                      MinWidth="150">
+                                <ComboBoxItem Content="Все"/>
+                                <ComboBoxItem Content="Бакалавр"/>
+                                <ComboBoxItem Content="Магистр"/>
+                                <ComboBoxItem Content="Кандидат наук"/>
+                                <ComboBoxItem Content="Доктор наук"/>
+                                <ComboBoxItem Content="Профессор"/>
+                                <ComboBoxItem Content="Доцент"/>
+                            </ComboBox>
+                        </StackPanel>
+                        
+                        <!-- Page Size Filter -->
+                        <StackPanel Classes="filter-panel">
+                            <TextBlock Text="На странице:" FontWeight="SemiBold" FontSize="13"/>
+                            <ComboBox SelectedItem="{Binding PageSize}" MinWidth="100">
+                                <ComboBoxItem Content="10"/>
+                                <ComboBoxItem Content="15"/>
+                                <ComboBoxItem Content="25"/>
+                                <ComboBoxItem Content="50"/>
+                                <ComboBoxItem Content="100"/>
+                            </ComboBox>
+                        </StackPanel>
+                        
+                        <!-- Clear Filters Button -->
+                        <StackPanel Classes="filter-panel" VerticalAlignment="Bottom">
+                            <Button Command="{Binding ClearFiltersCommand}"
+                                    Classes="action secondary">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <material:MaterialIcon Kind="FilterRemove" 
+                                                               Width="16" Height="16"/>
+                                    <TextBlock Text="Очистить"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+
+        <!-- Main Content Area -->
+        <Border Grid.Row="1" Classes="card" Padding="0">
+            <Grid RowDefinitions="Auto,*">
+                
+                <!-- Bulk Actions Toolbar -->
+                <Border Grid.Row="0" 
+                        Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                        Padding="16,12"
+                        IsVisible="{Binding HasSelectedTeachers}">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <TextBlock Text="{Binding SelectedTeachersCount, StringFormat='Выбрано: {0}'}" 
+                                   VerticalAlignment="Center" FontWeight="SemiBold"/>
+                        <Button Command="{Binding BulkEditCommand}" Classes="action secondary">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <material:MaterialIcon Kind="Pencil" 
+                                                           Width="16" Height="16"/>
+                                <TextBlock Text="Редактировать"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding BulkDeleteCommand}" Classes="action danger">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <material:MaterialIcon Kind="Delete" 
+                                                           Width="16" Height="16"/>
+                                <TextBlock Text="Удалить"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding BulkExportCommand}" Classes="action secondary">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <material:MaterialIcon Kind="Export" 
+                                                           Width="16" Height="16"/>
+                                <TextBlock Text="Экспорт"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Border>
+                
+                <!-- Enhanced DataGrid -->
+                <ScrollViewer Grid.Row="1" 
+                              HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Auto">
+                    <DataGrid ItemsSource="{Binding Teachers}" 
+                              SelectedItem="{Binding SelectedTeacher}"
+                              SelectionMode="Extended"
+                              IsReadOnly="False" 
+                              GridLinesVisibility="Horizontal"
+                              AutoGenerateColumns="False" 
+                              CanUserReorderColumns="True"
+                              CanUserResizeColumns="True" 
+                              CanUserSortColumns="True"
+                              HeadersVisibility="Column"
+                              MinWidth="1400">
+                        
+                        <DataGrid.Columns>
+                            <!-- Selection Checkbox -->
+                            <DataGridCheckBoxColumn Header="" Width="50" CanUserResize="False">
+                                <DataGridCheckBoxColumn.Binding>
+                                    <Binding Path="IsSelected" Mode="TwoWay"/>
+                                </DataGridCheckBoxColumn.Binding>
+                            </DataGridCheckBoxColumn>
+                            
+                            <!-- Avatar and Full Name -->
+                            <DataGridTemplateColumn Header="Преподаватель" Width="2*" MinWidth="280">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" Spacing="12" Margin="8">
+                                            <!-- Avatar -->
+                                            <Border Width="40" Height="40" 
+                                                    CornerRadius="20"
+                                                    Background="{DynamicResource SystemAccentColor}">
+                                                <TextBlock Text="{Binding Initials}" 
+                                                           Foreground="White"
+                                                           FontWeight="Bold"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"/>
+                                            </Border>
+                                            
+                                            <!-- Name and Details -->
+                                            <StackPanel VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding FullName}" 
+                                                           FontWeight="SemiBold" FontSize="14"/>
+                                                <TextBlock Text="{Binding Email}" 
+                                                           FontSize="12" 
+                                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                                                <TextBlock Text="{Binding AcademicDegree}" 
+                                                           FontSize="11" 
+                                                           Foreground="{DynamicResource SystemAccentColor}"
+                                                           FontWeight="SemiBold"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            
+                            <!-- Department -->
+                            <DataGridTemplateColumn Header="Кафедра" Width="*" MinWidth="150">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{DynamicResource SystemControlBackgroundAccentBrush}" 
+                                                CornerRadius="8" Padding="8,4"
+                                                HorizontalAlignment="Center">
+                                            <TextBlock Text="{Binding DepartmentName}" 
+                                                       Foreground="{DynamicResource SystemAccentColorDark1}"
+                                                       FontWeight="SemiBold" 
+                                                       HorizontalAlignment="Center"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            
+                            <!-- Specialization -->
+                            <DataGridTextColumn Header="Специализация" 
+                                                Binding="{Binding Specialization}" 
+                                                Width="*" MinWidth="140"/>
+                            
+                            <!-- Courses Count -->
+                            <DataGridTemplateColumn Header="Курсы" Width="*" MinWidth="80">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border Classes="status-badge"
+                                                Background="{DynamicResource SystemAccentColorLight3}">
+                                            <TextBlock Text="{Binding CoursesCount}" 
+                                                       Foreground="{DynamicResource SystemAccentColorDark1}"
+                                                       FontWeight="SemiBold" FontSize="12"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            
+                            <!-- Groups Count -->
+                            <DataGridTemplateColumn Header="Группы" Width="*" MinWidth="80">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border Classes="status-badge"
+                                                Background="{DynamicResource SystemControlBackgroundAltHighBrush}">
+                                            <TextBlock Text="{Binding CuratedGroupsCount}" 
+                                                       Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                                       FontWeight="SemiBold" FontSize="12"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            
+                            <!-- Status -->
+                            <DataGridTemplateColumn Header="Статус" Width="*" MinWidth="100">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border Classes="status-badge">
+                                            <Border.Background>
+                                                <MultiBinding Converter="{StaticResource EnumEqualityConverter}">
+                                                    <Binding Path="Status"/>
+                                                    <Binding Source="{x:Static domain:TeacherStatus.Active}"/>
+                                                    <Binding Source="#4CAF50"/>
+                                                    <Binding Source="#FF9800"/>
+                                                </MultiBinding>
+                                            </Border.Background>
+                                            <TextBlock Text="{Binding StatusDisplayName}" 
+                                                       Foreground="White"
+                                                       FontWeight="SemiBold" FontSize="12"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            
+                            <!-- Phone -->
+                            <DataGridTextColumn Header="Телефон" 
+                                                Binding="{Binding Phone}" 
+                                                Width="*" MinWidth="130"/>
+                            
+                            <!-- Hire Date -->
+                            <DataGridTextColumn Header="Дата найма" 
+                                                Binding="{Binding HireDate, StringFormat='{}{0:dd.MM.yyyy}'}" 
+                                                Width="*" MinWidth="120"/>
+                            
+                            <!-- Actions -->
+                            <DataGridTemplateColumn Header="Действия" Width="Auto" MinWidth="200">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="8">
+                                            <Button Command="{Binding $parent[DataGrid].((vm:TeachersViewModel)DataContext).ViewTeacherDetailsCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    Classes="action secondary"
+                                                    Padding="8,4">
+                                                <material:MaterialIcon Kind="Eye" 
+                                                                           Width="16" Height="16"/>
+                                            </Button>
+                                            <Button Command="{Binding $parent[DataGrid].((vm:TeachersViewModel)DataContext).EditTeacherCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    Classes="action secondary"
+                                                    Padding="8,4">
+                                                <material:MaterialIcon Kind="Pencil" 
+                                                                           Width="16" Height="16"/>
+                                            </Button>
+                                            <Button Command="{Binding $parent[DataGrid].((vm:TeachersViewModel)DataContext).ViewCoursesCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    Classes="action secondary"
+                                                    Padding="8,4">
+                                                <material:MaterialIcon Kind="BookOpenPageVariant" 
+                                                                           Width="16" Height="16"/>
+                                            </Button>
+                                            <Button Command="{Binding $parent[DataGrid].((vm:TeachersViewModel)DataContext).DeleteTeacherCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    Classes="action danger"
+                                                    Padding="8,4">
+                                                <material:MaterialIcon Kind="Delete" 
+                                                                           Width="16" Height="16"/>
+                                            </Button>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+
+        <!-- Pagination and Status Bar -->
+        <Border Grid.Row="2" Classes="card" Padding="16" Margin="0,16,0,0">
+            <Grid ColumnDefinitions="*,Auto,*">
+                
+                <!-- Status Information -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding PaginationInfo}" 
+                               FontSize="14" 
+                               Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                    <Border Background="{DynamicResource SystemControlBackgroundAccentBrush}" 
+                            CornerRadius="12" Padding="8,4"
+                            IsVisible="{Binding IsLoading}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <ProgressBar IsIndeterminate="True" Width="16" Height="16"/>
+                            <TextBlock Text="Загрузка..." FontSize="12" FontWeight="SemiBold"/>
                         </StackPanel>
                     </Border>
                 </StackPanel>
-            </ScrollViewer>
-        </Border>
-
-        <!-- Индикатор загрузки -->
-        <Border Grid.Row="0" Grid.RowSpan="2" Grid.ColumnSpan="2"
-                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
-                Opacity="0.8" IsVisible="{Binding IsLoading}">
-            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="16">
-                <ProgressBar IsIndeterminate="True" Width="200"/>
-                <TextBlock Text="Загрузка преподавателей..." 
-                           HorizontalAlignment="Center" FontSize="14"/>
-            </StackPanel>
+                
+                <!-- Pagination Controls -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
+                            IsVisible="{Binding HasPages}">
+                    <Button Command="{Binding FirstPageCommand}" 
+                            Classes="action secondary"
+                            IsEnabled="{Binding CanGoToFirstPage}">
+                        <material:MaterialIcon Kind="ChevronDoubleLeft" 
+                                                   Width="16" Height="16"/>
+                    </Button>
+                    <Button Command="{Binding PreviousPageCommand}" 
+                            Classes="action secondary"
+                            IsEnabled="{Binding CanGoToPreviousPage}">
+                        <material:MaterialIcon Kind="ChevronLeft" 
+                                                   Width="16" Height="16"/>
+                    </Button>
+                    
+                    <!-- Page Numbers -->
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="Страница" VerticalAlignment="Center" Margin="8,0"/>
+                        <NumericUpDown Value="{Binding CurrentPage}" 
+                                       Minimum="1" 
+                                       Maximum="{Binding TotalPages}"
+                                       Width="80"
+                                       ShowButtonSpinner="False"/>
+                        <TextBlock Text="{Binding TotalPages, StringFormat='из {0}'}" 
+                                   VerticalAlignment="Center" Margin="8,0"/>
+                    </StackPanel>
+                    
+                    <Button Command="{Binding NextPageCommand}" 
+                            Classes="action secondary"
+                            IsEnabled="{Binding CanGoToNextPage}">
+                        <material:MaterialIcon Kind="ChevronRight" 
+                                                   Width="16" Height="16"/>
+                    </Button>
+                    <Button Command="{Binding LastPageCommand}" 
+                            Classes="action secondary"
+                            IsEnabled="{Binding CanGoToLastPage}">
+                        <material:MaterialIcon Kind="ChevronDoubleRight" 
+                                                   Width="16" Height="16"/>
+                    </Button>
+                </StackPanel>
+                
+                <!-- Quick Actions -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" 
+                            HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Button Command="{Binding SelectAllCommand}" Classes="action secondary">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <material:MaterialIcon Kind="SelectAll" 
+                                                       Width="16" Height="16"/>
+                            <TextBlock Text="Выбрать все"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding DeselectAllCommand}" Classes="action secondary">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <material:MaterialIcon Kind="SelectOff" 
+                                                       Width="16" Height="16"/>
+                            <TextBlock Text="Снять выделение"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
         </Border>
     </Grid>
 </UserControl> 

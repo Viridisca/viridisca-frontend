@@ -94,7 +94,7 @@ public class Group : ViewModelBase
     public GroupStatus Status
     {
         get => _status;
-        private set => this.RaiseAndSetIfChanged(ref _status, value);
+        set => this.RaiseAndSetIfChanged(ref _status, value);
     }
 
     /// <summary>

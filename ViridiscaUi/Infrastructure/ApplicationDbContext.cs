@@ -4,6 +4,7 @@ using ViridiscaUi.Domain.Models.Auth;
 using ViridiscaUi.Domain.Models.Education;
 using ViridiscaUi.Domain.Models.System;
 using System.Collections.Generic;
+using BCrypt.Net;
 
 namespace ViridiscaUi.Infrastructure;
 
@@ -50,6 +51,14 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<TeacherSubject> TeacherSubjects { get; set; } = null!;
     public DbSet<TeacherGroup> TeacherGroups { get; set; } = null!;
     public DbSet<LessonDetail> LessonDetails { get; set; } = null!; 
+
+    /// <summary>
+    /// Метод для создания правильного BCrypt хеша пароля
+    /// </summary>
+    private static string HashPassword(string password)
+    {
+        return BCrypt.Net.BCrypt.HashPassword(password, workFactor: 11);
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -862,16 +871,51 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         var teacherRoleId = new Guid("22222222-2222-2222-2222-222222222222");
         var studentRoleId = new Guid("33333333-3333-3333-3333-333333333333");
         var adminUserId = new Guid("44444444-4444-4444-4444-444444444444");
-        var userRoleId = new Guid("55555555-5555-5555-5555-555555555555");
-        var itDeptId = new Guid("66666666-6666-6666-6666-666666666666");
-        var mathDeptId = new Guid("77777777-7777-7777-7777-777777777777");
+        var teacherUserId = new Guid("55555555-5555-5555-5555-555555555555");
+        var studentUserId = new Guid("66666666-6666-6666-6666-666666666666");
+        var adminUserRoleId = new Guid("77777777-7777-7777-7777-777777777777");
+        var teacherUserRoleId = new Guid("88888888-8888-8888-8888-888888888888");
+        var studentUserRoleId = new Guid("99999999-9999-9999-9999-999999999999");
+        var itDeptId = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        var mathDeptId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+        var physDeptId = new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc");
         var baseDateTime = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
+        // Предварительно объявляем все ID, которые будут использоваться в разных секциях
+        var subject1Id = new Guid("51111111-1111-1111-1111-111111111111");
+        var subject2Id = new Guid("52222222-2222-2222-2222-222222222222");
+        var subject3Id = new Guid("53333333-3333-3333-3333-333333333333");
+        var assignment1Id = new Guid("61111111-1111-1111-1111-111111111111");
+        var assignment2Id = new Guid("62222222-2222-2222-2222-222222222222");
+        var assignment3Id = new Guid("63333333-3333-3333-3333-333333333333");
+        var teacher1Id = new Guid("dddddddd-dddd-dddd-dddd-dddddddddddd");
+        var teacher2Id = new Guid("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee");
+        var teacher3Id = new Guid("ffffffff-ffff-ffff-ffff-ffffffffffff");
+        var student1Id = new Guid("11111111-1111-1111-1111-111111111110");
+        var student2Id = new Guid("22222222-2222-2222-2222-222222222220");
+        var student3Id = new Guid("33333333-3333-3333-3333-333333333330");
+        var student4Id = new Guid("44444444-4444-4444-4444-444444444440");
+        var student5Id = new Guid("55555555-5555-5555-5555-555555555550");
+        var group1Id = new Guid("11111110-1111-1111-1111-111111111111");
+        var group2Id = new Guid("22222220-2222-2222-2222-222222222222");
+        var group3Id = new Guid("33333330-3333-3333-3333-333333333333");
+        var course1Id = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1");
+        var course2Id = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1");
+        var course3Id = new Guid("cccccccc-cccc-cccc-cccc-ccccccccccc1");
+        var enrollment1Id = new Guid("71111111-1111-1111-1111-111111111111");
+        var enrollment2Id = new Guid("72222222-2222-2222-2222-222222222222");
+        var enrollment3Id = new Guid("73333333-3333-3333-3333-333333333333");
+        var enrollment4Id = new Guid("74444444-4444-4444-4444-444444444444");
+        var grade1Id = new Guid("81111111-1111-1111-1111-111111111111");
+        var grade2Id = new Guid("82222222-2222-2222-2222-222222222222");
+        var grade3Id = new Guid("83333333-3333-3333-3333-333333333333");
+
+        // 1. Роли
         modelBuilder.Entity<Role>().HasData(
             new Role
             {
                 Uid = adminRoleId,
-                Name = "Administrator",
+                Name = "SystemAdmin",
                 Description = "Системный администратор",
                 CreatedAt = baseDateTime,
                 LastModifiedAt = baseDateTime,
@@ -897,35 +941,91 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             }
         );
 
-        // Seed admin user
+        // 2. Пользователи
         modelBuilder.Entity<User>().HasData(
             new User
             {
                 Uid = adminUserId,
                 Username = "admin",
                 Email = "admin@viridisca.local",
-                FirstName = "Admin",
-                LastName = "Viridisca",
+                FirstName = "Админ",
+                LastName = "Системы",
                 MiddleName = "",
                 PhoneNumber = "",
                 ProfileImageUrl = "",
-                RoleId = adminRoleId, // Основная роль - администратор
+                RoleId = adminRoleId,
                 IsActive = true,
                 IsEmailConfirmed = true,
-                DateOfBirth = baseDateTime,
-                PasswordHash = "$2a$11$8EPP7eDbOSFPG6YcVEWzsu81jRo550.5.b9INI7muBAMpfwa3ftcS", // admin123 (правильный хеш)
+                DateOfBirth = baseDateTime.AddYears(-35),
+                PasswordHash = HashPassword("admin123"),
+                CreatedAt = baseDateTime,
+                LastModifiedAt = baseDateTime
+            },
+            new User
+            {
+                Uid = teacherUserId,
+                Username = "teacher",
+                Email = "teacher@viridisca.local",
+                FirstName = "Преподаватель",
+                LastName = "Тестовый",
+                MiddleName = "Иванович",
+                PhoneNumber = "+7 (900) 123-45-67",
+                ProfileImageUrl = "",
+                RoleId = teacherRoleId,
+                IsActive = true,
+                IsEmailConfirmed = true,
+                DateOfBirth = baseDateTime.AddYears(-40),
+                PasswordHash = HashPassword("teacher123"),
+                CreatedAt = baseDateTime,
+                LastModifiedAt = baseDateTime
+            },
+            new User
+            {
+                Uid = studentUserId,
+                Username = "student",
+                Email = "student@viridisca.local",
+                FirstName = "Студент",
+                LastName = "Тестовый",
+                MiddleName = "Петрович",
+                PhoneNumber = "+7 (900) 987-65-43",
+                ProfileImageUrl = "",
+                RoleId = studentRoleId,
+                IsActive = true,
+                IsEmailConfirmed = true,
+                DateOfBirth = baseDateTime.AddYears(-20),
+                PasswordHash = HashPassword("student123"),
                 CreatedAt = baseDateTime,
                 LastModifiedAt = baseDateTime
             }
         );
 
-        // Связываем админа с ролью администратора  
+        // 3. Связи пользователь-роль
         modelBuilder.Entity<UserRole>().HasData(
-            new 
+            new UserRole
             {
-                Uid = userRoleId,
+                Uid = adminUserRoleId,
                 UserUid = adminUserId,
                 RoleUid = adminRoleId,
+                IsActive = true,
+                AssignedAt = baseDateTime,
+                CreatedAt = baseDateTime,
+                LastModifiedAt = baseDateTime
+            },
+            new UserRole
+            {
+                Uid = teacherUserRoleId,
+                UserUid = teacherUserId,
+                RoleUid = teacherRoleId,
+                IsActive = true,
+                AssignedAt = baseDateTime,
+                CreatedAt = baseDateTime,
+                LastModifiedAt = baseDateTime
+            },
+            new UserRole
+            {
+                Uid = studentUserRoleId,
+                UserUid = studentUserId,
+                RoleUid = studentRoleId,
                 IsActive = true,
                 AssignedAt = baseDateTime,
                 CreatedAt = baseDateTime,
@@ -933,7 +1033,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             }
         );
 
-        // Seed departments
+        // 4. Департаменты
         modelBuilder.Entity<Department>().HasData(
             new Department
             {
@@ -954,7 +1054,449 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 IsActive = true,
                 CreatedAt = baseDateTime,
                 LastModifiedAt = baseDateTime
+            },
+            new Department
+            {
+                Uid = physDeptId,
+                Name = "Физика",
+                Code = "PHYS",
+                Description = "Кафедра общей физики",
+                IsActive = true,
+                CreatedAt = baseDateTime,
+                LastModifiedAt = baseDateTime
             }
         );
-    } 
+
+        // 5. Преподаватели
+        modelBuilder.Entity<Teacher>().HasData(
+            new Teacher
+            {
+                Uid = teacher1Id,
+                FirstName = "Иван",
+                LastName = "Петров",
+                MiddleName = "Иванович",
+                EmployeeCode = "T001",
+                Phone = "+7 (901) 234-56-78",
+                HireDate = baseDateTime.AddYears(-5),
+                UserUid = teacherUserId,
+                Status = TeacherStatus.Active,
+                Specialization = "Программирование",
+                HourlyRate = 1500m,
+                CreatedAt = baseDateTime,
+                LastModifiedAt = baseDateTime
+            },
+            new Teacher
+            {
+                Uid = teacher2Id,
+                FirstName = "Мария",
+                LastName = "Сидорова",
+                MiddleName = "Петровна",
+                EmployeeCode = "T002",
+                Phone = "+7 (902) 345-67-89",
+                HireDate = baseDateTime.AddYears(-3),
+                UserUid = Guid.Empty,
+                Status = TeacherStatus.Active,
+                Specialization = "Математика",
+                HourlyRate = 1400m,
+                CreatedAt = baseDateTime,
+                LastModifiedAt = baseDateTime
+            },
+            new Teacher
+            {
+                Uid = teacher3Id,
+                FirstName = "Александр",
+                LastName = "Козлов",
+                MiddleName = "Николаевич",
+                EmployeeCode = "T003",
+                Phone = "+7 (903) 456-78-90",
+                HireDate = baseDateTime.AddYears(-8),
+                UserUid = Guid.Empty,
+                Status = TeacherStatus.Active,
+                Specialization = "Физика",
+                HourlyRate = 1600m,
+                CreatedAt = baseDateTime,
+                LastModifiedAt = baseDateTime
+            }
+        );
+
+        // 6. Группы
+        modelBuilder.Entity<Group>().HasData(
+            new Group
+            {
+                Uid = group1Id,
+                Name = "ИТ-301",
+                Description = "Информационные технологии, 3 курс, группа 1",
+                Year = 3,
+                CreatedAt = baseDateTime.AddYears(-3),
+                LastModifiedAt = baseDateTime
+            },
+            new Group
+            {
+                Uid = group2Id,
+                Name = "МАТ-201",
+                Description = "Математика, 2 курс, группа 1",
+                Year = 2,
+                CreatedAt = baseDateTime.AddYears(-2),
+                LastModifiedAt = baseDateTime
+            },
+            new Group
+            {
+                Uid = group3Id,
+                Name = "ФИЗ-401",
+                Description = "Физика, 4 курс, группа 1",
+                Year = 4,
+                CreatedAt = baseDateTime.AddYears(-4),
+                LastModifiedAt = baseDateTime
+            }
+        );
+
+        // 7. Студенты
+        modelBuilder.Entity<Student>().HasData(
+            new Student
+            {
+                Uid = student1Id,
+                FirstName = "Алексей",
+                LastName = "Иванов",
+                MiddleName = "Петрович",
+                Email = "alexey.ivanov@student.viridisca.local",
+                PhoneNumber = "+7 (910) 123-45-67",
+                StudentCode = "ST301001",
+                EnrollmentDate = baseDateTime.AddYears(-3),
+                BirthDate = baseDateTime.AddYears(-20),
+                GroupUid = group1Id,
+                Status = StudentStatus.Active,
+                IsActive = true,
+                UserUid = studentUserId,
+                CreatedAt = baseDateTime,
+                LastModifiedAt = baseDateTime
+            },
+            new Student
+            {
+                Uid = student2Id,
+                FirstName = "Елена",
+                LastName = "Смирнова",
+                MiddleName = "Александровна",
+                Email = "elena.smirnova@student.viridisca.local",
+                PhoneNumber = "+7 (911) 234-56-78",
+                StudentCode = "ST301002",
+                EnrollmentDate = baseDateTime.AddYears(-3),
+                BirthDate = baseDateTime.AddYears(-21),
+                GroupUid = group1Id,
+                Status = StudentStatus.Active,
+                IsActive = true,
+                UserUid = Guid.Empty,
+                CreatedAt = baseDateTime,
+                LastModifiedAt = baseDateTime
+            },
+            new Student
+            {
+                Uid = student3Id,
+                FirstName = "Дмитрий",
+                LastName = "Волков",
+                MiddleName = "Сергеевич",
+                Email = "dmitry.volkov@student.viridisca.local",
+                PhoneNumber = "+7 (912) 345-67-89",
+                StudentCode = "ST201001",
+                EnrollmentDate = baseDateTime.AddYears(-2),
+                BirthDate = baseDateTime.AddYears(-19),
+                GroupUid = group2Id,
+                Status = StudentStatus.Active,
+                IsActive = true,
+                UserUid = Guid.Empty,
+                CreatedAt = baseDateTime,
+                LastModifiedAt = baseDateTime
+            },
+            new Student
+            {
+                Uid = student4Id,
+                FirstName = "Анна",
+                LastName = "Кузнецова",
+                MiddleName = "Владимировна",
+                Email = "anna.kuznetsova@student.viridisca.local",
+                PhoneNumber = "+7 (913) 456-78-90",
+                StudentCode = "ST201002",
+                EnrollmentDate = baseDateTime.AddYears(-2),
+                BirthDate = baseDateTime.AddYears(-19),
+                GroupUid = group2Id,
+                Status = StudentStatus.Active,
+                IsActive = true,
+                UserUid = Guid.Empty,
+                CreatedAt = baseDateTime,
+                LastModifiedAt = baseDateTime
+            },
+            new Student
+            {
+                Uid = student5Id,
+                FirstName = "Михаил",
+                LastName = "Морозов",
+                MiddleName = "Игоревич",
+                Email = "mikhail.morozov@student.viridisca.local",
+                PhoneNumber = "+7 (914) 567-89-01",
+                StudentCode = "ST401001",
+                EnrollmentDate = baseDateTime.AddYears(-4),
+                BirthDate = baseDateTime.AddYears(-22),
+                GroupUid = group3Id,
+                Status = StudentStatus.Active,
+                IsActive = true,
+                UserUid = Guid.Empty,
+                CreatedAt = baseDateTime,
+                LastModifiedAt = baseDateTime
+            }
+        );
+
+        // 8. Курсы
+        modelBuilder.Entity<Course>().HasData(
+            new Course
+            {
+                Uid = course1Id,
+                Name = "Основы программирования",
+                Code = "PROG101",
+                Description = "Изучение основ программирования на языке C#",
+                Category = "Программирование",
+                TeacherUid = teacher1Id,
+                StartDate = baseDateTime.AddMonths(-2),
+                EndDate = baseDateTime.AddMonths(4),
+                Credits = 4,
+                Status = CourseStatus.Active,
+                Prerequisites = "",
+                LearningOutcomes = "Понимание основных концепций программирования, умение создавать простые программы",
+                MaxEnrollments = 50,
+                CreatedAt = baseDateTime,
+                LastModifiedAt = baseDateTime
+            },
+            new Course
+            {
+                Uid = course2Id,
+                Name = "Математический анализ",
+                Code = "MATH201",
+                Description = "Дифференциальное и интегральное исчисление",
+                Category = "Математика",
+                TeacherUid = teacher2Id,
+                StartDate = baseDateTime.AddMonths(-1),
+                EndDate = baseDateTime.AddMonths(5),
+                Credits = 5,
+                Status = CourseStatus.Active,
+                Prerequisites = "Школьная математика",
+                LearningOutcomes = "Владение методами дифференциального и интегрального исчисления",
+                MaxEnrollments = 40,
+                CreatedAt = baseDateTime,
+                LastModifiedAt = baseDateTime
+            },
+            new Course
+            {
+                Uid = course3Id,
+                Name = "Общая физика",
+                Code = "PHYS101",
+                Description = "Основы механики и термодинамики",
+                Category = "Физика",
+                TeacherUid = teacher3Id,
+                StartDate = baseDateTime.AddMonths(-3),
+                EndDate = baseDateTime.AddMonths(3),
+                Credits = 4,
+                Status = CourseStatus.Active,
+                Prerequisites = "Школьная физика и математика",
+                LearningOutcomes = "Понимание основных законов механики и термодинамики",
+                MaxEnrollments = 35,
+                CreatedAt = baseDateTime,
+                LastModifiedAt = baseDateTime
+            }
+        );
+
+        // 9. Записи на курсы
+        modelBuilder.Entity<Enrollment>().HasData(
+            new Enrollment
+            {
+                Uid = enrollment1Id,
+                StudentUid = student1Id,
+                CourseUid = course1Id,
+                EnrollmentDate = baseDateTime.AddDays(-30),
+                Status = EnrollmentStatus.Active,
+                CreatedAt = baseDateTime,
+                LastModifiedAt = baseDateTime
+            },
+            new Enrollment
+            {
+                Uid = enrollment2Id,
+                StudentUid = student2Id,
+                CourseUid = course1Id,
+                EnrollmentDate = baseDateTime.AddDays(-25),
+                Status = EnrollmentStatus.Active,
+                CreatedAt = baseDateTime,
+                LastModifiedAt = baseDateTime
+            },
+            new Enrollment
+            {
+                Uid = enrollment3Id,
+                StudentUid = student3Id,
+                CourseUid = course2Id,
+                EnrollmentDate = baseDateTime.AddDays(-20),
+                Status = EnrollmentStatus.Active,
+                CreatedAt = baseDateTime,
+                LastModifiedAt = baseDateTime
+            },
+            new Enrollment
+            {
+                Uid = enrollment4Id,
+                StudentUid = student4Id,
+                CourseUid = course2Id,
+                EnrollmentDate = baseDateTime.AddDays(-15),
+                Status = EnrollmentStatus.Active,
+                CreatedAt = baseDateTime,
+                LastModifiedAt = baseDateTime
+            }
+        );
+
+        // 10. Задания
+        modelBuilder.Entity<Assignment>().HasData(
+            new Assignment
+            {
+                Uid = assignment1Id,
+                Title = "Лабораторная работа №1 - Основы C#",
+                Description = "Выполнение базовых задач по программированию на C#",
+                Instructions = "Создать консольное приложение с базовыми операциями",
+                CourseUid = course1Id,
+                DueDate = baseDateTime.AddDays(14),
+                MaxScore = 100,
+                Type = AssignmentType.LabWork,
+                Difficulty = AssignmentDifficulty.Medium,
+                Status = AssignmentStatus.Published,
+                CreatedAt = baseDateTime,
+                LastModifiedAt = baseDateTime
+            },
+            new Assignment
+            {
+                Uid = assignment2Id,
+                Title = "Домашнее задание - Производные",
+                Description = "Вычисление производных функций",
+                Instructions = "Решить задачи 1-10 из учебника",
+                CourseUid = course2Id,
+                DueDate = baseDateTime.AddDays(7),
+                MaxScore = 50,
+                Type = AssignmentType.Homework,
+                Difficulty = AssignmentDifficulty.Easy,
+                Status = AssignmentStatus.Published,
+                CreatedAt = baseDateTime,
+                LastModifiedAt = baseDateTime
+            },
+            new Assignment
+            {
+                Uid = assignment3Id,
+                Title = "Проект - Механика",
+                Description = "Комплексное исследование механических систем",
+                Instructions = "Создать проект по моделированию физической системы",
+                CourseUid = course3Id,
+                DueDate = baseDateTime.AddDays(30),
+                MaxScore = 200,
+                Type = AssignmentType.Project,
+                Difficulty = AssignmentDifficulty.Hard,
+                Status = AssignmentStatus.Published,
+                CreatedAt = baseDateTime,
+                LastModifiedAt = baseDateTime
+            }
+        );
+
+        // 11. Оценки
+        modelBuilder.Entity<Grade>().HasData(
+            new Grade
+            {
+                Uid = grade1Id,
+                StudentUid = student1Id,
+                SubjectUid = subject1Id, // Программирование
+                TeacherUid = teacher1Id,
+                AssignmentUid = assignment1Id,
+                Value = 85m,
+                Type = GradeType.Homework,
+                Description = "Лабораторная работа по программированию",
+                Comment = "Хорошая работа! Есть небольшие замечания по стилю кода.",
+                IssuedAt = baseDateTime.AddDays(-5),
+                GradedAt = baseDateTime.AddDays(-5),
+                IsPublished = true,
+                PublishedAt = baseDateTime.AddDays(-4),
+                CreatedAt = baseDateTime,
+                LastModifiedAt = baseDateTime
+            },
+            new Grade
+            {
+                Uid = grade2Id,
+                StudentUid = student2Id,
+                SubjectUid = subject1Id, // Программирование
+                TeacherUid = teacher1Id,
+                AssignmentUid = assignment1Id,
+                Value = 92m,
+                Type = GradeType.Homework,
+                Description = "Лабораторная работа по программированию",
+                Comment = "Отличная работа! Код чистый и хорошо структурированный.",
+                IssuedAt = baseDateTime.AddDays(-3),
+                GradedAt = baseDateTime.AddDays(-3),
+                IsPublished = true,
+                PublishedAt = baseDateTime.AddDays(-2),
+                CreatedAt = baseDateTime,
+                LastModifiedAt = baseDateTime
+            },
+            new Grade
+            {
+                Uid = grade3Id,
+                StudentUid = student3Id,
+                SubjectUid = subject2Id, // Математика
+                TeacherUid = teacher2Id,
+                AssignmentUid = assignment2Id,
+                Value = 45m,
+                Type = GradeType.Homework,
+                Description = "Домашнее задание по производным",
+                Comment = "Все задачи решены правильно.",
+                IssuedAt = baseDateTime.AddDays(-1),
+                GradedAt = baseDateTime.AddDays(-1),
+                IsPublished = true,
+                PublishedAt = baseDateTime,
+                CreatedAt = baseDateTime,
+                LastModifiedAt = baseDateTime
+            }
+        );
+
+        // 12. Предметы
+        modelBuilder.Entity<Subject>().HasData(
+            new Subject
+            {
+                Uid = subject1Id,
+                Code = "PROG101",
+                Name = "Основы программирования",
+                Description = "Введение в программирование на языке C#",
+                Credits = 4,
+                LessonsPerWeek = 2,
+                Type = SubjectType.Required,
+                DepartmentUid = itDeptId,
+                IsActive = true,
+                CreatedAt = baseDateTime,
+                LastModifiedAt = baseDateTime
+            },
+            new Subject
+            {
+                Uid = subject2Id,
+                Code = "MATH201",
+                Name = "Математический анализ",
+                Description = "Дифференциальное и интегральное исчисление",
+                Credits = 5,
+                LessonsPerWeek = 3,
+                Type = SubjectType.Required,
+                DepartmentUid = mathDeptId,
+                IsActive = true,
+                CreatedAt = baseDateTime,
+                LastModifiedAt = baseDateTime
+            },
+            new Subject
+            {
+                Uid = subject3Id,
+                Code = "PHYS101",
+                Name = "Общая физика",
+                Description = "Основы механики и термодинамики",
+                Credits = 4,
+                LessonsPerWeek = 2,
+                Type = SubjectType.Required,
+                DepartmentUid = physDeptId,
+                IsActive = true,
+                CreatedAt = baseDateTime,
+                LastModifiedAt = baseDateTime
+            }
+        );
+    }
 }

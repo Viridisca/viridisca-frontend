@@ -437,7 +437,7 @@ public class Student : ViewModelBase
     }
 
     /// <summary>
-    /// Рассчитывает возраст на основе даты рождения
+    /// Вычисляет возраст на основе даты рождения
     /// </summary>
     private int CalculateAge(DateTime birthDate)
     {
@@ -449,4 +449,4 @@ public class Student : ViewModelBase
             
         return age;
     }
-} 
+}

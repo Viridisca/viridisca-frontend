@@ -1,8 +1,11 @@
-﻿using System;
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using ReactiveUI;
+using Splat;
+using System;
 using ViridiscaUi.Infrastructure;
+using ViridiscaUi.ViewModels;
 
 namespace ViridiscaUi;
 

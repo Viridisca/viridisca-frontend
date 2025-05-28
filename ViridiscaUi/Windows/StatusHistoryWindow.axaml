@@ -126,6 +126,27 @@
         <Style Selector="Button.action-button:pointerover">
             <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseMediumLowBrush}" />
         </Style>
+
+        <Style Selector="Button.copy-type-button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="4" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.15" />
+                </Transitions>
+            </Setter>
+        </Style>
+
+        <Style Selector="Button.copy-type-button:pointerover">
+            <Setter Property="Background" Value="{DynamicResource SystemControlHighlightListLowBrush}" />
+        </Style>
+
+        <Style Selector="Button.copy-type-button:pressed">
+            <Setter Property="Background" Value="{DynamicResource SystemControlHighlightListMediumBrush}" />
+        </Style>
     </Window.Styles>
 
     <Border Classes="window-chrome">
@@ -185,25 +206,46 @@
                                        FontSize="12" 
                                        VerticalAlignment="Center" />
                             
+                            <!-- Ошибки с кнопкой копирования -->
                             <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="12,0">
-                                <TextBlock Text="🚨" FontSize="12" Margin="0,0,4,0" />
+                                <Button Classes="copy-type-button"
+                                        Command="{Binding CopyErrorMessagesCommand}"
+                                        ToolTip.Tip="Копировать все ошибки">
+                                    <TextBlock Text="🚨" FontSize="12" />
+                                </Button>
                                 <TextBlock Text="{Binding ErrorsCount}" 
                                            FontSize="12" FontWeight="SemiBold" 
-                                           Foreground="#FFE3434F" />
+                                           Foreground="#FFE3434F"
+                                           VerticalAlignment="Center"
+                                           Margin="4,0,0,0" />
                             </StackPanel>
                             
+                            <!-- Предупреждения с кнопкой копирования -->
                             <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="12,0">
-                                <TextBlock Text="⚠️" FontSize="12" Margin="0,0,4,0" />
+                                <Button Classes="copy-type-button"
+                                        Command="{Binding CopyWarningMessagesCommand}"
+                                        ToolTip.Tip="Копировать все предупреждения">
+                                    <TextBlock Text="⚠️" FontSize="12" />
+                                </Button>
                                 <TextBlock Text="{Binding WarningsCount}" 
                                            FontSize="12" FontWeight="SemiBold" 
-                                           Foreground="#FFFF9500" />
+                                           Foreground="#FFFF9500"
+                                           VerticalAlignment="Center"
+                                           Margin="4,0,0,0" />
                             </StackPanel>
                             
+                            <!-- Информационные сообщения с кнопкой копирования -->
                             <StackPanel Grid.Column="3" Orientation="Horizontal" Margin="12,0">
-                                <TextBlock Text="ℹ️" FontSize="12" Margin="0,0,4,0" />
+                                <Button Classes="copy-type-button"
+                                        Command="{Binding CopyInfoMessagesCommand}"
+                                        ToolTip.Tip="Копировать все информационные сообщения">
+                                    <TextBlock Text="ℹ️" FontSize="12" />
+                                </Button>
                                 <TextBlock Text="{Binding InfoCount}" 
                                            FontSize="12" FontWeight="SemiBold" 
-                                           Foreground="#FF0078D4" />
+                                           Foreground="#FF0078D4"
+                                           VerticalAlignment="Center"
+                                           Margin="4,0,0,0" />
                             </StackPanel>
                         </Grid>
                     </Border>

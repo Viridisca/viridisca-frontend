@@ -29,7 +29,19 @@ public enum TeacherStatus
     /// Временно неактивный преподаватель
     /// </summary>
     [Description("Временно неактивен")]
-    Inactive = 4
+    Inactive = 4,
+
+    /// <summary>
+    /// Преподаватель на пенсии
+    /// </summary>
+    [Description("На пенсии")]
+    Retired = 5,
+
+    /// <summary>
+    /// Отстраненный преподаватель
+    /// </summary>
+    [Description("Отстранен")]
+    Suspended = 6
 }
 
 /// <summary>

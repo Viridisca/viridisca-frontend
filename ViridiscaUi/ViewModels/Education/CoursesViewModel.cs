@@ -16,6 +16,7 @@ using Avalonia.Media;
 using Avalonia.Media.Immutable;
 using CourseStatus = ViridiscaUi.Domain.Models.Education.CourseStatus;
 using NotificationType = ViridiscaUi.Domain.Models.System.NotificationType;
+using ViridiscaUi.ViewModels.Bases.Navigations;
 
 namespace ViridiscaUi.ViewModels.Education
 {
@@ -23,7 +24,13 @@ namespace ViridiscaUi.ViewModels.Education
     /// ViewModel для управления курсами
     /// Следует принципам SOLID и чистой архитектуры
     /// </summary>
-    [Route("courses", DisplayName = "Курсы", IconKey = "Course", Order = 2, Group = "Education")]
+    [Route("courses", 
+        DisplayName = "Курсы", 
+        IconKey = "BookOpenPageVariant", 
+        Order = 4,
+        Group = "Образование",
+        ShowInMenu = true,
+        Description = "Управление курсами и программами")]
     public class CoursesViewModel : RoutableViewModelBase
     { 
         private readonly ICourseService _courseService;
@@ -49,6 +56,11 @@ namespace ViridiscaUi.ViewModels.Education
         [Reactive] public string? DifficultyFilter { get; set; }
         [Reactive] public ObservableCollection<TeacherViewModel> Teachers { get; set; } = new();
         [Reactive] public TeacherViewModel? SelectedTeacherFilter { get; set; }
+        
+        // Добавляем коллекции для фильтров
+        [Reactive] public ObservableCollection<string> Categories { get; set; } = new();
+        [Reactive] public ObservableCollection<string> Difficulties { get; set; } = new();
+        [Reactive] public ObservableCollection<string> Statuses { get; set; } = new();
         
         // Пагинация
         [Reactive] public int CurrentPage { get; set; } = 1;
@@ -82,6 +94,8 @@ namespace ViridiscaUi.ViewModels.Education
         public ReactiveCommand<int, Unit> GoToPageCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> NextPageCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> PreviousPageCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> FirstPageCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> LastPageCommand { get; private set; } = null!;
         public ReactiveCommand<CourseViewModel, Unit> ManageContentCommand { get; private set; } = null!;
         public ReactiveCommand<CourseViewModel, Unit> ManageStudentsCommand { get; private set; } = null!;
         public ReactiveCommand<CourseViewModel, Unit> ViewStatisticsCommand { get; private set; } = null!;
@@ -151,6 +165,8 @@ namespace ViridiscaUi.ViewModels.Education
             CloneCourseCommand = CreateCommand<CourseViewModel>(CloneCourseAsync, null, "Ошибка клонирования курса");
             ImportCoursesCommand = CreateCommand(ImportCoursesAsync, null, "Ошибка импорта курсов");
             ExportReportCommand = CreateCommand(ExportReportAsync, null, "Ошибка экспорта отчета");
+            FirstPageCommand = CreateCommand(FirstPageAsync, null, "Ошибка перехода на первую страницу");
+            LastPageCommand = CreateCommand(LastPageAsync, null, "Ошибка перехода на последнюю страницу");
         }
 
         /// <summary>
@@ -158,56 +174,119 @@ namespace ViridiscaUi.ViewModels.Education
         /// </summary>
         private void SetupSubscriptions()
         {
-            // Автопоиск при изменении текста поиска
+            // Автопоиск при изменении текста поиска - исправляем вложенную подписку
             this.WhenAnyValue(x => x.SearchText)
                 .Throttle(TimeSpan.FromMilliseconds(500))
                 .ObserveOn(RxApp.MainThreadScheduler)
-                .InvokeCommand(SearchCommand)
+                .Select(searchText => searchText?.Trim() ?? string.Empty)
+                .DistinctUntilChanged()
+                .Where(_ => !IsLoading) // Предотвращаем выполнение во время загрузки
+                .Subscribe(async searchText =>
+                {
+                    try
+                    {
+                        await SearchCoursesAsync(searchText);
+                    }
+                    catch (Exception ex)
+                    {
+                        LogError(ex, "Ошибка поиска курсов");
+                        ShowError("Ошибка поиска курсов");
+                    }
+                })
                 .DisposeWith(Disposables);
 
-            // Загрузка статистики при выборе курса
+            // Загрузка статистики при выборе курса - добавляем обработку ошибок
             this.WhenAnyValue(x => x.SelectedCourse)
-                .Where(course => course != null)
+                .Where(course => course != null && !IsLoading)
                 .Select(course => course!)
-                .InvokeCommand(LoadCourseStatisticsCommand)
+                .Subscribe(async course =>
+                {
+                    try
+                    {
+                        await LoadCourseStatisticsAsync(course);
+                    }
+                    catch (Exception ex)
+                    {
+                        LogError(ex, "Ошибка загрузки статистики курса");
+                        ShowError("Ошибка загрузки статистики курса");
+                    }
+                })
                 .DisposeWith(Disposables);
 
-            // Применение фильтров при изменении
-            this.WhenAnyValue(x => x.CategoryFilter, x => x.StatusFilter, x => x.DifficultyFilter)
+            // Применение фильтров при изменении - добавляем обработку ошибок
+            this.WhenAnyValue(x => x.CategoryFilter, x => x.StatusFilter, x => x.DifficultyFilter, x => x.SelectedTeacherFilter)
                 .Throttle(TimeSpan.FromMilliseconds(300))
                 .ObserveOn(RxApp.MainThreadScheduler)
-                .Select(_ => Unit.Default)
-                .InvokeCommand(ApplyFiltersCommand)
+                .Where(_ => !IsLoading) // Предотвращаем выполнение во время загрузки
+                .Subscribe(async _ =>
+                {
+                    try
+                    {
+                        await ApplyFiltersAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        LogError(ex, "Ошибка применения фильтров");
+                        ShowError("Ошибка применения фильтров");
+                    }
+                })
                 .DisposeWith(Disposables);
 
-            // Уведомления об изменении computed properties
+            // Уведомления об изменении computed properties - добавляем обработку ошибок
             this.WhenAnyValue(x => x.SelectedCourse)
-                .Subscribe(_ => this.RaisePropertyChanged(nameof(HasSelectedCourse)))
+                .Subscribe(_ => 
+                {
+                    try
+                    {
+                        this.RaisePropertyChanged(nameof(HasSelectedCourse));
+                    }
+                    catch (Exception ex)
+                    {
+                        LogError(ex, "Ошибка обновления HasSelectedCourse");
+                    }
+                })
                 .DisposeWith(Disposables);
                 
             this.WhenAnyValue(x => x.SelectedCourseStatistics)
-                .Subscribe(_ => this.RaisePropertyChanged(nameof(HasSelectedCourseStatistics)))
+                .Subscribe(_ => 
+                {
+                    try
+                    {
+                        this.RaisePropertyChanged(nameof(HasSelectedCourseStatistics));
+                    }
+                    catch (Exception ex)
+                    {
+                        LogError(ex, "Ошибка обновления HasSelectedCourseStatistics");
+                    }
+                })
                 .DisposeWith(Disposables);
 
             this.WhenAnyValue(x => x.CurrentPage, x => x.TotalPages)
                 .Subscribe(_ => 
                 {
-                    this.RaisePropertyChanged(nameof(CanGoToPreviousPage));
-                    this.RaisePropertyChanged(nameof(CanGoToNextPage));
+                    try
+                    {
+                        this.RaisePropertyChanged(nameof(CanGoToPreviousPage));
+                        this.RaisePropertyChanged(nameof(CanGoToNextPage));
+                    }
+                    catch (Exception ex)
+                    {
+                        LogError(ex, "Ошибка обновления пагинации");
+                    }
                 })
                 .DisposeWith(Disposables);
         }
 
         private async Task LoadCoursesAsync()
         {
-            LogInfo("Loading courses with filters: SearchText={SearchText}, CategoryFilter={CategoryFilter}, StatusFilter={StatusFilter}", SearchText, CategoryFilter, StatusFilter);
+            LogInfo("Loading courses with filters: SearchText={SearchText}, CategoryFilter={CategoryFilter}, StatusFilter={StatusFilter}", SearchText ?? string.Empty, CategoryFilter ?? string.Empty, StatusFilter ?? string.Empty);
             
             IsLoading = true;
             ShowInfo("Загрузка курсов...");
 
-            var teacherFilter = SelectedTeacherFilter?.Uid;
-            var (courses, totalCount) = await _courseService.GetCoursesPagedAsync(
-                CurrentPage, PageSize, SearchText, CategoryFilter, StatusFilter, DifficultyFilter, teacherFilter);
+            // Используем новый универсальный метод пагинации
+            var (courses, totalCount) = await _courseService.GetPagedAsync(
+                CurrentPage, PageSize, SearchText);
             
             Courses.Clear();
             foreach (var course in courses)
@@ -229,7 +308,8 @@ namespace ViridiscaUi.ViewModels.Education
         {
             LogInfo("Loading teachers for filter");
             
-            var teachers = await _teacherService.GetTeachersAsync();
+            // Используем новый универсальный метод получения всех записей
+            var teachers = await _teacherService.GetAllAsync();
             Teachers.Clear();
             foreach (var teacher in teachers)
             {
@@ -262,7 +342,9 @@ namespace ViridiscaUi.ViewModels.Education
                 Status = CourseStatus.Draft,
                 StartDate = DateTime.Today,
                 EndDate = DateTime.Today.AddMonths(3),
-                Credits = 3
+                Credits = 3,
+                CreatedAt = DateTime.UtcNow,
+                LastModifiedAt = DateTime.UtcNow
             };
 
             var dialogResult = await _dialogService.ShowCourseEditDialogAsync(newCourse);
@@ -272,19 +354,20 @@ namespace ViridiscaUi.ViewModels.Education
                 return;
             }
 
-            await _courseService.AddCourseAsync(dialogResult);
-            Courses.Add(new CourseViewModel(dialogResult));
+            // Используем новый универсальный метод создания
+            var createdCourse = await _courseService.CreateAsync(dialogResult);
+            Courses.Add(new CourseViewModel(createdCourse));
 
-            ShowSuccess($"Курс '{dialogResult.Name}' создан");
-            LogInfo("Course created successfully: {CourseName}", dialogResult.Name);
+            ShowSuccess($"Курс '{createdCourse.Name}' создан");
+            LogInfo("Course created successfully: {CourseName}", createdCourse.Name);
             
             // Уведомление преподавателю
-            if (dialogResult.TeacherUid.HasValue)
+            if (createdCourse.TeacherUid.HasValue)
             {
                 await _notificationService.CreateNotificationAsync(
-                    dialogResult.TeacherUid.Value,
+                    createdCourse.TeacherUid.Value,
                     "Назначение на курс",
-                    $"Вы назначены преподавателем курса '{dialogResult.Name}'",
+                    $"Вы назначены преподавателем курса '{createdCourse.Name}'",
                     Domain.Models.System.NotificationType.Info);
             }
         }
@@ -293,14 +376,23 @@ namespace ViridiscaUi.ViewModels.Education
         {
             LogInfo("Editing course: {CourseId}", courseViewModel.Uid);
             
-            var dialogResult = await _dialogService.ShowCourseEditDialogAsync(courseViewModel.ToCourse());
+            // Получаем актуальные данные курса
+            var course = await _courseService.GetByUidAsync(courseViewModel.Uid);
+            if (course == null)
+            {
+                ShowError("Курс не найден");
+                return;
+            }
+
+            var dialogResult = await _dialogService.ShowCourseEditDialogAsync(course);
             if (dialogResult == null)
             {
                 LogDebug("Course editing cancelled by user");
                 return;
             }
 
-            var success = await _courseService.UpdateCourseAsync(dialogResult);
+            // Используем новый универсальный метод обновления
+            var success = await _courseService.UpdateAsync(dialogResult);
             if (success)
             {
                 var index = Courses.IndexOf(courseViewModel);
@@ -332,7 +424,8 @@ namespace ViridiscaUi.ViewModels.Education
                 return;
             }
 
-            var success = await _courseService.DeleteCourseAsync(courseViewModel.Uid);
+            // Используем новый универсальный метод удаления
+            var success = await _courseService.DeleteAsync(courseViewModel.Uid);
             if (success)
             {
                 Courses.Remove(courseViewModel);
@@ -529,6 +622,22 @@ namespace ViridiscaUi.ViewModels.Education
             }
         }
 
+        private async Task FirstPageAsync()
+        {
+            if (CurrentPage > 1)
+            {
+                await GoToPageAsync(1);
+            }
+        }
+
+        private async Task LastPageAsync()
+        {
+            if (CurrentPage < TotalPages)
+            {
+                await GoToPageAsync(TotalPages);
+            }
+        }
+
         private async Task ManageContentAsync(CourseViewModel courseViewModel)
         {
             try
@@ -680,6 +789,43 @@ namespace ViridiscaUi.ViewModels.Education
             }
         }
 
+        private void InitializeFilters()
+        {
+            LogInfo("Initializing course filters");
+            
+            // Инициализируем категории
+            Categories.Clear();
+            Categories.Add("Все категории");
+            Categories.Add("Математика");
+            Categories.Add("Естественные науки");
+            Categories.Add("Гуманитарные науки");
+            Categories.Add("Информатика");
+            Categories.Add("Языки");
+            Categories.Add("Искусство");
+            Categories.Add("Спорт");
+            Categories.Add("Экономика");
+            Categories.Add("Инженерия");
+            
+            // Инициализируем уровни сложности
+            Difficulties.Clear();
+            Difficulties.Add("Все");
+            Difficulties.Add("Начальный");
+            Difficulties.Add("Средний");
+            Difficulties.Add("Продвинутый");
+            Difficulties.Add("Экспертный");
+            
+            // Инициализируем статусы
+            Statuses.Clear();
+            Statuses.Add("Все");
+            Statuses.Add("Активные");
+            Statuses.Add("Опубликованные");
+            Statuses.Add("Черновики");
+            Statuses.Add("Архивированные");
+            Statuses.Add("Приостановленные");
+            
+            LogInfo("Course filters initialized");
+        }
+
         #endregion
 
         #region Lifecycle Methods
@@ -689,6 +835,9 @@ namespace ViridiscaUi.ViewModels.Education
             await base.OnFirstTimeLoadedAsync();
             LogInfo("CoursesViewModel loaded for the first time");
             
+            // Initialize filters first
+            InitializeFilters();
+            
             // Load teachers and courses when view is loaded for the first time
             await ExecuteWithErrorHandlingAsync(LoadTeachersAsync, "Ошибка загрузки списка преподавателей");
             await LoadCoursesAsync();
@@ -696,109 +845,4 @@ namespace ViridiscaUi.ViewModels.Education
 
         #endregion
     }
-
-    /// <summary>
-    /// ViewModel для отображения курса в списке
-    /// </summary>
-    public class CourseViewModel : ReactiveObject
-    {
-        public Guid Uid { get; }
-        [Reactive] public string Name { get; set; } = string.Empty;
-        [Reactive] public string Code { get; set; } = string.Empty;
-        [Reactive] public string? Description { get; set; }
-        [Reactive] public string Category { get; set; } = string.Empty;
-        [Reactive] public string TeacherName { get; set; } = string.Empty;
-        [Reactive] public CourseStatus Status { get; set; }
-        [Reactive] public int StudentsCount { get; set; }
-        [Reactive] public int AssignmentsCount { get; set; }
-        [Reactive] public double CompletionRate { get; set; }
-        [Reactive] public double AverageGrade { get; set; }
-        [Reactive] public DateTime CreatedAt { get; set; }
-        [Reactive] public DateTime LastModifiedAt { get; set; }
-
-        public string StatusDisplay => Status switch
-        {
-            CourseStatus.Draft => "Черновик",
-            CourseStatus.Active => "Активный",
-            CourseStatus.Published => "Опубликован",
-            CourseStatus.Archived => "Архивирован",
-            CourseStatus.Suspended => "Приостановлен",
-            _ => "Неизвестно"
-        };
-
-        public IBrush StatusColor => Status switch
-        {
-            CourseStatus.Draft => new SolidColorBrush(Color.FromRgb(158, 158, 158)),      // Серый
-            CourseStatus.Active => new SolidColorBrush(Color.FromRgb(76, 175, 80)),       // Зеленый
-            CourseStatus.Published => new SolidColorBrush(Color.FromRgb(33, 150, 243)),   // Синий
-            CourseStatus.Archived => new SolidColorBrush(Color.FromRgb(96, 125, 139)),    // Серо-синий
-            CourseStatus.Suspended => new SolidColorBrush(Color.FromRgb(255, 152, 0)),    // Оранжевый
-            _ => new SolidColorBrush(Colors.Gray)
-        };
-
-        public CourseViewModel(Course course)
-        {
-            Uid = course.Uid;
-            Name = course.Name;
-            Code = course.Code ?? string.Empty;
-            Description = course.Description;
-            Category = course.Category ?? "Общее";
-            TeacherName = course.Teacher?.FullName ?? "Не назначен";
-            Status = course.Status;
-            StudentsCount = course.Enrollments?.Count ?? 0;
-            AssignmentsCount = course.Assignments?.Count ?? 0;
-            CompletionRate = CalculateCompletionRate(course);
-            AverageGrade = CalculateAverageGrade(course);
-            CreatedAt = course.CreatedAt;
-            LastModifiedAt = course.LastModifiedAt ?? DateTime.UtcNow;
-        }
-
-        private static double CalculateCompletionRate(Course course)
-        {
-            if (course.Enrollments?.Any() != true || course.Assignments?.Any() != true)
-                return 0;
-
-            var totalAssignments = course.Assignments.Count;
-            var completedAssignments = course.Enrollments
-                .SelectMany(e => e.Student?.Grades ?? Enumerable.Empty<Grade>())
-                .Where(g => course.Assignments.Any(a => a.Uid == g.AssignmentUid))
-                .Count();
-
-            var totalPossibleCompletions = course.Enrollments.Count * totalAssignments;
-            return totalPossibleCompletions > 0 ? (double)completedAssignments / totalPossibleCompletions * 100 : 0;
-        }
-
-        private static double CalculateAverageGrade(Course course)
-        {
-            if (course.Enrollments?.Any() != true)
-                return 0;
-
-            var grades = course.Enrollments
-                .SelectMany(e => e.Student?.Grades ?? Enumerable.Empty<Grade>())
-                .Where(g => course.Assignments.Any(a => a.Uid == g.AssignmentUid))
-                .Select(g => (double)g.Value);
-
-            return grades.Any() ? grades.Average() : 0;
-        }
-
-        public Course ToCourse()
-        {
-            return new Course
-            {
-                Uid = Uid,
-                Name = Name,
-                Code = Code,
-                Description = Description,
-                Category = Category,
-                TeacherUid = null, // This should be set from the actual course data
-                Status = Status,
-                StartDate = DateTime.UtcNow, // Default value
-                EndDate = DateTime.UtcNow.AddMonths(6), // Default value
-                Credits = 0, // This should be set from the actual course data
-                CreatedAt = CreatedAt,
-                LastModifiedAt = LastModifiedAt
-            };
-        }
-    }
-
 }

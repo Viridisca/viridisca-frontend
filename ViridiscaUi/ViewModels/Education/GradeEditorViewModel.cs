@@ -23,9 +23,9 @@ namespace ViridiscaUi.ViewModels.Education
         private readonly SourceCache<Student, Guid> _studentsSource = new(s => s.Uid);
         private readonly SourceCache<Assignment, Guid> _assignmentsSource = new(a => a.Uid);
         private readonly SourceCache<Teacher, Guid> _teachersSource = new(t => t.Uid);
-        private ReadOnlyObservableCollection<Student> _students;
-        private ReadOnlyObservableCollection<Assignment> _assignments;
-        private ReadOnlyObservableCollection<Teacher> _teachers;
+        private readonly ReadOnlyObservableCollection<Student> _students;
+        private readonly ReadOnlyObservableCollection<Assignment> _assignments;
+        private readonly ReadOnlyObservableCollection<Teacher> _teachers;
 
         public ReadOnlyObservableCollection<Student> Students => _students;
         public ReadOnlyObservableCollection<Assignment> Assignments => _assignments;
@@ -43,11 +43,11 @@ namespace ViridiscaUi.ViewModels.Education
 
         [ObservableAsProperty] public bool IsLoading { get; }
         [ObservableAsProperty] public bool IsValid { get; }
-        [ObservableAsProperty] public string LetterGrade { get; }
+        [ObservableAsProperty] public string LetterGrade { get; } = string.Empty;
 
         public string Title => Grade == null ? "Добавить оценку" : "Редактировать оценку";
 
-        public Grade Grade { get; set; }
+        public Grade? Grade { get; set; }
 
         public ReactiveCommand<Unit, Grade?> SaveCommand { get; private set; }
         public ReactiveCommand<Unit, Unit> CancelCommand { get; private set; }
@@ -63,23 +63,31 @@ namespace ViridiscaUi.ViewModels.Education
             _teacherService = teacherService;
             Grade = grade;
 
+            // Bind collections first
+            _studentsSource.Connect()
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Bind(out _students)
+                .Subscribe();
+
+            _assignmentsSource.Connect()
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Bind(out _assignments)
+                .Subscribe();
+
+            _teachersSource.Connect()
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Bind(out _teachers)
+                .Subscribe();
+
             // Инициализация из существующей оценки
             if (grade != null)
             {
                 Value = grade.Value;
                 Comment = grade.Comment ?? string.Empty;
-                SelectedStudent = Students.FirstOrDefault(s => s.Uid == grade.StudentUid);
-                SelectedAssignment = Assignments.FirstOrDefault(a => a.Uid == grade.AssignmentUid);
-                SelectedTeacher = Teachers.FirstOrDefault(t => t.Uid == grade.TeacherUid);
+                StudentUid = grade.StudentUid;
+                AssignmentUid = grade.AssignmentUid ?? Guid.Empty;
+                TeacherUid = grade.TeacherUid;
             }
-
-            // Команды
-            SaveCommand = ReactiveCommand.CreateFromTask(SaveAsync);
-            CancelCommand = ReactiveCommand.Create(() => { });
-
-            // Вычисляемые свойства
-            this.WhenAnyValue(x => x.Value, value => GetLetterGrade(value))
-                .ToPropertyEx(this, x => x.LetterGrade);
 
             InitializeCommands();
             SetupSubscriptions();
@@ -107,6 +115,10 @@ namespace ViridiscaUi.ViewModels.Education
             );
 
             canSave.ToPropertyEx(this, x => x.IsValid);
+
+            // Commands
+            SaveCommand = CreateCommand(SaveAsync, canSave, "Ошибка сохранения оценки");
+            CancelCommand = CreateSyncCommand(() => { }, null, "Ошибка отмены");
         }
 
         /// <summary>
@@ -127,18 +139,9 @@ namespace ViridiscaUi.ViewModels.Education
             this.WhenAnyValue(x => x.SelectedTeacher)
                 .Subscribe(teacher => TeacherUid = teacher?.Uid ?? Guid.Empty);
 
-            // Bind collections
-            _studentsSource.Connect()
-                .ObserveOn(RxApp.MainThreadScheduler)
-                .Bind(out _students);
-
-            _assignmentsSource.Connect()
-                .ObserveOn(RxApp.MainThreadScheduler)
-                .Bind(out _assignments);
-
-            _teachersSource.Connect()
-                .ObserveOn(RxApp.MainThreadScheduler)
-                .Bind(out _teachers);
+            // Вычисляемые свойства
+            this.WhenAnyValue(x => x.Value, value => GetLetterGrade(value))
+                .ToPropertyEx(this, x => x.LetterGrade);
         }
 
         /// <summary>
@@ -148,14 +151,22 @@ namespace ViridiscaUi.ViewModels.Education
         {
             try
             {
-                var students = await _studentService.GetAllStudentsAsync();
+                var students = await _studentService.GetAllAsync();
                 _studentsSource.AddOrUpdate(students);
 
-                var assignments = await _assignmentService.GetAllAssignmentsAsync();
+                var assignments = await _assignmentService.GetAllAsync();
                 _assignmentsSource.AddOrUpdate(assignments);
 
-                var teachers = await _teacherService.GetAllTeachersAsync();
+                var teachers = await _teacherService.GetAllAsync();
                 _teachersSource.AddOrUpdate(teachers);
+
+                // Set selected items after data is loaded
+                if (Grade != null)
+                {
+                    SelectedStudent = Students.FirstOrDefault(s => s.Uid == Grade.StudentUid);
+                    SelectedAssignment = Assignments.FirstOrDefault(a => a.Uid == Grade.AssignmentUid);
+                    SelectedTeacher = Teachers.FirstOrDefault(t => t.Uid == Grade.TeacherUid);
+                }
             }
             catch (Exception ex)
             {

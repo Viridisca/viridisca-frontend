@@ -10,6 +10,7 @@ using ReactiveUI.Fody.Helpers;
 using ViridiscaUi.Domain.Models.Education;
 using ViridiscaUi.Services.Interfaces;
 using ViridiscaUi.Infrastructure.Navigation;
+using ViridiscaUi.ViewModels.Bases.Navigations;
 
 namespace ViridiscaUi.ViewModels.Education
 {
@@ -17,7 +18,13 @@ namespace ViridiscaUi.ViewModels.Education
     /// ViewModel для управления преподавателями
     /// Следует принципам SOLID и чистой архитектуры
     /// </summary>
-    [Route("teachers", DisplayName = "Преподаватели", IconKey = "Teacher", Order = 4, Group = "Education")]
+    [Route("teachers", 
+        DisplayName = "Преподаватели", 
+        IconKey = "AccountTie", 
+        Order = 2,
+        Group = "Образование",
+        ShowInMenu = true,
+        Description = "Управление преподавателями")]
     public class TeachersViewModel : RoutableViewModelBase
     { 
         private readonly ITeacherService _teacherService;
@@ -69,6 +76,8 @@ namespace ViridiscaUi.ViewModels.Education
         public ReactiveCommand<int, Unit> GoToPageCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> NextPageCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> PreviousPageCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> FirstPageCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> LastPageCommand { get; private set; } = null!;
 
         /// <summary>
         /// Конструктор
@@ -119,15 +128,17 @@ namespace ViridiscaUi.ViewModels.Education
             
             NextPageCommand = CreateCommand(NextPageAsync, canGoNext, "Ошибка перехода на следующую страницу");
             PreviousPageCommand = CreateCommand(PreviousPageAsync, canGoPrevious, "Ошибка перехода на предыдущую страницу");
+            FirstPageCommand = CreateCommand(FirstPageAsync, canGoPrevious, "Ошибка перехода на первую страницу");
+            LastPageCommand = CreateCommand(LastPageAsync, canGoNext, "Ошибка перехода на последнюю страницу");
         }
 
         private void SetupSubscriptions()
         {
-            // Автоматический поиск при изменении текста
+            // Автопоиск при изменении текста поиска
             this.WhenAnyValue(x => x.SearchText)
                 .Throttle(TimeSpan.FromMilliseconds(500))
                 .ObserveOn(RxApp.MainThreadScheduler)
-                .InvokeCommand(SearchCommand)
+                .Subscribe(searchText => SearchCommand.Execute(searchText ?? string.Empty).Subscribe())
                 .DisposeWith(Disposables);
 
             // Обновление computed properties
@@ -161,12 +172,11 @@ namespace ViridiscaUi.ViewModels.Education
             
             IsLoading = true;
             
-            var (teachers, totalCount) = await _teacherService.GetTeachersPagedAsync(
+            // Используем новый универсальный метод пагинации
+            var (teachers, totalCount) = await _teacherService.GetPagedAsync(
                 CurrentPage, 
                 PageSize, 
-                SearchText,
-                SpecializationFilter,
-                StatusFilter);
+                SearchText);
 
             Teachers.Clear();
             foreach (var teacher in teachers)
@@ -204,7 +214,9 @@ namespace ViridiscaUi.ViewModels.Education
                 FirstName = string.Empty,
                 LastName = string.Empty,
                 Status = TeacherStatus.Active,
-                HireDate = DateTime.Today
+                HireDate = DateTime.Today,
+                CreatedAt = DateTime.UtcNow,
+                LastModifiedAt = DateTime.UtcNow
             };
 
             var dialogResult = await _dialogService.ShowTeacherEditDialogAsync(newTeacher);
@@ -214,17 +226,18 @@ namespace ViridiscaUi.ViewModels.Education
                 return;
             }
 
-            await _teacherService.CreateTeacherAsync(dialogResult);
-            Teachers.Add(new TeacherViewModel(dialogResult));
+            // Используем новый универсальный метод создания
+            var createdTeacher = await _teacherService.CreateAsync(dialogResult);
+            Teachers.Add(new TeacherViewModel(createdTeacher));
 
-            ShowSuccess($"Преподаватель '{dialogResult.FirstName} {dialogResult.LastName}' создан");
-            LogInfo("Teacher created successfully: {TeacherName}", $"{dialogResult.FirstName} {dialogResult.LastName}");
+            ShowSuccess($"Преподаватель '{createdTeacher.FirstName} {createdTeacher.LastName}' создан");
+            LogInfo("Teacher created successfully: {TeacherName}", $"{createdTeacher.FirstName} {createdTeacher.LastName}");
             
             // Уведомление о создании нового преподавателя
             await _notificationService.CreateNotificationAsync(
-                dialogResult.Uid,
+                createdTeacher.Uid,
                 "Добро пожаловать!",
-                $"Добро пожаловать в систему, {dialogResult.FirstName}! Ваш аккаунт преподавателя создан.",
+                $"Добро пожаловать в систему, {createdTeacher.FirstName}! Ваш аккаунт преподавателя создан.",
                 Domain.Models.System.NotificationType.Info);
         }
 
@@ -232,7 +245,8 @@ namespace ViridiscaUi.ViewModels.Education
         {
             LogInfo("Editing teacher: {TeacherId}", teacherViewModel.Uid);
             
-            var teacher = await _teacherService.GetTeacherAsync(teacherViewModel.Uid);
+            // Используем новый универсальный метод получения
+            var teacher = await _teacherService.GetByUidAsync(teacherViewModel.Uid);
             if (teacher == null)
             {
                 ShowError("Преподаватель не найден");
@@ -246,7 +260,8 @@ namespace ViridiscaUi.ViewModels.Education
                 return;
             }
 
-            var success = await _teacherService.UpdateTeacherAsync(dialogResult);
+            // Используем новый универсальный метод обновления
+            var success = await _teacherService.UpdateAsync(dialogResult);
             if (success)
             {
                 var index = Teachers.IndexOf(teacherViewModel);
@@ -296,7 +311,8 @@ namespace ViridiscaUi.ViewModels.Education
                 return;
             }
 
-            var success = await _teacherService.DeleteTeacherAsync(teacherViewModel.Uid);
+            // Используем новый универсальный метод удаления
+            var success = await _teacherService.DeleteAsync(teacherViewModel.Uid);
             if (success)
             {
                 Teachers.Remove(teacherViewModel);
@@ -320,7 +336,8 @@ namespace ViridiscaUi.ViewModels.Education
         {
             LogInfo("Viewing teacher details: {TeacherId}", teacherViewModel.Uid);
             
-            var teacher = await _teacherService.GetTeacherAsync(teacherViewModel.Uid);
+            // Используем новый универсальный метод получения
+            var teacher = await _teacherService.GetByUidAsync(teacherViewModel.Uid);
             if (teacher != null)
             {
                 SelectedTeacher = new TeacherViewModel(teacher);
@@ -448,6 +465,18 @@ namespace ViridiscaUi.ViewModels.Education
             await GoToPageAsync(CurrentPage - 1);
         }
 
+        private async Task FirstPageAsync()
+        {
+            LogInfo("Navigating to first page");
+            await GoToPageAsync(1);
+        }
+
+        private async Task LastPageAsync()
+        {
+            LogInfo("Navigating to last page");
+            await GoToPageAsync(TotalPages);
+        }
+
         #endregion
 
         #region Lifecycle Methods
@@ -462,86 +491,5 @@ namespace ViridiscaUi.ViewModels.Education
         }
 
         #endregion
-    }
-
-    /// <summary>
-    /// ViewModel для отображения преподавателя в списке
-    /// </summary>
-    public class TeacherViewModel : ReactiveObject
-    {
-        public Guid Uid { get; }
-        [Reactive] public string FirstName { get; set; } = string.Empty;
-        [Reactive] public string LastName { get; set; } = string.Empty;
-        [Reactive] public string? MiddleName { get; set; }
-        [Reactive] public string Email { get; set; } = string.Empty;
-        [Reactive] public string? Phone { get; set; }
-        [Reactive] public string? Bio { get; set; }
-        [Reactive] public string? Specialization { get; set; }
-        [Reactive] public int CoursesCount { get; set; }
-        [Reactive] public int GroupsCount { get; set; }
-        [Reactive] public DateTime CreatedAt { get; set; }
-        [Reactive] public DateTime LastModifiedAt { get; set; }
-        [Reactive] public string Status { get; set; } = string.Empty;
-        [Reactive] public DateTime HireDate { get; set; }
-        [Reactive] public string AcademicDegree { get; set; } = string.Empty;
-        [Reactive] public string AcademicTitle { get; set; } = string.Empty;
-
-        public string FullName => $"{LastName} {FirstName} {MiddleName}".Trim();
-
-        public TeacherViewModel(Teacher teacher)
-        {
-            Uid = teacher.Uid;
-            FirstName = teacher.FirstName;
-            LastName = teacher.LastName;
-            MiddleName = teacher.MiddleName;
-            Email = teacher.Email;
-            Phone = teacher.Phone;
-            Specialization = teacher.Specialization;
-            CoursesCount = teacher.Courses?.Count ?? 0;
-            GroupsCount = teacher.CuratedGroups?.Count ?? 0;
-            Status = teacher.Status.ToString();
-            HireDate = teacher.HireDate;
-            AcademicDegree = teacher.AcademicDegree ?? string.Empty;
-            AcademicTitle = teacher.AcademicTitle ?? string.Empty;
-            Bio = teacher.Bio ?? string.Empty;
-            CreatedAt = teacher.CreatedAt;
-            LastModifiedAt = teacher.LastModifiedAt ?? DateTime.UtcNow;
-        }
-
-        public Teacher ToTeacher()
-        {
-            return new Teacher
-            {
-                Uid = Uid,
-                FirstName = FirstName,
-                LastName = LastName,
-                MiddleName = MiddleName ?? string.Empty,
-                Phone = Phone ?? string.Empty,
-                Specialization = Specialization ?? string.Empty,
-                AcademicDegree = AcademicDegree ?? string.Empty,
-                AcademicTitle = AcademicTitle ?? string.Empty,
-                Bio = Bio ?? string.Empty,
-                Status = Enum.Parse<TeacherStatus>(Status),
-                HireDate = HireDate,
-                CreatedAt = CreatedAt,
-                LastModifiedAt = LastModifiedAt
-            };
-        }
-    }
-
-    /// <summary>
-    /// Статистика преподавателя
-    /// </summary>
-    public class TeacherStatistics
-    {
-        public int TotalCourses { get; set; }
-        public int ActiveCourses { get; set; }
-        public int TotalStudents { get; set; }
-        public int CuratedGroups { get; set; }
-        public int TotalAssignments { get; set; }
-        public int PendingGrading { get; set; }
-        public double AverageGrade { get; set; }
-        public int TotalLessons { get; set; }
-        public DateTime LastActivity { get; set; }
     }
 } 

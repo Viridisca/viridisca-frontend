@@ -1,0 +1,552 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:ViridiscaUi.ViewModels.System"
+             xmlns:local="clr-namespace:ViridiscaUi.Converters"
+             xmlns:material="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             mc:Ignorable="d" d:DesignWidth="1800" d:DesignHeight="1200"
+             x:Class="ViridiscaUi.Views.System.DepartmentsView"
+             x:DataType="vm:DepartmentsViewModel">
+
+    <UserControl.Resources>
+        <local:EnumEqualityConverter x:Key="EnumEqualityConverter" />
+        <local:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <local:InverseBooleanConverter x:Key="InverseBooleanConverter" />
+    </UserControl.Resources>
+
+    <UserControl.Styles>
+        <!-- Modern Card Style -->
+        <Style Selector="Border.card">
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeMediumBrush}" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+            <Setter Property="BoxShadow" Value="0 4 12 0 #15000000" />
+            <Setter Property="Padding" Value="24" />
+        </Style>
+        
+        <!-- Action Button Styles -->
+        <Style Selector="Button.action">
+            <Setter Property="Padding" Value="16,10" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="MinHeight" Value="40" />
+        </Style>
+        
+        <Style Selector="Button.primary">
+            <Setter Property="Background" Value="{DynamicResource SystemAccentColor}" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        
+        <Style Selector="Button.secondary">
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseLowBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+        </Style>
+        
+        <Style Selector="Button.danger">
+            <Setter Property="Background" Value="#E74C3C" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        
+        <Style Selector="Button.success">
+            <Setter Property="Background" Value="#27AE60" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        
+        <!-- Status Badge Styles -->
+        <Style Selector="Border.status-badge">
+            <Setter Property="CornerRadius" Value="16" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+        </Style>
+        
+        <Style Selector="Border.status-active">
+            <Setter Property="Background" Value="#E8F5E8" />
+        </Style>
+        
+        <Style Selector="Border.status-inactive">
+            <Setter Property="Background" Value="#FFF3E0" />
+        </Style>
+        
+        <Style Selector="Border.status-archived">
+            <Setter Property="Background" Value="#F3E5F5" />
+        </Style>
+        
+        <!-- Filter Panel Style -->
+        <Style Selector="StackPanel.filter-panel">
+            <Setter Property="Spacing" Value="12" />
+            <Setter Property="MinWidth" Value="140" />
+        </Style>
+        
+        <!-- Search Box Style -->
+        <Style Selector="TextBox.search">
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="16,12" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="BorderThickness" Value="2" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+        </Style>
+        
+        <Style Selector="TextBox.search:focus">
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemAccentColor}" />
+        </Style>
+    </UserControl.Styles>
+
+    <Design.DataContext>
+        <vm:DepartmentsViewModel />
+    </Design.DataContext>
+
+    <Grid RowDefinitions="Auto,*,Auto" Margin="20">
+        
+        <!-- Header Section with Actions and Statistics -->
+        <Border Grid.Row="0" Classes="card" Margin="0,0,0,20">
+            <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto">
+                
+                <!-- Title and Statistics -->
+                <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="20">
+                    <material:MaterialIcon Kind="Domain" 
+                                               Width="32" Height="32" 
+                                               VerticalAlignment="Center"
+                                               Foreground="{DynamicResource SystemAccentColor}"/>
+                    <TextBlock Text="Управление отделами" 
+                               FontSize="32" FontWeight="Bold" 
+                               VerticalAlignment="Center"/>
+                    
+                    <!-- Statistics Badges -->
+                    <StackPanel Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                        <Border Background="{DynamicResource SystemAccentColor}" 
+                                CornerRadius="20" Padding="16,8">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <material:MaterialIcon Kind="Domain" 
+                                                           Width="18" Height="18" 
+                                                           Foreground="White"/>
+                                <TextBlock Text="{Binding TotalDepartments, StringFormat='{}{0} всего'}" 
+                                           Foreground="White" FontSize="14" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Background="#27AE60" 
+                                CornerRadius="20" Padding="16,8">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <material:MaterialIcon Kind="CheckCircle" 
+                                                           Width="18" Height="18" 
+                                                           Foreground="White"/>
+                                <TextBlock Text="{Binding ActiveDepartments, StringFormat='{}{0} активных'}" 
+                                           Foreground="White" 
+                                           FontSize="14" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Background="#E67E22" 
+                                CornerRadius="20" Padding="16,8">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <material:MaterialIcon Kind="Pause" 
+                                                           Width="18" Height="18" 
+                                                           Foreground="White"/>
+                                <TextBlock Text="{Binding InactiveDepartments, StringFormat='{}{0} неактивных'}" 
+                                           Foreground="White" 
+                                           FontSize="14" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Action Buttons -->
+                <StackPanel Grid.Row="0" Grid.Column="1" 
+                            Orientation="Horizontal" Spacing="12">
+                    <Button Command="{Binding CreateDepartmentCommand}"
+                            Classes="action primary">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <material:MaterialIcon Kind="Plus" 
+                                                       Width="20" Height="20"/>
+                            <TextBlock Text="Добавить отдел"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding ExportToExcelCommand}" 
+                            Classes="action secondary">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <material:MaterialIcon Kind="FileExcel" 
+                                                       Width="20" Height="20"/>
+                            <TextBlock Text="Excel"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding ExportToCsvCommand}" 
+                            Classes="action secondary">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <material:MaterialIcon Kind="FileDelimited" 
+                                                       Width="20" Height="20"/>
+                            <TextBlock Text="CSV"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding RefreshCommand}" 
+                            Classes="action secondary">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <material:MaterialIcon Kind="Refresh" 
+                                                       Width="20" Height="20"/>
+                            <TextBlock Text="Обновить"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <!-- Advanced Search -->
+                <Grid Grid.Row="1" Grid.ColumnSpan="2" Margin="0,24,0,0">
+                    <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                            CornerRadius="12" Padding="20">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBox Grid.Column="0"
+                                     Classes="search"
+                                     Text="{Binding SearchText}" 
+                                     Watermark="Поиск отделов по названию, коду, типу или руководителю..."
+                                     FontSize="16">
+                                <TextBox.InnerLeftContent>
+                                    <material:MaterialIcon Kind="Magnify" 
+                                                               Width="24" Height="24" 
+                                                               Margin="16,0,12,0"
+                                                               Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                                </TextBox.InnerLeftContent>
+                                <TextBox.InnerRightContent>
+                                    <Button Command="{Binding ClearFiltersCommand}"
+                                            IsVisible="{Binding SearchText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Padding="12"
+                                            Margin="0,0,12,0">
+                                        <material:MaterialIcon Kind="Close" 
+                                                                   Width="18" Height="18"/>
+                                    </Button>
+                                </TextBox.InnerRightContent>
+                            </TextBox>
+                            
+                            <!-- Loading Indicator -->
+                            <ProgressBar Grid.Column="1"
+                                         IsIndeterminate="True"
+                                         IsVisible="{Binding IsLoading}"
+                                         Width="32" Height="32"
+                                         Margin="16,0"/>
+                        </Grid>
+                    </Border>
+                </Grid>
+
+                <!-- Advanced Filters -->
+                <ScrollViewer Grid.Row="2" Grid.ColumnSpan="2" 
+                              Margin="0,20,0,0"
+                              HorizontalScrollBarVisibility="Auto" 
+                              VerticalScrollBarVisibility="Disabled">
+                    <StackPanel Orientation="Horizontal" Spacing="24">
+                        
+                        <!-- Type Filter -->
+                        <StackPanel Classes="filter-panel">
+                            <TextBlock Text="Тип отдела:" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,8"/>
+                            <ComboBox SelectedItem="{Binding TypeFilter}" 
+                                      PlaceholderText="Все типы"
+                                      MinWidth="160">
+                                <ComboBoxItem Content="Все типы"/>
+                                <ComboBoxItem Content="Административный"/>
+                                <ComboBoxItem Content="Учебный"/>
+                                <ComboBoxItem Content="Научный"/>
+                                <ComboBoxItem Content="Технический"/>
+                                <ComboBoxItem Content="Финансовый"/>
+                                <ComboBoxItem Content="Кадровый"/>
+                            </ComboBox>
+                        </StackPanel>
+                        
+                        <!-- Status Filter -->
+                        <StackPanel Classes="filter-panel">
+                            <TextBlock Text="Статус:" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,8"/>
+                            <ComboBox SelectedItem="{Binding StatusFilter}" 
+                                      PlaceholderText="Все статусы"
+                                      MinWidth="140">
+                                <ComboBoxItem Content="Все статусы"/>
+                                <ComboBoxItem Content="Активный"/>
+                                <ComboBoxItem Content="Неактивный"/>
+                                <ComboBoxItem Content="Архивный"/>
+                            </ComboBox>
+                        </StackPanel>
+                        
+                        <!-- Manager Filter -->
+                        <StackPanel Classes="filter-panel">
+                            <TextBlock Text="Руководитель:" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,8"/>
+                            <ComboBox SelectedItem="{Binding ManagerFilter}" 
+                                      ItemsSource="{Binding Managers}"
+                                      DisplayMemberBinding="{Binding FullName}"
+                                      PlaceholderText="Все руководители"
+                                      MinWidth="180">
+                            </ComboBox>
+                        </StackPanel>
+                        
+                        <!-- Employee Count Filter -->
+                        <StackPanel Classes="filter-panel">
+                            <TextBlock Text="Количество сотрудников:" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,8"/>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <NumericUpDown Value="{Binding MinEmployeeCount}" 
+                                               Minimum="0" Maximum="1000"
+                                               Watermark="От"
+                                               Width="80"/>
+                                <NumericUpDown Value="{Binding MaxEmployeeCount}" 
+                                               Minimum="0" Maximum="1000"
+                                               Watermark="До"
+                                               Width="80"/>
+                            </StackPanel>
+                        </StackPanel>
+                        
+                        <!-- Clear Filters Button -->
+                        <StackPanel Classes="filter-panel" VerticalAlignment="Bottom">
+                            <Button Command="{Binding ClearFiltersCommand}"
+                                    Classes="action secondary">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <material:MaterialIcon Kind="FilterRemove" 
+                                                               Width="16" Height="16"/>
+                                    <TextBlock Text="Очистить"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+
+        <!-- Main Content Area -->
+        <Border Grid.Row="1" Classes="card" Padding="0">
+            <Grid RowDefinitions="Auto,*">
+                
+                <!-- Bulk Actions Toolbar -->
+                <Border Grid.Row="0" 
+                        Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                        Padding="20,16"
+                        IsVisible="{Binding HasSelectedDepartments}">
+                    <StackPanel Orientation="Horizontal" Spacing="16">
+                        <TextBlock Text="{Binding SelectedDepartmentsCount, StringFormat='Выбрано отделов: {0}'}" 
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"/>
+                        <Button Command="{Binding BulkEditCommand}" Classes="action secondary">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <material:MaterialIcon Kind="Pencil" 
+                                                           Width="16" Height="16"/>
+                                <TextBlock Text="Редактировать"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding BulkDeleteCommand}" Classes="action danger">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <material:MaterialIcon Kind="Delete" 
+                                                           Width="16" Height="16"/>
+                                <TextBlock Text="Удалить"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding BulkExportCommand}" Classes="action secondary">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <material:MaterialIcon Kind="Export" 
+                                                           Width="16" Height="16"/>
+                                <TextBlock Text="Экспорт"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Border>
+                
+                <!-- Data Grid -->
+                <ScrollViewer Grid.Row="1" 
+                              HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Auto">
+                    <DataGrid ItemsSource="{Binding FilteredDepartments}"
+                              SelectedItem="{Binding SelectedDepartment}"
+                              AutoGenerateColumns="False"
+                              CanUserSortColumns="True"
+                              CanUserReorderColumns="True"
+                              CanUserResizeColumns="True"
+                              GridLinesVisibility="Horizontal"
+                              HeadersVisibility="Column"
+                              SelectionMode="Extended"
+                              IsReadOnly="True"
+                              RowHeight="60"
+                              FontSize="14"
+                              MinWidth="1200">
+                        
+                        <DataGrid.Columns>
+                            
+                            <!-- Selection Column -->
+                            <DataGridCheckBoxColumn Header="" 
+                                                    Binding="{Binding IsSelected}" 
+                                                    Width="50"
+                                                    CanUserSort="False"
+                                                    CanUserReorder="False"/>
+                            
+                            <!-- Name Column -->
+                            <DataGridTextColumn Header="Название" 
+                                                Binding="{Binding Name}" 
+                                                Width="*"
+                                                MinWidth="200"/>
+                            
+                            <!-- Code Column -->
+                            <DataGridTextColumn Header="Код" 
+                                                Binding="{Binding Code}" 
+                                                Width="120"/>
+                            
+                            <!-- Type Column -->
+                            <DataGridTextColumn Header="Тип" 
+                                                Binding="{Binding Type}" 
+                                                Width="150"/>
+                            
+                            <!-- Manager Column -->
+                            <DataGridTextColumn Header="Руководитель" 
+                                                Binding="{Binding ManagerName}" 
+                                                Width="200"/>
+                            
+                            <!-- Employee Count Column -->
+                            <DataGridTextColumn Header="Сотрудников" 
+                                                Binding="{Binding EmployeeCount}" 
+                                                Width="120"/>
+                            
+                            <!-- Status Column -->
+                            <DataGridTemplateColumn Header="Статус" Width="120">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border Classes="status-badge"
+                                                Classes.status-active="{Binding Status, Converter={StaticResource EnumEqualityConverter}, ConverterParameter=Active}"
+                                                Classes.status-inactive="{Binding Status, Converter={StaticResource EnumEqualityConverter}, ConverterParameter=Inactive}"
+                                                Classes.status-archived="{Binding Status, Converter={StaticResource EnumEqualityConverter}, ConverterParameter=Archived}">
+                                            <TextBlock Text="{Binding StatusDisplayName}"
+                                                       FontSize="12" FontWeight="SemiBold" 
+                                                       HorizontalAlignment="Center"
+                                                       Foreground="{Binding StatusColor}"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            
+                            <!-- Actions Column -->
+                            <DataGridTemplateColumn Header="Действия" Width="200" CanUserSort="False">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                                            <Button Command="{Binding $parent[DataGrid].((vm:DepartmentsViewModel)DataContext).ViewDepartmentDetailsCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    Classes="action secondary"
+                                                    Padding="10,6"
+                                                    ToolTip.Tip="Просмотр деталей">
+                                                <material:MaterialIcon Kind="Eye" 
+                                                                           Width="16" Height="16"/>
+                                            </Button>
+                                            <Button Command="{Binding $parent[DataGrid].((vm:DepartmentsViewModel)DataContext).EditDepartmentCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    Classes="action primary"
+                                                    Padding="10,6"
+                                                    ToolTip.Tip="Редактировать">
+                                                <material:MaterialIcon Kind="Pencil" 
+                                                                           Width="16" Height="16"/>
+                                            </Button>
+                                            <Button Command="{Binding $parent[DataGrid].((vm:DepartmentsViewModel)DataContext).DeleteDepartmentCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    Classes="action danger"
+                                                    Padding="10,6"
+                                                    ToolTip.Tip="Удалить">
+                                                <material:MaterialIcon Kind="Delete" 
+                                                                           Width="16" Height="16"/>
+                                            </Button>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+
+        <!-- Footer with Pagination -->
+        <Border Grid.Row="2" Classes="card" Margin="0,20,0,0" 
+                IsVisible="{Binding HasPages}">
+            <Grid ColumnDefinitions="*,Auto,*">
+                
+                <!-- Pagination Info -->
+                <TextBlock Grid.Column="0" 
+                           Text="{Binding PaginationInfo}" 
+                           VerticalAlignment="Center"
+                           FontSize="14"
+                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                
+                <!-- Pagination Controls -->
+                <StackPanel Grid.Column="1" 
+                            Orientation="Horizontal" 
+                            Spacing="8"
+                            HorizontalAlignment="Center">
+                    
+                    <Button Command="{Binding FirstPageCommand}"
+                            IsEnabled="{Binding CanGoToFirstPage}"
+                            Classes="action secondary"
+                            Padding="12,8"
+                            ToolTip.Tip="Первая страница">
+                        <material:MaterialIcon Kind="ChevronDoubleLeft" 
+                                                   Width="18" Height="18"/>
+                    </Button>
+                    
+                    <Button Command="{Binding PreviousPageCommand}"
+                            IsEnabled="{Binding CanGoToPreviousPage}"
+                            Classes="action secondary"
+                            Padding="12,8"
+                            ToolTip.Tip="Предыдущая страница">
+                        <material:MaterialIcon Kind="ChevronLeft" 
+                                                   Width="18" Height="18"/>
+                    </Button>
+                    
+                    <!-- Page Number Input -->
+                    <Border Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+                            CornerRadius="6"
+                            Padding="12,8">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="Страница" VerticalAlignment="Center" FontSize="14"/>
+                            <NumericUpDown Value="{Binding CurrentPage}"
+                                           Minimum="1"
+                                           Maximum="{Binding TotalPages}"
+                                           Width="80"
+                                           ShowButtonSpinner="False"
+                                           FontSize="14"/>
+                            <TextBlock Text="{Binding TotalPages, StringFormat='из {0}'}" 
+                                       VerticalAlignment="Center" FontSize="14"/>
+                        </StackPanel>
+                    </Border>
+                    
+                    <Button Command="{Binding NextPageCommand}"
+                            IsEnabled="{Binding CanGoToNextPage}"
+                            Classes="action secondary"
+                            Padding="12,8"
+                            ToolTip.Tip="Следующая страница">
+                        <material:MaterialIcon Kind="ChevronRight" 
+                                                   Width="18" Height="18"/>
+                    </Button>
+                    
+                    <Button Command="{Binding LastPageCommand}"
+                            IsEnabled="{Binding CanGoToLastPage}"
+                            Classes="action secondary"
+                            Padding="12,8"
+                            ToolTip.Tip="Последняя страница">
+                        <material:MaterialIcon Kind="ChevronDoubleRight" 
+                                                   Width="18" Height="18"/>
+                    </Button>
+                </StackPanel>
+                
+                <!-- Quick Actions -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" 
+                            HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Button Command="{Binding SelectAllCommand}" Classes="action secondary">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <material:MaterialIcon Kind="SelectAll" 
+                                                       Width="16" Height="16"/>
+                            <TextBlock Text="Выбрать все"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding DeselectAllCommand}" Classes="action secondary">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <material:MaterialIcon Kind="SelectOff" 
+                                                       Width="16" Height="16"/>
+                            <TextBlock Text="Снять выделение"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl> 

@@ -19,7 +19,7 @@ namespace ViridiscaUi.ViewModels.Education
     {
         private readonly ITeacherService _teacherService;
         private readonly SourceCache<Teacher, Guid> _teachersSource = new(t => t.Uid);
-        private ReadOnlyObservableCollection<Teacher> _teachers;
+        private readonly ReadOnlyObservableCollection<Teacher> _teachers;
 
         public ReadOnlyObservableCollection<Teacher> Teachers => _teachers;
 
@@ -49,6 +49,12 @@ namespace ViridiscaUi.ViewModels.Education
         {
             _teacherService = teacherService;
             Group = group;
+
+            // Bind teachers collection first
+            _teachersSource.Connect()
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Bind(out _teachers)
+                .Subscribe();
 
             // Initialize properties from existing group if editing
             if (group != null)
@@ -90,11 +96,8 @@ namespace ViridiscaUi.ViewModels.Education
 
             canSave.ToPropertyEx(this, x => x.IsValid);
 
-            // Создаем команду сохранения
-            SaveCommand = ReactiveCommand.CreateFromTask(SaveAsync, canSave);
-            SaveCommand.ThrownExceptions
-                .Subscribe(ex => SetError("Ошибка сохранения группы", ex));
-                
+            // Создаем команды с обработкой ошибок
+            SaveCommand = CreateCommand(SaveAsync, canSave, "Ошибка сохранения группы");
             CancelCommand = CreateSyncCommand(() => { }, null, "Ошибка отмены");
         }
 
@@ -106,11 +109,6 @@ namespace ViridiscaUi.ViewModels.Education
             // Sync CuratorUid and SelectedCurator
             this.WhenAnyValue(x => x.SelectedCurator)
                 .Subscribe(curator => CuratorUid = curator?.Uid);
-
-            // Bind teachers to observable collection
-            _teachersSource.Connect()
-                .ObserveOn(RxApp.MainThreadScheduler)
-                .Bind(out _teachers);
         }
 
         /// <summary>
@@ -120,7 +118,7 @@ namespace ViridiscaUi.ViewModels.Education
         {
             try
             {
-                var teachers = await _teacherService.GetAllTeachersAsync();
+                var teachers = await _teacherService.GetAllAsync();
                 _teachersSource.AddOrUpdate(teachers);
                 
                 // Set selected curator if editing existing group

@@ -8,8 +8,9 @@ namespace ViridiscaUi.Services.Interfaces;
 
 /// <summary>
 /// Сервис для работы с оценками
+/// Наследуется от IGenericCrudService для получения универсальных CRUD операций
 /// </summary>
-public interface IGradeService
+public interface IGradeService : IGenericCrudService<Grade>
 {
     /// <summary>
     /// Получает оценку по идентификатору
@@ -19,23 +20,17 @@ public interface IGradeService
     /// <summary>
     /// Получает все оценки
     /// </summary>
-    Task<IEnumerable<Grade>> GetAllGradesAsync(
-        Guid? courseUid = null,
-        Guid? groupUid = null,
-        (decimal? min, decimal? max)? gradeRange = null,
-        (DateTime? start, DateTime? end)? period = null);
+    Task<IEnumerable<Grade>> GetAllGradesAsync();
     
     /// <summary>
-    /// Получает оценки с пагинацией
+    /// Получает все оценки (алиас для GetAllGradesAsync)
     /// </summary>
-    Task<(IEnumerable<Grade> Grades, int TotalCount)> GetGradesPagedAsync(
-        int page,
-        int pageSize,
-        string? searchTerm = null,
-        Guid? courseUid = null,
-        Guid? groupUid = null,
-        (decimal? min, decimal? max)? gradeRange = null,
-        (DateTime? start, DateTime? end)? period = null);
+    Task<IEnumerable<Grade>> GetGradesAsync();
+    
+    /// <summary>
+    /// Создает новую оценку
+    /// </summary>
+    Task<Grade> CreateGradeAsync(Grade grade);
     
     /// <summary>
     /// Добавляет новую оценку
@@ -53,6 +48,38 @@ public interface IGradeService
     Task<bool> DeleteGradeAsync(Guid uid);
     
     /// <summary>
+    /// Получает оценки по студенту
+    /// </summary>
+    Task<IEnumerable<Grade>> GetGradesByStudentAsync(Guid studentUid);
+    
+    /// <summary>
+    /// Получает оценки по заданию
+    /// </summary>
+    Task<IEnumerable<Grade>> GetGradesByAssignmentAsync(Guid assignmentUid);
+    
+    /// <summary>
+    /// Получает оценки по преподавателю
+    /// </summary>
+    Task<IEnumerable<Grade>> GetGradesByTeacherAsync(Guid teacherUid);
+    
+    /// <summary>
+    /// Получает оценки по курсу
+    /// </summary>
+    Task<IEnumerable<Grade>> GetGradesByCourseAsync(Guid courseUid);
+    
+    /// <summary>
+    /// Получает оценки с пагинацией
+    /// </summary>
+    Task<(IEnumerable<Grade> Grades, int TotalCount)> GetGradesPagedAsync(
+        int page,
+        int pageSize,
+        string? searchTerm = null,
+        Guid? courseUid = null,
+        Guid? groupUid = null,
+        (decimal? min, decimal? max)? gradeRange = null,
+        (DateTime? start, DateTime? end)? period = null);
+    
+    /// <summary>
     /// Обновляет комментарий к оценке
     /// </summary>
     Task<bool> UpdateGradeCommentAsync(Guid gradeUid, string comment);
@@ -65,7 +92,7 @@ public interface IGradeService
     /// <summary>
     /// Получает статистику оценок
     /// </summary>
-    Task<GradeStatistics> GetGradeStatisticsAsync(
+    Task<ViewModels.Education.GradeStatistics> GetGradeStatisticsAsync(
         Guid? courseUid = null,
         Guid? groupUid = null,
         (DateTime? start, DateTime? end)? period = null);

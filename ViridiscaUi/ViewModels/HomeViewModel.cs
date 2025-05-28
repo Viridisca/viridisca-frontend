@@ -8,6 +8,7 @@ using ReactiveUI.Fody.Helpers;
 using ViridiscaUi.Infrastructure;
 using ViridiscaUi.Infrastructure.Navigation;
 using ViridiscaUi.Services.Interfaces;
+using ViridiscaUi.ViewModels.Bases.Navigations;
 
 namespace ViridiscaUi.ViewModels;
 
@@ -18,9 +19,10 @@ namespace ViridiscaUi.ViewModels;
 [Route("home", 
     DisplayName = "Главная", 
     IconKey = "Home", 
-    Order = 1,
-    Group = "Main",
-    Description = "Главная страница с общей информацией и учетными данными",
+    Order = 0,
+    Group = "Основное",
+    ShowInMenu = true,
+    Description = "Главная страница системы",
     Tags = new[] { "main", "dashboard", "overview" })]
 public class HomeViewModel : RoutableViewModelBase
 {

@@ -7,6 +7,7 @@ using ViridiscaUi.Services.Interfaces;
 using ViridiscaUi.ViewModels;
 using ViridiscaUi.Infrastructure;
 using ViridiscaUi.Infrastructure.Navigation;
+using ViridiscaUi.ViewModels.Bases.Navigations;
 
 namespace ViridiscaUi.ViewModels.Auth;
 

@@ -7,7 +7,6 @@ using ViridiscaUi.Infrastructure.Navigation;
 using ViridiscaUi.Services.Implementations;
 using ViridiscaUi.Services.Interfaces;
 using ViridiscaUi.ViewModels.Auth;
-using ViridiscaUi.ViewModels.Profile;
 using ViridiscaUi.ViewModels.Education;
 using ViridiscaUi.ViewModels.Students;
 using ViridiscaUi.ViewModels.System;
@@ -89,18 +88,20 @@ public static class DependencyInjectionExtensions
         services.AddScoped<IGradeService, GradeService>();
         services.AddScoped<IExportService, ExportService>();
         services.AddScoped<IImportService, ImportService>();
+        services.AddScoped<ISubjectService, SubjectService>();
+        services.AddScoped<IDepartmentService, DepartmentService>();
 
         return services;
     }
 
     private static IServiceCollection AddAuthenticationServices(this IServiceCollection services)
     {
-        // Auth services (Scoped для работы с EF Core)
+        // Auth services (Singleton for UserSessionService alignment)
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IRoleService, RoleService>();
         services.AddScoped<IPermissionService, PermissionService>();
         services.AddScoped<IRolePermissionService, RolePermissionService>();
-        services.AddScoped<IAuthService, AuthService>();
+        services.AddSingleton<IAuthService, AuthService>();
 
         return services;
     }
@@ -110,6 +111,8 @@ public static class DependencyInjectionExtensions
         // System services
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IFileService, FileService>();
+        services.AddScoped<IPasswordHashingService, PasswordHashingService>();
+        services.AddScoped<IStatisticsService, StatisticsService>();
 
         // Singleton services for application state
         services.AddSingleton<IUserSessionService, UserSessionService>();
@@ -125,9 +128,12 @@ public static class DependencyInjectionExtensions
 
     private static IServiceCollection AddViewModels(this IServiceCollection services)
     {
-        // Main ViewModels
-        services.AddTransient<MainViewModel>();
+        // Main ViewModels (Singleton to ensure single instance for Observable subscriptions)
+        services.AddSingleton<MainViewModel>();
         services.AddTransient<HomeViewModel>();
+
+        // Component ViewModels
+        services.AddTransient<ViridiscaUi.ViewModels.Components.StatusBarViewModel>();
 
         // Auth ViewModels
         services.AddTransient<LoginViewModel>();
@@ -143,6 +149,7 @@ public static class DependencyInjectionExtensions
         services.AddTransient<TeachersViewModel>();
         services.AddTransient<AssignmentsViewModel>();
         services.AddTransient<GradesViewModel>();
+        services.AddTransient<SubjectsViewModel>();
 
         // Education Editor ViewModels
         services.AddTransient<GroupEditorViewModel>();
@@ -150,6 +157,7 @@ public static class DependencyInjectionExtensions
         services.AddTransient<TeacherEditorViewModel>();
         services.AddTransient<AssignmentEditorViewModel>();
         services.AddTransient<GradeEditorViewModel>();
+        services.AddTransient<SubjectEditorViewModel>();
 
         // Students ViewModels
         services.AddTransient<StudentsViewModel>();
@@ -157,6 +165,8 @@ public static class DependencyInjectionExtensions
 
         // System ViewModels
         services.AddTransient<NotificationCenterViewModel>();
+        services.AddTransient<DepartmentsViewModel>();
+        // services.AddTransient<DepartmentEditorViewModel>(); // TODO: Create when needed
 
         return services;
     }

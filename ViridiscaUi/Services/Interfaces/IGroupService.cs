@@ -6,51 +6,79 @@ using ViridiscaUi.Domain.Models.Education;
 namespace ViridiscaUi.Services.Interfaces;
 
 /// <summary>
-/// Сервис для работы с учебными группами
+/// Сервис для работы с группами
+/// Наследуется от IGenericCrudService для получения универсальных CRUD операций
 /// </summary>
-public interface IGroupService
+public interface IGroupService : IGenericCrudService<Group>
 {
     /// <summary>
     /// Получает группу по идентификатору
     /// </summary>
-    Task<Group?> GetGroupByIdAsync(Guid id);
+    Task<Group?> GetGroupAsync(Guid uid);
     
     /// <summary>
     /// Получает все группы
     /// </summary>
-    Task<IEnumerable<Group>> GetGroupsAsync();
-    
-    /// <summary>
-    /// Получает все группы (алиас для GetGroupsAsync)
-    /// </summary>
     Task<IEnumerable<Group>> GetAllGroupsAsync();
     
     /// <summary>
-    /// Добавляет новую группу
+    /// Получает активные группы
+    /// </summary>
+    Task<IEnumerable<Group>> GetActiveGroupsAsync();
+    
+    /// <summary>
+    /// Получает группы по департаменту
+    /// </summary>
+    Task<IEnumerable<Group>> GetGroupsByDepartmentAsync(Guid departmentUid);
+    
+    /// <summary>
+    /// Создает новую группу
     /// </summary>
     Task<Group> CreateGroupAsync(Group group);
     
     /// <summary>
+    /// Добавляет новую группу
+    /// </summary>
+    Task AddGroupAsync(Group group);
+    
+    /// <summary>
     /// Обновляет существующую группу
     /// </summary>
-    Task<Group> UpdateGroupAsync(Group group);
+    Task<bool> UpdateGroupAsync(Group group);
     
     /// <summary>
     /// Удаляет группу
     /// </summary>
-    Task DeleteGroupAsync(Guid id);
+    Task<bool> DeleteGroupAsync(Guid uid);
     
     /// <summary>
-    /// Назначает куратора группе
+    /// Поиск групп по названию
     /// </summary>
-    Task<bool> AssignCuratorAsync(Guid groupUid, Guid teacherUid);
-
-    // === РАСШИРЕНИЯ ЭТАПА 1 ===
+    Task<IEnumerable<Group>> SearchGroupsAsync(string searchTerm);
     
     /// <summary>
-    /// Получает группы по году обучения
+    /// Получает группы с пагинацией
     /// </summary>
-    Task<IEnumerable<Group>> GetGroupsByYearAsync(int year);
+    Task<(IEnumerable<Group> Groups, int TotalCount)> GetGroupsPagedAsync(
+        int page,
+        int pageSize,
+        string? searchTerm = null,
+        Guid? departmentUid = null);
+    
+    /// <summary>
+    /// Проверяет существование группы с указанным названием
+    /// </summary>
+    Task<bool> ExistsByNameAsync(string name, Guid? excludeUid = null);
+    
+    /// <summary>
+    /// Получает статистику по группе
+    /// </summary>
+    Task<GroupStatistics> GetGroupStatisticsAsync(Guid groupUid);
+    
+    /// <summary>
+    /// Назначает куратора группы
+    /// </summary>
+    Task<bool> AssignCuratorAsync(Guid groupUid, Guid? curatorUid);
     
     /// <summary>
     /// Получает группы по куратору
@@ -58,45 +86,20 @@ public interface IGroupService
     Task<IEnumerable<Group>> GetGroupsByCuratorAsync(Guid curatorUid);
     
     /// <summary>
-    /// Добавляет студента в группу
+    /// Получает все группы (алиас для GetAllGroupsAsync)
     /// </summary>
-    Task<bool> AddStudentToGroupAsync(Guid groupUid, Guid studentUid);
-    
-    /// <summary>
-    /// Удаляет студента из группы
-    /// </summary>
-    Task<bool> RemoveStudentFromGroupAsync(Guid groupUid, Guid studentUid);
-    
-    /// <summary>
-    /// Получает статистику группы (количество студентов, средний балл и т.д.)
-    /// </summary>
-    Task<GroupStatistics> GetGroupStatisticsAsync(Guid groupUid);
-    
-    /// <summary>
-    /// Получает группы с пагинацией
-    /// </summary>
-    Task<(IEnumerable<Group> Groups, int TotalCount)> GetGroupsPagedAsync(int page, int pageSize, string? searchTerm = null);
+    Task<IEnumerable<Group>> GetGroupsAsync();
 }
 
 /// <summary>
-/// Статистика группы
+/// Статистика по группе
 /// </summary>
 public class GroupStatistics
 {
-    public Guid GroupUid { get; set; }
-    public int TotalStudents { get; set; }
-    public int ActiveStudents { get; set; }
-    public double AverageGrade { get; set; }
-    public int TotalCourses { get; set; }
-    public int CompletedAssignments { get; set; }
-    public int PendingAssignments { get; set; }
-    public DateTime? LastActivityDate { get; set; }
-    public Dictionary<string, int> GradeDistribution { get; set; } = new();
-    public Dictionary<string, double> SubjectPerformance { get; set; } = new();
-    
-    // Дополнительные свойства для совместимости с XAML
-    public int StudentsCount => TotalStudents;
-    public int ActiveCoursesCount => TotalCourses;
-    public int CompletedAssignmentsCount => CompletedAssignments;
-    public int PendingAssignmentsCount => PendingAssignments;
+    public int StudentsCount { get; set; }
+    public int ActiveStudentsCount { get; set; }
+    public int GraduatedStudentsCount { get; set; }
+    public int ExpelledStudentsCount { get; set; }
+    public decimal AverageGrade { get; set; }
+    public int TotalEnrollments { get; set; }
 }

@@ -7,8 +7,9 @@ namespace ViridiscaUi.Services.Interfaces;
 
 /// <summary>
 /// Сервис для работы со студентами
+/// Наследуется от IGenericCrudService для получения универсальных CRUD операций
 /// </summary>
-public interface IStudentService
+public interface IStudentService : IGenericCrudService<Student>
 {
     /// <summary>
     /// Получает студента по идентификатору
@@ -31,6 +32,16 @@ public interface IStudentService
     Task<IEnumerable<Student>> GetStudentsByGroupAsync(Guid groupUid);
     
     /// <summary>
+    /// Получает студентов по статусу
+    /// </summary>
+    Task<IEnumerable<Student>> GetStudentsByStatusAsync(StudentStatus status);
+    
+    /// <summary>
+    /// Создает нового студента
+    /// </summary>
+    Task<Student> CreateStudentAsync(Student student);
+    
+    /// <summary>
     /// Добавляет нового студента
     /// </summary>
     Task AddStudentAsync(Student student);
@@ -45,17 +56,47 @@ public interface IStudentService
     /// </summary>
     Task<bool> DeleteStudentAsync(Guid uid);
 
+    /// <summary>
+    /// Поиск студентов по имени или email
+    /// </summary>
+    Task<IEnumerable<Student>> SearchStudentsAsync(string searchTerm);
+
+    /// <summary>
+    /// Получает студентов с пагинацией
+    /// </summary>
+    Task<(IEnumerable<Student> Students, int TotalCount)> GetStudentsPagedAsync(
+        int page,
+        int pageSize,
+        string? searchTerm = null,
+        StudentStatus? status = null,
+        Guid? groupUid = null);
+
+    /// <summary>
+    /// Проверяет существование студента с указанным email
+    /// </summary>
+    Task<bool> ExistsByEmailAsync(string email, Guid? excludeUid = null);
+
+    /// <summary>
+    /// Получает статистику по студенту
+    /// </summary>
+    Task<StudentStatistics> GetStudentStatisticsAsync(Guid studentUid);
+
+    /// <summary>
+    /// Изменяет статус студента
+    /// </summary>
+    Task<bool> ChangeStudentStatusAsync(Guid uid, StudentStatus status);
+
+    /// <summary>
+    /// Переводит студента в другую группу
+    /// </summary>
+    Task<bool> TransferStudentToGroupAsync(Guid studentUid, Guid? newGroupUid);
+
     // === РАСШИРЕНИЯ ЭТАПА 1 ===
     
     /// <summary>
     /// Получает успеваемость студента
     /// </summary>
     Task<StudentPerformance> GetStudentPerformanceAsync(Guid studentUid);
-    
-    /// <summary>
-    /// Переводит студента в другую группу
-    /// </summary>
-    Task<bool> TransferStudentToGroupAsync(Guid studentUid, Guid newGroupUid);
     
     /// <summary>
     /// Назначает студента в группу
@@ -71,16 +112,6 @@ public interface IStudentService
     /// Получает оценки студента
     /// </summary>
     Task<IEnumerable<Grade>> GetStudentGradesAsync(Guid studentUid);
-
-    /// <summary>
-    /// Получает студентов с пагинацией
-    /// </summary>
-    Task<(IEnumerable<Student> Students, int TotalCount)> GetStudentsPagedAsync(int page, int pageSize, string? searchTerm = null);
-    
-    /// <summary>
-    /// Получает статистику студента
-    /// </summary>
-    Task<StudentStatistics> GetStudentStatisticsAsync(Guid studentUid);
     
     /// <summary>
     /// Получает активные задания студента
@@ -125,6 +156,12 @@ public class StudentStatistics
     public DateTime EnrollmentDate { get; set; }
     public Dictionary<string, int> AssignmentsByType { get; set; } = new();
     public List<MonthlyProgress> MonthlyProgress { get; set; } = new();
+    public int EnrollmentsCount { get; set; }
+    public int CompletedCoursesCount { get; set; }
+    public int ActiveCoursesCount { get; set; }
+    public decimal AverageGrade { get; set; }
+    public int TotalCredits { get; set; }
+    public int CompletedCredits { get; set; }
 }
 
 /// <summary>

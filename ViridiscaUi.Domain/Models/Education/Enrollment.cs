@@ -14,6 +14,7 @@ public class Enrollment : ViewModelBase
     private Guid _courseUid;
     private Course? _course;
     private DateTime _enrollmentDate = DateTime.UtcNow;
+    private DateTime? _completedAt;
     private EnrollmentStatus _status = EnrollmentStatus.Active;
 
     /// <summary>
@@ -62,6 +63,15 @@ public class Enrollment : ViewModelBase
     }
 
     /// <summary>
+    /// Дата завершения курса
+    /// </summary>
+    public DateTime? CompletedAt
+    {
+        get => _completedAt;
+        set => this.RaiseAndSetIfChanged(ref _completedAt, value);
+    }
+
+    /// <summary>
     /// Статус зачисления
     /// </summary>
     public EnrollmentStatus Status
@@ -69,6 +79,11 @@ public class Enrollment : ViewModelBase
         get => _status;
         set => this.RaiseAndSetIfChanged(ref _status, value);
     }
+
+    /// <summary>
+    /// Проверяет, завершен ли курс
+    /// </summary>
+    public bool IsCompleted => CompletedAt.HasValue;
 
     /// <summary>
     /// Создает новый экземпляр зачисления

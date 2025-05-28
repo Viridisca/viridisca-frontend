@@ -5,6 +5,19 @@ using Microsoft.Extensions.Logging;
 namespace ViridiscaUi.Services.Interfaces;
 
 /// <summary>
+/// Типы статус-сообщений для удобной фильтрации
+/// </summary>
+public enum StatusMessageType
+{
+    Info,
+    Warning,
+    Error,
+    Success,
+    Debug,
+    Trace
+}
+
+/// <summary>
 /// Сервис для управления статус-сообщениями и интеграции с логированием
 /// </summary>
 public interface IStatusService
@@ -96,6 +109,19 @@ public class StatusMessage
     public string Message { get; init; } = string.Empty;
     public string? Source { get; init; }
     public string? Category { get; init; }
+
+    /// <summary>
+    /// Тип сообщения для удобной фильтрации
+    /// </summary>
+    public StatusMessageType Type => Level switch
+    {
+        LogLevel.Error or LogLevel.Critical => StatusMessageType.Error,
+        LogLevel.Warning => StatusMessageType.Warning,
+        LogLevel.Information => StatusMessageType.Info,
+        LogLevel.Debug => StatusMessageType.Debug,
+        LogLevel.Trace => StatusMessageType.Trace,
+        _ => StatusMessageType.Info
+    };
 
     /// <summary>
     /// Иконка для отображения в UI

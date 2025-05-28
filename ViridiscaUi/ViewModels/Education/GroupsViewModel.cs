@@ -14,6 +14,7 @@ using ViridiscaUi.Infrastructure;
 using ViridiscaUi.Infrastructure.Navigation;
 using NotificationType = ViridiscaUi.Domain.Models.System.NotificationType;
 using static ViridiscaUi.Services.Interfaces.IGroupService;
+using ViridiscaUi.ViewModels.Bases.Navigations;
 
 namespace ViridiscaUi.ViewModels.Education
 {
@@ -21,7 +22,13 @@ namespace ViridiscaUi.ViewModels.Education
     /// ViewModel для управления группами
     /// Следует принципам SOLID и чистой архитектуры
     /// </summary>
-    [Route("groups", DisplayName = "Группы", IconKey = "👥", Order = 3, Group = "Education")]
+    [Route("groups", 
+        DisplayName = "Группы", 
+        IconKey = "AccountMultiple", 
+        Order = 3,
+        Group = "Образование",
+        ShowInMenu = true,
+        Description = "Управление учебными группами")]
     public class GroupsViewModel : RoutableViewModelBase
     {
         private readonly IGroupService _groupService;
@@ -67,6 +74,8 @@ namespace ViridiscaUi.ViewModels.Education
         public ReactiveCommand<int, Unit> GoToPageCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> NextPageCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> PreviousPageCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> FirstPageCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> LastPageCommand { get; private set; } = null!;
 
         public GroupsViewModel(
             IScreen hostScreen,
@@ -115,6 +124,12 @@ namespace ViridiscaUi.ViewModels.Education
             
             NextPageCommand = CreateCommand(NextPageAsync, canGoNext, "Ошибка перехода на следующую страницу");
             PreviousPageCommand = CreateCommand(PreviousPageAsync, canGoPrevious, "Ошибка перехода на предыдущую страницу");
+
+            var canGoFirst = this.WhenAnyValue(x => x.CurrentPage, current => current > 1);
+            var canGoLast = this.WhenAnyValue(x => x.CurrentPage, x => x.TotalPages, (current, total) => current < total);
+            
+            FirstPageCommand = CreateCommand(FirstPageAsync, canGoFirst, "Ошибка перехода на первую страницу");
+            LastPageCommand = CreateCommand(LastPageAsync, canGoLast, "Ошибка перехода на последнюю страницу");
         }
 
         /// <summary>
@@ -126,7 +141,7 @@ namespace ViridiscaUi.ViewModels.Education
             this.WhenAnyValue(x => x.SearchText)
                 .Throttle(TimeSpan.FromMilliseconds(500))
                 .ObserveOn(RxApp.MainThreadScheduler)
-                .InvokeCommand(SearchCommand)
+                .Subscribe(searchText => SearchCommand.Execute(searchText ?? string.Empty).Subscribe())
                 .DisposeWith(Disposables);
 
             // Загрузка статистики при выборе группы
@@ -153,7 +168,8 @@ namespace ViridiscaUi.ViewModels.Education
             IsLoading = true;
             ShowInfo("Загрузка групп...");
 
-            var (groups, totalCount) = await _groupService.GetGroupsPagedAsync(CurrentPage, PageSize, SearchText);
+            // Используем новый универсальный метод пагинации
+            var (groups, totalCount) = await _groupService.GetPagedAsync(CurrentPage, PageSize, SearchText);
             
             Groups.Clear();
             foreach (var group in groups)
@@ -189,7 +205,9 @@ namespace ViridiscaUi.ViewModels.Education
             {
                 Uid = Guid.NewGuid(),
                 Name = string.Empty,
-                Description = string.Empty
+                Description = string.Empty,
+                CreatedAt = DateTime.UtcNow,
+                LastModifiedAt = DateTime.UtcNow
             };
 
             var dialogResult = await _dialogService.ShowGroupEditDialogAsync(newGroup);
@@ -199,43 +217,50 @@ namespace ViridiscaUi.ViewModels.Education
                 return;
             }
 
-            await _groupService.CreateGroupAsync(dialogResult);
-            Groups.Add(new GroupViewModel(dialogResult));
+            // Используем новый универсальный метод создания
+            var createdGroup = await _groupService.CreateAsync(dialogResult);
+            Groups.Add(new GroupViewModel(createdGroup));
 
-            ShowSuccess($"Группа '{dialogResult.Name}' создана");
-            LogInfo("Group created successfully: {GroupName}", dialogResult.Name);
-            
-            // Уведомление куратору, если он назначен
-            if (dialogResult.CuratorUid.HasValue)
-            {
-                await _notificationService.CreateNotificationAsync(
-                    dialogResult.CuratorUid.Value,
-                    "Назначение куратором",
-                    $"Вы назначены куратором группы '{dialogResult.Name}'",
-                    Domain.Models.System.NotificationType.Info);
-            }
+            ShowSuccess($"Группа '{createdGroup.Name}' создана");
+            LogInfo("Group created successfully: {GroupName}", createdGroup.Name);
         }
 
         private async Task EditGroupAsync(GroupViewModel groupViewModel)
         {
             LogInfo("Editing group: {GroupId}", groupViewModel.Uid);
             
-            var dialogResult = await _dialogService.ShowGroupEditDialogAsync(groupViewModel.ToGroup());
+            // Получаем актуальные данные группы
+            var group = await _groupService.GetByUidAsync(groupViewModel.Uid);
+            if (group == null)
+            {
+                ShowError("Группа не найдена");
+                return;
+            }
+
+            var dialogResult = await _dialogService.ShowGroupEditDialogAsync(group);
             if (dialogResult == null)
             {
                 LogDebug("Group editing cancelled by user");
                 return;
             }
 
-            var updatedGroup = await _groupService.UpdateGroupAsync(dialogResult);
-            var index = Groups.IndexOf(groupViewModel);
-            if (index >= 0)
+            // Используем новый универсальный метод обновления
+            var success = await _groupService.UpdateAsync(dialogResult);
+            if (success)
             {
-                Groups[index] = new GroupViewModel(updatedGroup);
-            }
+                var index = Groups.IndexOf(groupViewModel);
+                if (index >= 0)
+                {
+                    Groups[index] = new GroupViewModel(dialogResult);
+                }
 
-            ShowSuccess($"Группа '{updatedGroup.Name}' обновлена");
-            LogInfo("Group updated successfully: {GroupName}", updatedGroup.Name);
+                ShowSuccess($"Группа '{dialogResult.Name}' обновлена");
+                LogInfo("Group updated successfully: {GroupName}", dialogResult.Name);
+            }
+            else
+            {
+                ShowError("Не удалось обновить группу");
+            }
         }
 
         private async Task DeleteGroupAsync(GroupViewModel groupViewModel)
@@ -244,7 +269,7 @@ namespace ViridiscaUi.ViewModels.Education
             
             var confirmResult = await _dialogService.ShowConfirmationAsync(
                 "Удаление группы",
-                $"Вы уверены, что хотите удалить группу '{groupViewModel.Name}'?\nВсе студенты будут исключены из группы.");
+                $"Вы уверены, что хотите удалить группу '{groupViewModel.Name}'?\nВсе связанные данные будут утеряны.");
 
             if (!confirmResult)
             {
@@ -252,10 +277,18 @@ namespace ViridiscaUi.ViewModels.Education
                 return;
             }
 
-            await _groupService.DeleteGroupAsync(groupViewModel.Uid);
-            Groups.Remove(groupViewModel);
-            ShowSuccess($"Группа '{groupViewModel.Name}' удалена");
-            LogInfo("Group deleted successfully: {GroupName}", groupViewModel.Name);
+            // Используем новый универсальный метод удаления
+            var success = await _groupService.DeleteAsync(groupViewModel.Uid);
+            if (success)
+            {
+                Groups.Remove(groupViewModel);
+                ShowSuccess($"Группа '{groupViewModel.Name}' удалена");
+                LogInfo("Group deleted successfully: {GroupName}", groupViewModel.Name);
+            }
+            else
+            {
+                ShowError("Не удалось удалить группу");
+            }
         }
 
         private async Task ViewGroupDetailsAsync(GroupViewModel groupViewModel)
@@ -363,6 +396,22 @@ namespace ViridiscaUi.ViewModels.Education
             }
         }
 
+        private async Task FirstPageAsync()
+        {
+            if (CurrentPage > 1)
+            {
+                await GoToPageAsync(1);
+            }
+        }
+
+        private async Task LastPageAsync()
+        {
+            if (CurrentPage < TotalPages)
+            {
+                await GoToPageAsync(TotalPages);
+            }
+        }
+
         #endregion
 
         #region Lifecycle Methods
@@ -377,45 +426,5 @@ namespace ViridiscaUi.ViewModels.Education
         }
 
         #endregion
-    }
-
-    /// <summary>
-    /// ViewModel для отображения группы в списке
-    /// </summary>
-    public class GroupViewModel : ReactiveObject
-    {
-        public Guid Uid { get; }
-        [Reactive] public string Name { get; set; } = string.Empty;
-        [Reactive] public string? Description { get; set; }
-        [Reactive] public string? CuratorName { get; set; }
-        [Reactive] public int StudentsCount { get; set; }
-        [Reactive] public DateTime CreatedAt { get; set; }
-        [Reactive] public DateTime LastModifiedAt { get; set; }
-        [Reactive] public DateTime LastActivityDate { get; set; }
-
-        public GroupViewModel(Group group)
-        {
-            Uid = group.Uid;
-            Name = group.Name;
-            Description = group.Description;
-            CuratorName = group.Curator != null ? $"{group.Curator.FirstName} {group.Curator.LastName}" : null;
-            StudentsCount = group.Students?.Count ?? 0;
-            CreatedAt = group.CreatedAt;
-            LastModifiedAt = group.LastModifiedAt ?? DateTime.UtcNow;
-            LastActivityDate = group.LastActivityDate ?? DateTime.MinValue;
-        }
-
-        public Group ToGroup()
-        {
-            return new Group
-            {
-                Uid = Uid,
-                Name = Name,
-                Description = Description,
-                CreatedAt = CreatedAt,
-                LastModifiedAt = LastModifiedAt,
-                LastActivityDate = LastActivityDate
-            };
-        }
     }
 } 

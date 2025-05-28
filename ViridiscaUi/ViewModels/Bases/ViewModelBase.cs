@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Reactive;
 using System.Reactive.Disposables;
+using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
@@ -28,6 +29,15 @@ public abstract class ViewModelBase : ReactiveObject, IDisposable
         this.WhenAnyValue(x => x.ErrorMessage)
             .Subscribe(error => HasError = !string.IsNullOrEmpty(error))
             .DisposeWith(Disposables);
+
+        // Подписываемся на ThrownExceptions для предотвращения разрыва observable pipeline
+        this.ThrownExceptions
+            .Subscribe(ex => 
+            {
+                SetError("Произошла ошибка в реактивной команде", ex);
+                Logger?.LogError(ex, "Unhandled exception in reactive pipeline for {ViewModelType}", GetType().Name);
+            })
+            .DisposeWith(Disposables);
     }
 
     /// <summary>
@@ -49,151 +59,72 @@ public abstract class ViewModelBase : ReactiveObject, IDisposable
     }
 
     /// <summary>
+    /// Очищает все ошибки
+    /// </summary>
+    protected void ClearErrors()
+    {
+        ClearError();
+    }
+
+    /// <summary>
     /// Устанавливает ошибку
     /// </summary>
     protected void SetError(string message, Exception? exception = null)
     {
         ErrorMessage = message;
-        Logger?.LogError(exception, "ViewModel error in {ViewModelType}: {Message}", GetType().Name, message);
-        
-        // Показываем ошибку пользователю через StatusLogger
-        ShowError(message);
+        Logger?.LogError(exception, "Error in {ViewModelType}: {ErrorMessage}", GetType().Name, message);
     }
 
     /// <summary>
-    /// Выполняет операцию с обработкой ошибок и индикацией загрузки
+    /// Устанавливает состояние загрузки
     /// </summary>
-    protected async Task ExecuteWithErrorHandlingAsync(Func<Task> operation, string? errorMessage = null)
+    protected void SetLoading(bool isLoading, string? message = null)
     {
-        try
+        IsBusy = isLoading;
+        if (isLoading && !string.IsNullOrEmpty(message))
         {
-            IsBusy = true;
-            ClearError();
-            Logger?.LogDebug("Starting operation in {ViewModelType}", GetType().Name);
-            await operation();
-            Logger?.LogDebug("Operation completed successfully in {ViewModelType}", GetType().Name);
+            Logger?.LogDebug("Loading started in {ViewModelType}: {Message}", GetType().Name, message);
         }
-        catch (Exception ex)
+        else if (!isLoading)
         {
-            var message = errorMessage ?? "Произошла ошибка при выполнении операции";
-            SetError(message, ex);
-        }
-        finally
-        {
-            IsBusy = false;
+            Logger?.LogDebug("Loading finished in {ViewModelType}", GetType().Name);
         }
     }
 
     /// <summary>
-    /// Выполняет операцию с возвращаемым значением с обработкой ошибок
-    /// </summary>
-    protected async Task<T?> ExecuteWithErrorHandlingAsync<T>(Func<Task<T>> operation, string? errorMessage = null)
-    {
-        try
-        {
-            IsBusy = true;
-            ClearError();
-            Logger?.LogDebug("Starting operation with return value in {ViewModelType}", GetType().Name);
-            var result = await operation();
-            Logger?.LogDebug("Operation with return value completed successfully in {ViewModelType}", GetType().Name);
-            return result;
-        }
-        catch (Exception ex)
-        {
-            var message = errorMessage ?? "Произошла ошибка при выполнении операции";
-            SetError(message, ex);
-            return default;
-        }
-        finally
-        {
-            IsBusy = false;
-        }
-    }
-
-    /// <summary>
-    /// Выполняет операцию синхронно с обработкой ошибок
-    /// </summary>
-    protected void ExecuteWithErrorHandling(Action operation, string? errorMessage = null)
-    {
-        try
-        {
-            ClearError();
-            Logger?.LogDebug("Starting synchronous operation in {ViewModelType}", GetType().Name);
-            operation();
-            Logger?.LogDebug("Synchronous operation completed successfully in {ViewModelType}", GetType().Name);
-        }
-        catch (Exception ex)
-        {
-            var message = errorMessage ?? "Произошла ошибка при выполнении операции";
-            SetError(message, ex);
-        }
-    }
-
-    /// <summary>
-    /// Выполняет операцию синхронно с возвращаемым значением и обработкой ошибок
-    /// </summary>
-    protected T? ExecuteWithErrorHandling<T>(Func<T> operation, string? errorMessage = null)
-    {
-        try
-        {
-            ClearError();
-            Logger?.LogDebug("Starting synchronous operation with return value in {ViewModelType}", GetType().Name);
-            var result = operation();
-            Logger?.LogDebug("Synchronous operation with return value completed successfully in {ViewModelType}", GetType().Name);
-            return result;
-        }
-        catch (Exception ex)
-        {
-            var message = errorMessage ?? "Произошла ошибка при выполнении операции";
-            SetError(message, ex);
-            return default;
-        }
-    }
-
-    #region StatusLogger Methods - Для отображения сообщений пользователю
-
-    /// <summary>
-    /// Показывает информационное сообщение пользователю через StatusLogger
+    /// Показывает информационное сообщение
     /// </summary>
     protected void ShowInfo(string message)
     {
         StatusLogger.LogInfo(message, GetType().Name);
-        Logger?.LogInformation(message);
     }
 
     /// <summary>
-    /// Показывает предупреждение пользователю через StatusLogger
-    /// </summary>
-    protected void ShowWarning(string message)
-    {
-        StatusLogger.LogWarning(message, GetType().Name);
-        Logger?.LogWarning(message);
-    }
-
-    /// <summary>
-    /// Показывает сообщение об успехе пользователю через StatusLogger
+    /// Показывает сообщение об успехе
     /// </summary>
     protected void ShowSuccess(string message)
     {
         StatusLogger.LogSuccess(message, GetType().Name);
-        Logger?.LogInformation("Success: {Message}", message);
     }
 
     /// <summary>
-    /// Показывает ошибку пользователю через StatusLogger
+    /// Показывает предупреждение
+    /// </summary>
+    protected void ShowWarning(string message)
+    {
+        StatusLogger.LogWarning(message, GetType().Name);
+    }
+
+    /// <summary>
+    /// Показывает ошибку
     /// </summary>
     protected void ShowError(string message)
     {
         StatusLogger.LogError(message, GetType().Name);
-        Logger?.LogError(message);
     }
 
-    #endregion
-
-    #region Logger Methods - Только для технического логирования
-
     /// <summary>
-    /// Логирует информационное сообщение (только в лог, не показывает пользователю)
+    /// Логирует информацию
     /// </summary>
     protected void LogInfo(string message, params object[] args)
     {
@@ -201,15 +132,7 @@ public abstract class ViewModelBase : ReactiveObject, IDisposable
     }
 
     /// <summary>
-    /// Логирует предупреждение (только в лог, не показывает пользователю)
-    /// </summary>
-    protected void LogWarning(string message, params object[] args)
-    {
-        Logger?.LogWarning(message, args);
-    }
-
-    /// <summary>
-    /// Логирует отладочное сообщение (только в лог, не показывает пользователю)
+    /// Логирует отладочную информацию
     /// </summary>
     protected void LogDebug(string message, params object[] args)
     {
@@ -217,14 +140,94 @@ public abstract class ViewModelBase : ReactiveObject, IDisposable
     }
 
     /// <summary>
-    /// Логирует ошибку (только в лог, не показывает пользователю)
+    /// Логирует ошибку
     /// </summary>
-    protected void LogError(Exception? exception, string message, params object[] args)
+    protected void LogError(Exception exception, string message, params object[] args)
     {
         Logger?.LogError(exception, message, args);
     }
 
-    #endregion
+    /// <summary>
+    /// Логирует предупреждение
+    /// </summary>
+    protected void LogWarning(string message, params object[] args)
+    {
+        Logger?.LogWarning(message, args);
+    }
+
+    /// <summary>
+    /// Выполняет асинхронную операцию с обработкой ошибок
+    /// </summary>
+    protected async Task ExecuteWithErrorHandlingAsync(Func<Task> operation, string? errorMessage = null)
+    {
+        try
+        {
+            ClearError();
+            await operation();
+        }
+        catch (Exception ex)
+        {
+            var message = errorMessage ?? "Произошла ошибка при выполнении операции";
+            SetError(message, ex);
+            Logger?.LogError(ex, "Error executing operation in {ViewModelType}: {ErrorMessage}", GetType().Name, message);
+        }
+    }
+
+    /// <summary>
+    /// Выполняет асинхронную операцию с обработкой ошибок и возвращает результат
+    /// </summary>
+    protected async Task<T?> ExecuteWithErrorHandlingAsync<T>(Func<Task<T>> operation, string? errorMessage = null)
+    {
+        try
+        {
+            ClearError();
+            return await operation();
+        }
+        catch (Exception ex)
+        {
+            var message = errorMessage ?? "Произошла ошибка при выполнении операции";
+            SetError(message, ex);
+            Logger?.LogError(ex, "Error executing operation in {ViewModelType}: {ErrorMessage}", GetType().Name, message);
+            return default;
+        }
+    }
+
+    /// <summary>
+    /// Выполняет синхронную операцию с обработкой ошибок
+    /// </summary>
+    protected void ExecuteWithErrorHandling(Action operation, string? errorMessage = null)
+    {
+        try
+        {
+            ClearError();
+            operation();
+        }
+        catch (Exception ex)
+        {
+            var message = errorMessage ?? "Произошла ошибка при выполнении операции";
+            SetError(message, ex);
+            Logger?.LogError(ex, "Error executing operation in {ViewModelType}: {ErrorMessage}", GetType().Name, message);
+        }
+    }
+
+    /// <summary>
+    /// Выполняет синхронную операцию с обработкой ошибок и возвращает результат
+    /// </summary>
+    protected T? ExecuteWithErrorHandling<T>(Func<T> operation, string? errorMessage = null)
+    {
+        try
+        {
+            ClearError();
+            return operation();
+        }
+        catch (Exception ex)
+        {
+            var message = errorMessage ?? "Произошла ошибка при выполнении операции";
+            SetError(message, ex);
+            Logger?.LogError(ex, "Error executing operation in {ViewModelType}: {ErrorMessage}", GetType().Name, message);
+            return default;
+        }
+    }
 
     #region Command Creation Helpers
 
@@ -241,8 +244,13 @@ public abstract class ViewModelBase : ReactiveObject, IDisposable
             canExecute,
             RxApp.MainThreadScheduler);
 
+        // Подписываемся на ThrownExceptions для предотвращения разрыва pipeline
         command.ThrownExceptions
-            .Subscribe(ex => SetError(errorMessage ?? "Произошла ошибка при выполнении команды", ex))
+            .Subscribe(ex => 
+            {
+                SetError(errorMessage ?? "Произошла ошибка при выполнении команды", ex);
+                Logger?.LogError(ex, "Command execution error in {ViewModelType}: {ErrorMessage}", GetType().Name, errorMessage);
+            })
             .DisposeWith(Disposables);
 
         return command;
@@ -261,8 +269,13 @@ public abstract class ViewModelBase : ReactiveObject, IDisposable
             canExecute,
             RxApp.MainThreadScheduler);
 
+        // Подписываемся на ThrownExceptions для предотвращения разрыва pipeline
         command.ThrownExceptions
-            .Subscribe(ex => SetError(errorMessage ?? "Произошла ошибка при выполнении команды", ex))
+            .Subscribe(ex => 
+            {
+                SetError(errorMessage ?? "Произошла ошибка при выполнении команды", ex);
+                Logger?.LogError(ex, "Command execution error in {ViewModelType}: {ErrorMessage}", GetType().Name, errorMessage);
+            })
             .DisposeWith(Disposables);
 
         return command;
@@ -281,8 +294,13 @@ public abstract class ViewModelBase : ReactiveObject, IDisposable
             canExecute,
             RxApp.MainThreadScheduler);
 
+        // Подписываемся на ThrownExceptions для предотвращения разрыва pipeline
         command.ThrownExceptions
-            .Subscribe(ex => SetError(errorMessage ?? "Произошла ошибка при выполнении команды", ex))
+            .Subscribe(ex => 
+            {
+                SetError(errorMessage ?? "Произошла ошибка при выполнении команды", ex);
+                Logger?.LogError(ex, "Sync command execution error in {ViewModelType}: {ErrorMessage}", GetType().Name, errorMessage);
+            })
             .DisposeWith(Disposables);
 
         return command;
@@ -301,8 +319,63 @@ public abstract class ViewModelBase : ReactiveObject, IDisposable
             canExecute,
             RxApp.MainThreadScheduler);
 
+        // Подписываемся на ThrownExceptions для предотвращения разрыва pipeline
         command.ThrownExceptions
-            .Subscribe(ex => SetError(errorMessage ?? "Произошла ошибка при выполнении команды", ex))
+            .Subscribe(ex => 
+            {
+                SetError(errorMessage ?? "Произошла ошибка при выполнении команды", ex);
+                Logger?.LogError(ex, "Sync command execution error in {ViewModelType}: {ErrorMessage}", GetType().Name, errorMessage);
+            })
+            .DisposeWith(Disposables);
+
+        return command;
+    }
+
+    /// <summary>
+    /// Создает ReactiveCommand с обработкой ошибок для асинхронных операций с возвращаемым значением
+    /// </summary>
+    protected ReactiveCommand<Unit, TResult> CreateCommand<TResult>(
+        Func<Task<TResult>> execute, 
+        IObservable<bool>? canExecute = null, 
+        string? errorMessage = null)
+    {
+        var command = ReactiveCommand.CreateFromTask(
+            async () => await ExecuteWithErrorHandlingAsync(execute, errorMessage) ?? default(TResult)!,
+            canExecute,
+            RxApp.MainThreadScheduler);
+
+        // Подписываемся на ThrownExceptions для предотвращения разрыва pipeline
+        command.ThrownExceptions
+            .Subscribe(ex => 
+            {
+                SetError(errorMessage ?? "Произошла ошибка при выполнении команды", ex);
+                Logger?.LogError(ex, "Command execution error in {ViewModelType}: {ErrorMessage}", GetType().Name, errorMessage);
+            })
+            .DisposeWith(Disposables);
+
+        return command;
+    }
+
+    /// <summary>
+    /// Создает ReactiveCommand с обработкой ошибок для асинхронных операций с параметром и возвращаемым значением
+    /// </summary>
+    protected ReactiveCommand<TParam, TResult> CreateCommand<TParam, TResult>(
+        Func<TParam, Task<TResult>> execute, 
+        IObservable<bool>? canExecute = null, 
+        string? errorMessage = null)
+    {
+        var command = ReactiveCommand.CreateFromTask<TParam, TResult>(
+            async param => await ExecuteWithErrorHandlingAsync(() => execute(param), errorMessage) ?? default(TResult)!,
+            canExecute,
+            RxApp.MainThreadScheduler);
+
+        // Подписываемся на ThrownExceptions для предотвращения разрыва pipeline
+        command.ThrownExceptions
+            .Subscribe(ex => 
+            {
+                SetError(errorMessage ?? "Произошла ошибка при выполнении команды", ex);
+                Logger?.LogError(ex, "Command execution error in {ViewModelType}: {ErrorMessage}", GetType().Name, errorMessage);
+            })
             .DisposeWith(Disposables);
 
         return command;
@@ -310,9 +383,28 @@ public abstract class ViewModelBase : ReactiveObject, IDisposable
 
     #endregion
 
+    #region IDisposable
+
+    private bool _disposed = false;
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!_disposed)
+        {
+            if (disposing)
+            {
+                Disposables?.Dispose();
+                Logger?.LogDebug("Disposed {ViewModelType}", GetType().Name);
+            }
+            _disposed = true;
+        }
+    }
+
     public virtual void Dispose()
     {
-        Logger?.LogDebug("Disposing {ViewModelType}", GetType().Name);
-        Disposables?.Dispose();
+        Dispose(true);
+        GC.SuppressFinalize(this);
     }
+
+    #endregion
 }

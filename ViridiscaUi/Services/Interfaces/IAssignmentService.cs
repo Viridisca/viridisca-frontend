@@ -7,8 +7,9 @@ namespace ViridiscaUi.Services.Interfaces;
 
 /// <summary>
 /// Сервис для работы с заданиями
+/// Наследуется от IGenericCrudService для получения универсальных CRUD операций
 /// </summary>
-public interface IAssignmentService
+public interface IAssignmentService : IGenericCrudService<Assignment>
 {
     /// <summary>
     /// Получает задание по идентификатору
@@ -21,14 +22,29 @@ public interface IAssignmentService
     Task<IEnumerable<Assignment>> GetAllAssignmentsAsync();
     
     /// <summary>
+    /// Получает все задания (алиас для GetAllAssignmentsAsync)
+    /// </summary>
+    Task<IEnumerable<Assignment>> GetAssignmentsAsync();
+    
+    /// <summary>
     /// Получает задания по курсу
     /// </summary>
     Task<IEnumerable<Assignment>> GetAssignmentsByCourseAsync(Guid courseUid);
     
     /// <summary>
-    /// Получает задания по модулю
+    /// Получает задания по статусу
     /// </summary>
-    Task<IEnumerable<Assignment>> GetAssignmentsByModuleAsync(Guid moduleUid);
+    Task<IEnumerable<Assignment>> GetAssignmentsByStatusAsync(AssignmentStatus status);
+    
+    /// <summary>
+    /// Получает задания по типу
+    /// </summary>
+    Task<IEnumerable<Assignment>> GetAssignmentsByTypeAsync(AssignmentType type);
+    
+    /// <summary>
+    /// Создает новое задание
+    /// </summary>
+    Task<Assignment> CreateAssignmentAsync(Assignment assignment);
     
     /// <summary>
     /// Добавляет новое задание

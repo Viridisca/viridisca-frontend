@@ -240,7 +240,9 @@ public enum AssignmentType
     /// <summary>
     /// Лабораторная работа
     /// </summary>
-    LabWork
+    LabWork,
+    Test,
+    Essay
 }
 
 /// <summary>
@@ -278,6 +280,21 @@ public enum AssignmentStatus
     /// Опубликовано
     /// </summary>
     Published,
+    
+    /// <summary>
+    /// Активно (доступно для выполнения)
+    /// </summary>
+    Active,
+    
+    /// <summary>
+    /// Завершено
+    /// </summary>
+    Completed,
+    
+    /// <summary>
+    /// Просрочено
+    /// </summary>
+    Overdue,
     
     /// <summary>
     /// Закрыто для сдачи

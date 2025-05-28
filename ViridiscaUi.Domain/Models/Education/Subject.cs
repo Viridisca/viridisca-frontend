@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using ReactiveUI;
 using ViridiscaUi.Domain.Models.Base;
+using ViridiscaUi.Domain.Models.System;
 
 namespace ViridiscaUi.Domain.Models.Education;
 
@@ -17,9 +18,10 @@ public class Subject : ViewModelBase
     private int _credits;
     private int _lessonsPerWeek;
     private SubjectType _type;
-    private Guid _departmentUid;
+    private Guid? _departmentUid;
     private bool _isActive;
     private ObservableCollection<TeacherSubject> _teacherSubjects = new();
+    private Department? _department;
 
     /// <summary>
     /// Код предмета
@@ -78,10 +80,19 @@ public class Subject : ViewModelBase
     /// <summary>
     /// Идентификатор кафедры/отдела
     /// </summary>
-    public Guid DepartmentUid
+    public Guid? DepartmentUid
     {
         get => _departmentUid;
         set => this.RaiseAndSetIfChanged(ref _departmentUid, value);
+    }
+
+    /// <summary>
+    /// Кафедра/отдел
+    /// </summary>
+    public Department? Department
+    {
+        get => _department;
+        set => this.RaiseAndSetIfChanged(ref _department, value);
     }
 
     /// <summary>

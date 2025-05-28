@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using ViridiscaUi.Domain.Models.Education;
 using ViridiscaUi.Domain.Models.Auth;
 using ViridiscaUi.Services.Interfaces;
@@ -13,231 +14,415 @@ namespace ViridiscaUi.Services.Implementations;
 
 /// <summary>
 /// Реализация сервиса для работы с учебными группами
+/// Наследуется от GenericCrudService для получения универсальных CRUD операций
 /// </summary>
-public class GroupService(ApplicationDbContext dbContext) : IGroupService
+public class GroupService : GenericCrudService<Group>, IGroupService
 {
-    private readonly ApplicationDbContext _dbContext = dbContext;
+    private new readonly ApplicationDbContext _dbContext;
+    private new readonly ILogger<GroupService> _logger;
 
-    public async Task<Group?> GetGroupByIdAsync(Guid id)
+    public GroupService(ApplicationDbContext dbContext, ILogger<GroupService> logger)
+        : base(dbContext, logger)
     {
-        try
-        {
-            return await _dbContext.Groups
-                .Include(g => g.Students)
-                .Include(g => g.Curator)
-                .FirstOrDefaultAsync(g => g.Uid == id);
-        }
-        catch
-        {
-            // Заглушка при ошибке базы данных
-            await Task.Delay(100);
-            return GenerateSampleGroups().FirstOrDefault(g => g.Uid == id);
-        }
+        _dbContext = dbContext;
+        _logger = logger;
     }
 
-    public async Task<IEnumerable<Group>> GetGroupsAsync()
+    #region Переопределение базовых методов для специфичной логики
+
+    /// <summary>
+    /// Применяет специфичный для групп поиск
+    /// </summary>
+    protected override IQueryable<Group> ApplySearchFilter(IQueryable<Group> query, string searchTerm)
     {
-        try
+        if (string.IsNullOrWhiteSpace(searchTerm))
+            return query;
+
+        var lowerSearchTerm = searchTerm.ToLower();
+
+        return query.Where(g => 
+            g.Name.ToLower().Contains(lowerSearchTerm) ||
+            g.Code.ToLower().Contains(lowerSearchTerm) ||
+            g.Description.ToLower().Contains(lowerSearchTerm) ||
+            (g.Curator != null && (
+                g.Curator.FirstName.ToLower().Contains(lowerSearchTerm) ||
+                g.Curator.LastName.ToLower().Contains(lowerSearchTerm)
+            ))
+        );
+    }
+
+    /// <summary>
+    /// Валидирует специфичные для группы правила
+    /// </summary>
+    protected override async Task ValidateEntitySpecificRulesAsync(Group entity, List<string> errors, List<string> warnings, bool isCreate)
+    {
+        // Проверка обязательных полей
+        if (string.IsNullOrWhiteSpace(entity.Name))
+            errors.Add("Название группы обязательно для заполнения");
+
+        if (string.IsNullOrWhiteSpace(entity.Code))
+            errors.Add("Код группы обязателен для заполнения");
+
+        if (string.IsNullOrWhiteSpace(entity.Description))
+            warnings.Add("Рекомендуется добавить описание группы");
+
+        // Проверка уникальности кода группы
+        if (!string.IsNullOrWhiteSpace(entity.Code))
         {
-            return await _dbContext.Groups
-                .Include(g => g.Students)
-                .Include(g => g.Curator)
-                .OrderBy(g => g.Name)
-                .ToListAsync();
+            var codeExists = await _dbSet
+                .Where(g => g.Uid != entity.Uid && g.Code.ToLower() == entity.Code.ToLower())
+                .AnyAsync();
+
+            if (codeExists)
+                errors.Add($"Группа с кодом '{entity.Code}' уже существует");
         }
-        catch
+
+        // Проверка уникальности названия группы
+        if (!string.IsNullOrWhiteSpace(entity.Name))
         {
-            // Заглушка при ошибке базы данных
-            await Task.Delay(100);
-            return GenerateSampleGroups();
+            var nameExists = await _dbSet
+                .Where(g => g.Uid != entity.Uid && g.Name.ToLower() == entity.Name.ToLower())
+                .AnyAsync();
+
+            if (nameExists)
+                warnings.Add($"Группа с названием '{entity.Name}' уже существует");
         }
+
+        // Проверка максимального количества студентов
+        if (entity.MaxStudents <= 0)
+            errors.Add("Максимальное количество студентов должно быть больше нуля");
+
+        if (entity.MaxStudents > 100)
+            warnings.Add("Максимальное количество студентов больше 100 - это очень много");
+
+        // Проверка года обучения
+        if (entity.Year < DateTime.Now.Year - 10)
+            warnings.Add("Год обучения более 10 лет назад");
+
+        if (entity.Year > DateTime.Now.Year + 1)
+            errors.Add("Год обучения не может быть в будущем");
+
+        // Проверка года обучения
+        if (entity.Year <= 0 || entity.Year > 6)
+            errors.Add("Год обучения должен быть от 1 до 6");
+
+        // Проверка куратора
+        if (entity.CuratorUid.HasValue)
+        {
+            var curatorExists = await _dbContext.Teachers
+                .Where(t => t.Uid == entity.CuratorUid.Value)
+                .AnyAsync();
+
+            if (!curatorExists)
+                errors.Add($"Куратор с Uid {entity.CuratorUid.Value} не найден");
+        }
+
+        await base.ValidateEntitySpecificRulesAsync(entity, errors, warnings, isCreate);
+    }
+
+    /// <summary>
+    /// Переопределяем создание для генерации кода группы
+    /// </summary>
+    public override async Task<Group> CreateAsync(Group entity)
+    {
+        // Генерируем код группы если не указан
+        if (string.IsNullOrEmpty(entity.Code))
+        {
+            entity.Code = await GenerateGroupCodeAsync(entity.Year);
+        }
+
+        return await base.CreateAsync(entity);
+    }
+
+    #endregion
+
+    #region Реализация интерфейса IGroupService (существующие методы)
+
+    public async Task<Group?> GetGroupAsync(Guid uid)
+    {
+        return await GetByUidWithIncludesAsync(uid, 
+            g => g.Students, 
+            g => g.Curator);
     }
 
     public async Task<IEnumerable<Group>> GetAllGroupsAsync()
     {
-        return await GetGroupsAsync();
+        return await GetAllWithIncludesAsync(g => g.Students, g => g.Curator);
+    }
+
+    public async Task<IEnumerable<Group>> GetGroupsAsync()
+    {
+        return await GetAllGroupsAsync();
     }
 
     public async Task<Group> CreateGroupAsync(Group group)
     {
-        group.CreatedAt = DateTime.UtcNow;
-        group.LastModifiedAt = DateTime.UtcNow;
-        
-        await _dbContext.Groups.AddAsync(group);
-        await _dbContext.SaveChangesAsync();
-        return group;
+        return await CreateAsync(group);
     }
 
-    public async Task<Group> UpdateGroupAsync(Group group)
+    public async Task AddGroupAsync(Group group)
     {
-        var existingGroup = await _dbContext.Groups.FindAsync(group.Uid);
-        if (existingGroup == null)
-            throw new ArgumentException($"Group with ID {group.Uid} not found");
-
-        existingGroup.Name = group.Name;
-        existingGroup.Description = group.Description;
-        existingGroup.CuratorUid = group.CuratorUid;
-        existingGroup.LastModifiedAt = DateTime.UtcNow;
-        
-        await _dbContext.SaveChangesAsync();
-        return existingGroup;
+        await CreateAsync(group);
     }
 
-    public async Task DeleteGroupAsync(Guid id)
+    public async Task<bool> UpdateGroupAsync(Group group)
     {
-        var group = await _dbContext.Groups.FindAsync(id);
-        if (group == null)
-            throw new ArgumentException($"Group with ID {id} not found");
-
-        _dbContext.Groups.Remove(group);
-        await _dbContext.SaveChangesAsync();
+        return await UpdateAsync(group);
     }
 
-    public async Task<bool> AssignCuratorAsync(Guid groupUid, Guid teacherUid)
+    public async Task<bool> DeleteGroupAsync(Guid uid)
     {
-        var group = await _dbContext.Groups.FindAsync(groupUid);
-        var teacher = await _dbContext.Teachers.FindAsync(teacherUid);
-        
-        if (group == null || teacher == null)
-            return false;
-
-        group.CuratorUid = teacherUid;
-        group.LastModifiedAt = DateTime.UtcNow;
-        
-        await _dbContext.SaveChangesAsync();
-        return true;
+        return await DeleteAsync(uid);
     }
 
-    // === РАСШИРЕНИЯ ЭТАПА 1 ===
+    public async Task<IEnumerable<Group>> GetGroupsByCourseAsync(int course)
+    {
+        return await FindWithIncludesAsync(g => g.Year == course, g => g.Students, g => g.Curator);
+    }
 
     public async Task<IEnumerable<Group>> GetGroupsByYearAsync(int year)
     {
-        return await _dbContext.Groups
-            .Include(g => g.Students)
-            .Include(g => g.Curator)
-            .Where(g => g.CreatedAt.Year == year)
-            .OrderBy(g => g.Name)
-            .ToListAsync();
+        return await FindWithIncludesAsync(g => g.Year == year, g => g.Students, g => g.Curator);
     }
 
     public async Task<IEnumerable<Group>> GetGroupsByCuratorAsync(Guid curatorUid)
     {
-        return await _dbContext.Groups
-            .Include(g => g.Students)
-            .Include(g => g.Curator)
-            .Where(g => g.CuratorUid == curatorUid)
-            .OrderBy(g => g.Name)
-            .ToListAsync();
+        return await FindWithIncludesAsync(g => g.CuratorUid == curatorUid, g => g.Students, g => g.Curator);
     }
 
-    public async Task<bool> AddStudentToGroupAsync(Guid groupUid, Guid studentUid)
+    /// <summary>
+    /// Удаляет куратора группы
+    /// </summary>
+    public async Task<bool> RemoveCuratorAsync(Guid groupUid)
     {
-        var group = await _dbContext.Groups
-            .Include(g => g.Students)
-            .FirstOrDefaultAsync(g => g.Uid == groupUid);
-        
-        var student = await _dbContext.Students.FindAsync(studentUid);
-        
-        if (group == null || student == null)
-            return false;
-
-        // Проверяем, не состоит ли студент уже в группе
-        if (student.GroupUid != null)
-            return false;
-
-        student.GroupUid = groupUid;
-        student.LastModifiedAt = DateTime.UtcNow;
-        group.LastModifiedAt = DateTime.UtcNow;
-        
-        await _dbContext.SaveChangesAsync();
-        return true;
-    }
-
-    public async Task<bool> RemoveStudentFromGroupAsync(Guid groupUid, Guid studentUid)
-    {
-        var student = await _dbContext.Students
-            .FirstOrDefaultAsync(s => s.Uid == studentUid && s.GroupUid == groupUid);
-        
-        if (student == null)
-            return false;
-
-        student.GroupUid = null;
-        student.LastModifiedAt = DateTime.UtcNow;
-        
-        var group = await _dbContext.Groups.FindAsync(groupUid);
-        if (group != null)
+        try
         {
+            var group = await GetByUidAsync(groupUid);
+            if (group == null)
+            {
+                _logger.LogWarning("Group {GroupUid} not found for curator removal", groupUid);
+                return false;
+            }
+
+            group.CuratorUid = null;
             group.LastModifiedAt = DateTime.UtcNow;
+
+            var result = await UpdateAsync(group);
+            
+            if (result)
+            {
+                _logger.LogInformation("Curator removed from group {GroupUid}", groupUid);
+            }
+
+            return result;
         }
-        
-        await _dbContext.SaveChangesAsync();
-        return true;
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error removing curator from group {GroupUid}", groupUid);
+            return false;
+        }
     }
 
+    #endregion
+
+    #region Дополнительные методы
+
+    /// <summary>
+    /// Получает статистику группы
+    /// </summary>
     public async Task<GroupStatistics> GetGroupStatisticsAsync(Guid groupUid)
     {
-        var group = await _dbContext.Groups
-            .Include(g => g.Students)
-            .FirstOrDefaultAsync(g => g.Uid == groupUid);
-
-        if (group == null)
-            throw new ArgumentException($"Group with ID {groupUid} not found");
-
-        var studentsCount = group.Students.Count;
-        
-        // Получаем средний балл студентов группы
-        var averageGrade = 0.0;
-        if (studentsCount > 0)
+        try
         {
-            var studentUids = group.Students.Select(s => s.Uid).ToList();
-            var grades = await _dbContext.Grades
-                .Where(g => studentUids.Contains(g.StudentUid))
-                .ToListAsync();
-            
-            if (grades.Any())
+            var group = await _dbContext.Groups
+                .Include(g => g.Students)
+                .FirstOrDefaultAsync(g => g.Uid == groupUid);
+
+            if (group == null)
+                throw new ArgumentException($"Group with UID {groupUid} not found");
+
+            var activeStudents = group.Students.Count(s => s.Status == StudentStatus.Active);
+            var averageGrade = await _dbContext.Grades
+                .Where(g => group.Students.Select(s => s.Uid).Contains(g.StudentUid))
+                .AverageAsync(g => (double?)g.Value) ?? 0;
+
+            return new GroupStatistics
             {
-                averageGrade = (double)grades.Average(g => g.Value);
-            }
+                StudentsCount = group.Students.Count,
+                ActiveStudentsCount = activeStudents,
+                GraduatedStudentsCount = 0, // Заглушка
+                ExpelledStudentsCount = 0, // Заглушка
+                AverageGrade = (decimal)averageGrade,
+                TotalEnrollments = group.Students.Count
+            };
         }
-
-        // Получаем количество активных курсов
-        var activeCoursesCount = await _dbContext.Enrollments
-            .Where(e => group.Students.Select(s => s.Uid).Contains(e.StudentUid))
-            .Select(e => e.CourseUid)
-            .Distinct()
-            .CountAsync();
-
-        // Получаем статистику по заданиям
-        var assignments = await _dbContext.Assignments
-            .Where(a => _dbContext.Enrollments
-                .Where(e => group.Students.Select(s => s.Uid).Contains(e.StudentUid))
-                .Select(e => e.CourseUid)
-                .Contains(a.CourseId))
-            .ToListAsync();
-
-        var totalAssignments = assignments.Count;
-        var completedAssignments = await _dbContext.Submissions
-            .Where(s => group.Students.Select(st => st.Uid).Contains(s.StudentId) && s.Score != null)
-            .CountAsync();
-
-        var lastActivity = await _dbContext.Submissions
-            .Where(s => group.Students.Select(st => st.Uid).Contains(s.StudentId))
-            .OrderByDescending(s => s.SubmissionDate)
-            .Select(s => s.SubmissionDate)
-            .FirstOrDefaultAsync();
-
-        return new GroupStatistics
+        catch (Exception ex)
         {
-            TotalStudents = studentsCount,
-            AverageGrade = averageGrade,
-            TotalCourses = activeCoursesCount,
-            CompletedAssignments = completedAssignments,
-            PendingAssignments = totalAssignments - completedAssignments,
-            LastActivityDate = lastActivity == DateTime.MinValue ? null : lastActivity
-        };
+            _logger.LogError(ex, "Error getting group statistics: {GroupUid}", groupUid);
+            throw;
+        }
     }
 
-    public async Task<(IEnumerable<Group> Groups, int TotalCount)> GetGroupsPagedAsync(int page, int pageSize, string? searchTerm = null)
+    /// <summary>
+    /// Получает группы с пагинацией
+    /// </summary>
+    public async Task<(IEnumerable<Group> Groups, int TotalCount)> GetGroupsPagedAsync(
+        int page,
+        int pageSize,
+        string? searchTerm = null,
+        int? courseFilter = null,
+        int? yearFilter = null)
+    {
+        try
+        {
+            var query = _dbSet.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                query = ApplySearchFilter(query, searchTerm);
+            }
+
+            if (courseFilter.HasValue)
+            {
+                query = query.Where(g => g.Year == courseFilter.Value);
+            }
+
+            if (yearFilter.HasValue)
+            {
+                query = query.Where(g => g.Year == yearFilter.Value);
+            }
+
+            var totalCount = await query.CountAsync();
+
+            var groups = await query
+                .Include(g => g.Students)
+                .Include(g => g.Curator)
+                .OrderBy(g => g.Year)
+                .ThenBy(g => g.Name)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (groups, totalCount);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting paged groups");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Переводит группу на следующий курс
+    /// </summary>
+    public async Task<bool> PromoteToNextCourseAsync(Guid groupUid)
+    {
+        try
+        {
+            var group = await GetByUidAsync(groupUid);
+            if (group == null)
+            {
+                _logger.LogWarning("Group not found for promotion: {GroupUid}", groupUid);
+                return false;
+            }
+
+            if (group.Year >= 6)
+            {
+                _logger.LogWarning("Group is already on the final course: {GroupUid}", groupUid);
+                return false;
+            }
+
+            group.Year++;
+            return await UpdateAsync(group);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error promoting group to next course: {GroupUid}", groupUid);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Получает активные группы
+    /// </summary>
+    public async Task<IEnumerable<Group>> GetActiveGroupsAsync()
+    {
+        try
+        {
+            return await _dbContext.Groups
+                .Include(g => g.Students)
+                .Include(g => g.Curator)
+                .Where(g => g.Status == GroupStatus.Active)
+                .OrderBy(g => g.Year)
+                .ThenBy(g => g.Name)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting active groups");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Получает группы по департаменту
+    /// </summary>
+    public async Task<IEnumerable<Group>> GetGroupsByDepartmentAsync(Guid departmentUid)
+    {
+        try
+        {
+            return await _dbContext.Groups
+                .Include(g => g.Students)
+                .Include(g => g.Curator)
+                .Where(g => g.DepartmentUid == departmentUid)
+                .OrderBy(g => g.Year)
+                .ThenBy(g => g.Name)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting groups by department {DepartmentUid}", departmentUid);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Поиск групп по названию
+    /// </summary>
+    public async Task<IEnumerable<Group>> SearchGroupsAsync(string searchTerm)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(searchTerm))
+                return await GetAllGroupsAsync();
+
+            var query = _dbContext.Groups
+                .Include(g => g.Students)
+                .Include(g => g.Curator)
+                .AsQueryable();
+
+            query = ApplySearchFilter(query, searchTerm);
+
+            return await query
+                .OrderBy(g => g.Year)
+                .ThenBy(g => g.Name)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error searching groups with term: {SearchTerm}", searchTerm);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Получает группы с пагинацией (правильная сигнатура интерфейса)
+    /// </summary>
+    public async Task<(IEnumerable<Group> Groups, int TotalCount)> GetGroupsPagedAsync(
+        int page,
+        int pageSize,
+        string? searchTerm = null,
+        Guid? departmentUid = null)
     {
         try
         {
@@ -246,146 +431,127 @@ public class GroupService(ApplicationDbContext dbContext) : IGroupService
                 .Include(g => g.Curator)
                 .AsQueryable();
 
-            if (!string.IsNullOrEmpty(searchTerm))
+            // Применяем фильтры
+            if (!string.IsNullOrWhiteSpace(searchTerm))
             {
-                query = query.Where(g => g.Name.Contains(searchTerm) || 
-                                       (g.Description != null && g.Description.Contains(searchTerm)));
+                query = ApplySearchFilter(query, searchTerm);
+            }
+
+            if (departmentUid.HasValue)
+            {
+                query = query.Where(g => g.DepartmentUid == departmentUid.Value);
             }
 
             var totalCount = await query.CountAsync();
-            
+
             var groups = await query
-                .OrderBy(g => g.Name)
+                .OrderBy(g => g.Year)
+                .ThenBy(g => g.Name)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
 
             return (groups, totalCount);
         }
-        catch
+        catch (Exception ex)
         {
-            // Заглушка при ошибке базы данных
-            await Task.Delay(100);
-            var sampleGroups = GenerateSampleGroups().ToList();
-            
-            // Применяем фильтры к тестовым данным
-            if (!string.IsNullOrEmpty(searchTerm))
-            {
-                sampleGroups = sampleGroups.Where(g => 
-                    g.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
-                    (g.Description?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false))
-                    .ToList();
-            }
-
-            var totalCount = sampleGroups.Count;
-            var pagedGroups = sampleGroups
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
-
-            return (pagedGroups, totalCount);
+            _logger.LogError(ex, "Error getting paged groups");
+            throw;
         }
     }
 
     /// <summary>
-    /// Генерирует тестовые данные групп
+    /// Проверяет существование группы с указанным названием
     /// </summary>
-    private static IEnumerable<Group> GenerateSampleGroups()
+    public async Task<bool> ExistsByNameAsync(string name, Guid? excludeUid = null)
     {
-        var sampleCuratorUid = Guid.Parse("11111111-1111-1111-1111-111111111111");
-        
-        return new List<Group>
+        try
         {
-            new Group
+            var query = _dbContext.Groups
+                .Where(g => g.Name.ToLower() == name.ToLower());
+
+            if (excludeUid.HasValue)
             {
-                Uid = Guid.NewGuid(),
-                Name = "ИТ-21",
-                Code = "IT21",
-                Description = "Группа информационных технологий 2021 года набора",
-                CuratorUid = sampleCuratorUid,
-                Year = 2021,
-                StartDate = DateTime.UtcNow.AddDays(-365),
-                MaxStudents = 30,
-                DepartmentUid = Guid.NewGuid(),
-                CreatedAt = DateTime.UtcNow.AddDays(-365),
-                LastModifiedAt = DateTime.UtcNow.AddDays(-10),
-                Students = new ObservableCollection<Student>(),
-                Curator = new Teacher
-                {
-                    Uid = sampleCuratorUid,
-                    FirstName = "Иван",
-                    LastName = "Петров",
-                    User = new User
-                    {
-                        Uid = Guid.NewGuid(),
-                        Email = "group1@viridisca.edu",
-                        FirstName = "Группа",
-                        LastName = "ИТ-101",
-                        CreatedAt = DateTime.UtcNow,
-                        IsActive = true
-                    }
-                }
-            },
-            new Group
+                query = query.Where(g => g.Uid != excludeUid.Value);
+            }
+
+            return await query.AnyAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking if group exists by name: {Name}", name);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Назначает куратора группы
+    /// </summary>
+    public async Task<bool> AssignCuratorAsync(Guid groupUid, Guid? curatorUid)
+    {
+        try
+        {
+            var group = await GetByUidAsync(groupUid);
+            if (group == null)
             {
-                Uid = Guid.NewGuid(),
-                Name = "ИТ-22",
-                Code = "IT22",
-                Description = "Группа информационных технологий 2022 года набора",
-                CuratorUid = sampleCuratorUid,
-                Year = 2022,
-                StartDate = DateTime.UtcNow.AddDays(-300),
-                MaxStudents = 30,
-                DepartmentUid = Guid.NewGuid(),
-                CreatedAt = DateTime.UtcNow.AddDays(-300),
-                LastModifiedAt = DateTime.UtcNow.AddDays(-5),
-                Students = new ObservableCollection<Student>(),
-                Curator = new Teacher
-                {
-                    Uid = sampleCuratorUid,
-                    FirstName = "Мария",
-                    LastName = "Сидорова",
-                    User = new User
-                    {
-                        Uid = Guid.NewGuid(),
-                        Email = "group1@viridisca.edu",
-                        FirstName = "Группа",
-                        LastName = "ИТ-101",
-                        CreatedAt = DateTime.UtcNow,
-                        IsActive = true
-                    }
-                }
-            },
-            new Group
+                _logger.LogWarning("Group {GroupUid} not found for curator assignment", groupUid);
+                return false;
+            }
+
+            // Проверяем существование куратора если указан
+            if (curatorUid.HasValue)
             {
-                Uid = Guid.NewGuid(),
-                Name = "ИТ-23",
-                Code = "IT23",
-                Description = "Группа информационных технологий 2023 года набора",
-                CuratorUid = sampleCuratorUid,
-                Year = 2023,
-                StartDate = DateTime.UtcNow.AddDays(-200),
-                MaxStudents = 30,
-                DepartmentUid = Guid.NewGuid(),
-                CreatedAt = DateTime.UtcNow.AddDays(-200),
-                LastModifiedAt = DateTime.UtcNow.AddDays(-2),
-                Students = new ObservableCollection<Student>(),
-                Curator = new Teacher
+                var curatorExists = await _dbContext.Teachers
+                    .AnyAsync(t => t.Uid == curatorUid.Value);
+
+                if (!curatorExists)
                 {
-                    Uid = sampleCuratorUid,
-                    FirstName = "Алексей",
-                    LastName = "Козлов",
-                    User = new User
-                    {
-                        Uid = Guid.NewGuid(),
-                        Email = "group1@viridisca.edu",
-                        FirstName = "Группа",
-                        LastName = "ИТ-101",
-                        CreatedAt = DateTime.UtcNow,
-                        IsActive = true
-                    }
+                    _logger.LogWarning("Curator {CuratorUid} not found", curatorUid.Value);
+                    return false;
                 }
             }
-        };
+
+            group.CuratorUid = curatorUid;
+            group.LastModifiedAt = DateTime.UtcNow;
+
+            return await UpdateAsync(group);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error assigning curator {CuratorUid} to group {GroupUid}", curatorUid, groupUid);
+            return false;
+        }
     }
+
+    #endregion
+
+    #region Вспомогательные методы
+
+    /// <summary>
+    /// Генерирует уникальный код группы
+    /// </summary>
+    private async Task<string> GenerateGroupCodeAsync(int year)
+    {
+        var yearCode = year.ToString();
+        
+        var lastCode = await _dbContext.Groups
+            .Where(g => g.Code.StartsWith($"ГР-{yearCode}"))
+            .OrderByDescending(g => g.Code)
+            .Select(g => g.Code)
+            .FirstOrDefaultAsync();
+
+        int nextNumber = 1;
+        if (!string.IsNullOrEmpty(lastCode))
+        {
+            var parts = lastCode.Split('-');
+            if (parts.Length == 3 && int.TryParse(parts[2], out int lastNumber))
+            {
+                nextNumber = lastNumber + 1;
+            }
+        }
+
+        return $"ГР-{yearCode}-{nextNumber:D2}";
+    }
+
+    #endregion
 }

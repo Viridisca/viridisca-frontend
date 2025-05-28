@@ -3,25 +3,19 @@ using System.Threading.Tasks;
 using ReactiveUI;
 using ViridiscaUi.Infrastructure.Navigation;
 
-namespace ViridiscaUi.ViewModels;
+namespace ViridiscaUi.ViewModels.Bases.Navigations;
 
 /// <summary>
 /// Базовый класс для ViewModels с поддержкой навигации через новый UnifiedNavigationService
 /// </summary>
-public abstract class NavigatableViewModelBase : RoutableViewModelBase
+/// <remarks>
+/// Создает новый экземпляр ViewModel с поддержкой навигации
+/// </remarks>
+/// <param name="hostScreen">IScreen хост</param>
+/// <param name="navigationService">Единый сервис навигации</param>
+public abstract class NavigatableViewModelBase(IScreen hostScreen, IUnifiedNavigationService navigationService) : RoutableViewModelBase(hostScreen)
 {
-    protected readonly IUnifiedNavigationService NavigationService;
-
-    /// <summary>
-    /// Создает новый экземпляр ViewModel с поддержкой навигации
-    /// </summary>
-    /// <param name="hostScreen">IScreen хост</param>
-    /// <param name="navigationService">Единый сервис навигации</param>
-    protected NavigatableViewModelBase(IScreen hostScreen, IUnifiedNavigationService navigationService) 
-        : base(hostScreen)
-    {
-        NavigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
-    }
+    protected readonly IUnifiedNavigationService NavigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
 
     /// <summary>
     /// Навигация к маршруту по пути

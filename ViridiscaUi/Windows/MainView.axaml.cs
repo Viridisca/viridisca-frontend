@@ -11,7 +11,7 @@ public partial class MainView : ReactiveUserControl<MainViewModel>
 {
     public MainView()
     {
-        InitializeComponent();
+        AvaloniaXamlLoader.Load(this);
         
         this.WhenActivated(disposables =>
         {
@@ -21,12 +21,7 @@ public partial class MainView : ReactiveUserControl<MainViewModel>
                 RouterViewHost.ViewLocator = ViewModel.ViewLocator;
             }
         });
-    }
-
-    private void InitializeComponent()
-    {
-        AvaloniaXamlLoader.Load(this);
-    }
+    } 
 
     protected override void OnDataContextChanged(EventArgs e)
     {

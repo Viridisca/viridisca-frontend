@@ -1,23 +1,29 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
+using Microsoft.Extensions.DependencyInjection;
+using ReactiveUI;
 using ViridiscaUi.Services.Interfaces;
 using Avalonia.Media;
 using Avalonia.Layout;
 using ViridiscaUi.Domain.Models.Education;
 using ViridiscaUi.ViewModels;
-using ViridiscaUi.ViewModels.Students;
 using ViridiscaUi.ViewModels.Education;
-using ViridiscaUi.Views.Education.Students;
-using Microsoft.Extensions.DependencyInjection;
+using ViridiscaUi.Views.Education;
 using ViridiscaUi.Domain.Models.System;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia;
 using Avalonia.Data;
 using Avalonia.Controls.Templates;
+using ViridiscaUi.ViewModels.System;
+using ViridiscaUi.ViewModels.Students;
+using ViridiscaUi.Infrastructure.Navigation;
+using ViridiscaUi.Windows;
 
 namespace ViridiscaUi.Services.Implementations;
 
@@ -387,9 +393,9 @@ public class DialogService(IServiceProvider serviceProvider) : IDialogService
             
             var tcs = new TaskCompletionSource<Student?>();
             
-            studentEditor.SaveCommand.Subscribe(student =>
+            studentEditor.SaveCommand.Subscribe(_ =>
             {
-                tcs.SetResult(student);
+                tcs.SetResult(studentEditor.CurrentStudent);
                 window.Close();
             });
 
@@ -398,6 +404,8 @@ public class DialogService(IServiceProvider serviceProvider) : IDialogService
                 tcs.SetResult(null);
                 window.Close();
             });
+
+            window.Title = studentEditor.FormTitle;
 
             await window.ShowDialog(GetOwnerWindow());
             return (TResult?)(object?)await tcs.Task;
@@ -408,8 +416,19 @@ public class DialogService(IServiceProvider serviceProvider) : IDialogService
 
     public async Task<Student?> ShowStudentEditorDialogAsync(Student? student = null)
     {
-        var editorViewModel = new StudentEditorViewModel(_serviceProvider.GetRequiredService<IGroupService>(), student);
-        return await ShowDialogAsync<Student>(editorViewModel);
+        var editorViewModel = new StudentEditorViewModel(
+            _serviceProvider.GetRequiredService<IStudentService>(),
+            _serviceProvider.GetRequiredService<IGroupService>(),
+            _serviceProvider.GetRequiredService<IUnifiedNavigationService>(),
+            _serviceProvider.GetRequiredService<IScreen>());
+        
+        if (student != null)
+        {
+            editorViewModel.CurrentStudent = student;
+            editorViewModel.IsEditMode = true;
+        }
+        
+        return await ShowEditorDialogAsync<Student?>(editorViewModel);
     }
 
     // Диалоги для групп
@@ -442,8 +461,13 @@ public class DialogService(IServiceProvider serviceProvider) : IDialogService
     // Диалоги для курсов
     public async Task<Course?> ShowCourseEditDialogAsync(Course course)
     {
-        var editorViewModel = new CourseEditorViewModel(_serviceProvider.GetRequiredService<ITeacherService>(), course);
-        var result = await ShowEditorDialogAsync<Course>(editorViewModel);
+        var viewModel = _serviceProvider.GetService<CourseEditorViewModel>() ??
+            new CourseEditorViewModel(
+                _serviceProvider.GetRequiredService<ICourseService>(),
+                _serviceProvider.GetRequiredService<ITeacherService>(),
+                _serviceProvider.GetRequiredService<IUnifiedNavigationService>(),
+                _serviceProvider.GetRequiredService<IScreen>());
+        var result = await ShowEditorDialogAsync<Course>(viewModel);
         return result;
     }
     
@@ -680,8 +704,13 @@ public class DialogService(IServiceProvider serviceProvider) : IDialogService
     /// </summary>
     public async Task<Teacher?> ShowTeacherEditDialogAsync(Teacher teacher)
     {
-        var editorViewModel = new TeacherEditorViewModel(teacher);
-        var result = await ShowEditorDialogAsync<Teacher>(editorViewModel);
+        var viewModel = _serviceProvider.GetService<TeacherEditorViewModel>() ??
+            new TeacherEditorViewModel(
+                _serviceProvider.GetRequiredService<IScreen>(),
+                _serviceProvider.GetRequiredService<ITeacherService>(),
+                _serviceProvider.GetRequiredService<IUnifiedNavigationService>(),
+                _serviceProvider.GetRequiredService<IDialogService>());
+        var result = await ShowEditorDialogAsync<Teacher>(viewModel);
         return result;
     }
 
@@ -727,36 +756,12 @@ public class DialogService(IServiceProvider serviceProvider) : IDialogService
             Title = GetEditorTitle(editorViewModel),
             Width = 600,
             Height = 500,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            CanResize = true
+            Content = editorViewModel,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner
         };
 
-        ConfigureDialog(window);
-
-        var tcs = new TaskCompletionSource<T?>();
-
-        // Создаем универсальный контент для редактора
-        var content = CreateEditorContent(editorViewModel, tcs, window);
-        window.Content = content;
-
-        await window.ShowDialog(GetOwnerWindow());
-        return await tcs.Task;
-    }
-
-    /// <summary>
-    /// Получает заголовок для диалога редактирования
-    /// </summary>
-    private static string GetEditorTitle(ViewModelBase viewModel)
-    {
-        return viewModel switch
-        {
-            GroupEditorViewModel group => group.Title,
-            CourseEditorViewModel course => course.Title,
-            TeacherEditorViewModel teacher => teacher.Title,
-            AssignmentEditorViewModel assignment => assignment.WindowTitle,
-            GradeEditorViewModel grade => grade.Title,
-            _ => "Редактирование"
-        };
+        var result = await window.ShowDialog<T?>(GetOwnerWindow());
+        return result;
     }
 
     /// <summary>
@@ -1082,42 +1087,123 @@ public class DialogService(IServiceProvider serviceProvider) : IDialogService
 
     private static Control CreateGradeEditorContent()
     {
-        return new ScrollViewer
+        return new StackPanel
         {
-            Content = new StackPanel
+            Children =
             {
-                Spacing = 12,
-                Children =
-                {
-                    new TextBlock { Text = "Студент:", FontWeight = FontWeight.SemiBold },
-                    new ComboBox 
-                    { 
-                        [!ItemsControl.ItemsSourceProperty] = new Binding("Students"),
-                        [!ComboBox.SelectedItemProperty] = new Binding("SelectedStudent"),
-                        DisplayMemberBinding = new Binding("FullName")
-                    },
-                    
-                    new TextBlock { Text = "Задание:", FontWeight = FontWeight.SemiBold },
-                    new ComboBox 
-                    { 
-                        [!ItemsControl.ItemsSourceProperty] = new Binding("Assignments"),
-                        [!ComboBox.SelectedItemProperty] = new Binding("SelectedAssignment"),
-                        DisplayMemberBinding = new Binding("Title")
-                    },
-                    
-                    new TextBlock { Text = "Оценка:", FontWeight = FontWeight.SemiBold },
-                    new NumericUpDown { [!NumericUpDown.ValueProperty] = new Binding("Value"), Minimum = 0 },
-                    
-                    new TextBlock { Text = "Максимальный балл:", FontWeight = FontWeight.SemiBold },
-                    new NumericUpDown { [!NumericUpDown.ValueProperty] = new Binding("MaxValue"), Minimum = 1 },
-                    
-                    new TextBlock { Text = "Комментарий:", FontWeight = FontWeight.SemiBold },
-                    new TextBox { [!TextBox.TextProperty] = new Binding("Comment"), AcceptsReturn = true, Height = 60 },
-                    
-                    new TextBlock { Text = "Обратная связь:", FontWeight = FontWeight.SemiBold },
-                    new TextBox { [!TextBox.TextProperty] = new Binding("Feedback"), AcceptsReturn = true, Height = 80 }
-                }
+                new TextBlock { Text = "Редактирование оценки" },
+                new TextBox { Watermark = "Значение оценки" },
+                new TextBox { Watermark = "Комментарий" },
+                new DatePicker { }
             }
+        };
+    }
+
+    /// <summary>
+    /// Показывает диалог редактирования студента
+    /// </summary>
+    public async Task<Student?> ShowStudentEditDialogAsync(Student student)
+    {
+        var editorViewModel = new StudentEditorViewModel(
+            _serviceProvider.GetRequiredService<IStudentService>(),
+            _serviceProvider.GetRequiredService<IGroupService>(),
+            _serviceProvider.GetRequiredService<IUnifiedNavigationService>(),
+            _serviceProvider.GetRequiredService<IScreen>());
+        
+        editorViewModel.CurrentStudent = student;
+        editorViewModel.IsEditMode = true;
+        
+        return await ShowEditorDialogAsync<Student>(editorViewModel);
+    }
+
+    public async Task<Student?> ShowStudentCreateDialogAsync()
+    {
+        var editorViewModel = new StudentEditorViewModel(
+            _serviceProvider.GetRequiredService<IStudentService>(),
+            _serviceProvider.GetRequiredService<IGroupService>(),
+            _serviceProvider.GetRequiredService<IUnifiedNavigationService>(),
+            _serviceProvider.GetRequiredService<IScreen>());
+        
+        return await ShowEditorDialogAsync<Student?>(editorViewModel);
+    }
+
+    /// <summary>
+    /// Показывает диалог с деталями студента
+    /// </summary>
+    public async Task ShowStudentDetailsDialogAsync(Student student)
+    {
+        await ShowInfoAsync("Информация о студенте", 
+            $"Студент: {student.FirstName} {student.LastName}\n" +
+            $"Email: {student.Email}\n" +
+            $"Статус: {student.Status.GetDisplayName()}\n" +
+            $"Группа: {student.Group?.Name ?? "Не назначена"}");
+    }
+
+    /// <summary>
+    /// Показывает диалог редактирования департамента
+    /// </summary>
+    public async Task<Department?> ShowDepartmentEditDialogAsync(Department department)
+    {
+        var editorViewModel = new DepartmentEditorViewModel(
+            _serviceProvider.GetRequiredService<IScreen>(),
+            _serviceProvider.GetRequiredService<IUnifiedNavigationService>(),
+            _serviceProvider.GetRequiredService<IDepartmentService>(),
+            this);
+        
+        editorViewModel.SetDepartment(department);
+        
+        return await ShowEditorDialogAsync<Department?>(editorViewModel);
+    }
+
+    /// <summary>
+    /// Показывает диалог с деталями департамента
+    /// </summary>
+    public async Task ShowDepartmentDetailsDialogAsync(Department department)
+    {
+        await ShowInfoAsync("Детали департамента", 
+            $"Название: {department.Name}\n" +
+            $"Код: {department.Code}\n" +
+            $"Описание: {department.Description}\n" +
+            $"Статус: {(department.IsActive ? "Активен" : "Неактивен")}\n" +
+            $"Создан: {department.CreatedAt:dd.MM.yyyy}");
+    }
+
+    /// <summary>
+    /// Показывает диалог редактирования предмета
+    /// </summary>
+    public async Task<Subject?> ShowSubjectEditDialogAsync(Subject subject)
+    {
+        var editorViewModel = new SubjectEditorViewModel(
+            _serviceProvider.GetService<IDepartmentService>(),
+            subject);
+        
+        return await ShowEditorDialogAsync<Subject>(editorViewModel);
+    }
+
+    /// <summary>
+    /// Показывает диалог с деталями предмета
+    /// </summary>
+    public async Task ShowSubjectDetailsDialogAsync(Subject subject)
+    {
+        await ShowInfoAsync("Детали предмета", 
+            $"Название: {subject.Name}\n" +
+            $"Код: {subject.Code}\n" +
+            $"Описание: {subject.Description}\n" +
+            $"Кредиты: {subject.Credits}\n" +
+            $"Занятий в неделю: {subject.LessonsPerWeek}\n" +
+            $"Статус: {(subject.IsActive ? "Активен" : "Неактивен")}");
+    }
+
+    private string GetEditorTitle(ViewModelBase editorViewModel)
+    {
+        return editorViewModel switch
+        {
+            GroupEditorViewModel => "Редактирование группы",
+            CourseEditorViewModel => "Редактирование курса",
+            TeacherEditorViewModel => "Редактирование преподавателя",
+            AssignmentEditorViewModel => "Редактирование задания",
+            GradeEditorViewModel => "Редактирование оценки",
+            _ => "Редактирование"
         };
     }
 }

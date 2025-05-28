@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using ViridiscaUi.Domain.Models.Education;
 using ViridiscaUi.Services.Interfaces;
 using ViridiscaUi.ViewModels.Education;
@@ -12,86 +13,291 @@ namespace ViridiscaUi.Services.Implementations;
 
 /// <summary>
 /// Реализация сервиса для работы с оценками
+/// Наследуется от GenericCrudService для получения универсальных CRUD операций
 /// </summary>
-public class GradeService(ApplicationDbContext dbContext, INotificationService notificationService) : IGradeService
+public class GradeService : GenericCrudService<Grade>, IGradeService
 {
-    private readonly ApplicationDbContext _dbContext = dbContext;
-    private readonly INotificationService _notificationService = notificationService;
+    public GradeService(ApplicationDbContext dbContext, ILogger<GradeService> logger)
+        : base(dbContext, logger)
+    {
+    }
+
+    #region Переопределение базовых методов для специфичной логики
 
     /// <summary>
-    /// Получает оценку по идентификатору
+    /// Применяет специфичный для оценок поиск
     /// </summary>
+    protected override IQueryable<Grade> ApplySearchFilter(IQueryable<Grade> query, string searchTerm)
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+            return query;
+
+        var lowerSearchTerm = searchTerm.ToLower();
+
+        return query.Where(g => 
+            g.Comment.ToLower().Contains(lowerSearchTerm) ||
+            (g.Student != null && (
+                g.Student.FirstName.ToLower().Contains(lowerSearchTerm) ||
+                g.Student.LastName.ToLower().Contains(lowerSearchTerm) ||
+                g.Student.StudentCode.ToLower().Contains(lowerSearchTerm)
+            )) ||
+            (g.Assignment != null && (
+                g.Assignment.Title.ToLower().Contains(lowerSearchTerm) ||
+                g.Assignment.Course.Name.ToLower().Contains(lowerSearchTerm)
+            )) ||
+            (g.Teacher != null && (
+                g.Teacher.FirstName.ToLower().Contains(lowerSearchTerm) ||
+                g.Teacher.LastName.ToLower().Contains(lowerSearchTerm)
+            ))
+        );
+    }
+
+    /// <summary>
+    /// Валидирует специфичные для оценки правила
+    /// </summary>
+    protected override async Task ValidateEntitySpecificRulesAsync(Grade entity, List<string> errors, List<string> warnings, bool isCreate)
+    {
+        // Проверка обязательных полей
+        if (entity.StudentUid == Guid.Empty)
+            errors.Add("Студент обязателен для оценки");
+
+        if (entity.AssignmentUid == Guid.Empty)
+            errors.Add("Задание обязательно для оценки");
+
+        if (entity.TeacherUid == Guid.Empty)
+            errors.Add("Преподаватель обязателен для оценки");
+
+        // Проверка значения оценки
+        if (entity.Value < 0 || entity.Value > 100)
+            errors.Add("Оценка должна быть от 0 до 100 баллов");
+
+        if (entity.Value < 60)
+            warnings.Add("Оценка ниже проходного балла (60)");
+
+        // Проверка существования студента
+        var studentExists = await _dbContext.Students
+            .Where(s => s.Uid == entity.StudentUid)
+            .AnyAsync();
+
+        if (!studentExists)
+            errors.Add($"Студент с Uid {entity.StudentUid} не найден");
+
+        // Проверка существования задания
+        var assignmentExists = await _dbContext.Assignments
+            .Where(a => a.Uid == entity.AssignmentUid)
+            .AnyAsync();
+
+        if (!assignmentExists)
+            errors.Add($"Задание с Uid {entity.AssignmentUid} не найдено");
+
+        // Проверка существования преподавателя
+        var teacherExists = await _dbContext.Teachers
+            .Where(t => t.Uid == entity.TeacherUid)
+            .AnyAsync();
+
+        if (!teacherExists)
+            errors.Add($"Преподаватель с Uid {entity.TeacherUid} не найден");
+
+        // Проверка дублирования оценки
+        if (isCreate)
+        {
+            var duplicateExists = await _dbSet
+                .Where(g => g.StudentUid == entity.StudentUid && g.AssignmentUid == entity.AssignmentUid)
+                .AnyAsync();
+
+            if (duplicateExists)
+                errors.Add("Оценка за это задание для данного студента уже существует");
+        }
+
+        // Проверка срока сдачи
+        if (assignmentExists)
+        {
+            var assignment = await _dbContext.Assignments
+                .FirstOrDefaultAsync(a => a.Uid == entity.AssignmentUid);
+
+            if (assignment != null && assignment.DueDate.HasValue)
+            {
+                if (entity.GradedAt > assignment.DueDate.Value)
+                    warnings.Add("Задание оценено после срока сдачи");
+            }
+        }
+
+        await base.ValidateEntitySpecificRulesAsync(entity, errors, warnings, isCreate);
+    }
+
+    #endregion
+
+    #region Реализация интерфейса IGradeService (существующие методы)
+
     public async Task<Grade?> GetGradeAsync(Guid uid)
     {
-        try
-        {
-            return await _dbContext.Grades
-                .Include(g => g.Student)
-                .ThenInclude(s => s.User)
-                .Include(g => g.Assignment)
-                .ThenInclude(a => a.Course)
-                .Include(g => g.GradedBy)
-                .FirstOrDefaultAsync(g => g.Uid == uid);
-        }
-        catch (Exception)
-        {
-            // Возвращаем тестовые данные при ошибке
-            return GenerateSampleGrade(uid);
-        }
+        return await GetByUidWithIncludesAsync(uid, 
+            g => g.Student, 
+            g => g.Assignment, 
+            g => g.Teacher);
     }
 
+    public async Task<IEnumerable<Grade>> GetAllGradesAsync()
+    {
+        return await GetAllWithIncludesAsync(g => g.Student, g => g.Assignment, g => g.Teacher);
+    }
+
+    public async Task<IEnumerable<Grade>> GetGradesAsync()
+    {
+        return await GetAllGradesAsync();
+    }
+
+    public async Task<Grade> CreateGradeAsync(Grade grade)
+    {
+        return await CreateAsync(grade);
+    }
+
+    public async Task AddGradeAsync(Grade grade)
+    {
+        await CreateAsync(grade);
+    }
+
+    public async Task<bool> UpdateGradeAsync(Grade grade)
+    {
+        return await UpdateAsync(grade);
+    }
+
+    public async Task<bool> DeleteGradeAsync(Guid uid)
+    {
+        return await DeleteAsync(uid);
+    }
+
+    public async Task<IEnumerable<Grade>> GetGradesByStudentAsync(Guid studentUid)
+    {
+        return await FindWithIncludesAsync(g => g.StudentUid == studentUid, 
+            g => g.Assignment, g => g.Teacher);
+    }
+
+    public async Task<IEnumerable<Grade>> GetGradesByAssignmentAsync(Guid assignmentUid)
+    {
+        return await FindWithIncludesAsync(g => g.AssignmentUid == assignmentUid, 
+            g => g.Student, g => g.Teacher);
+    }
+
+    public async Task<IEnumerable<Grade>> GetGradesByTeacherAsync(Guid teacherUid)
+    {
+        return await FindWithIncludesAsync(g => g.TeacherUid == teacherUid, 
+            g => g.Student, g => g.Assignment);
+    }
+
+    public async Task<IEnumerable<Grade>> GetGradesByCourseAsync(Guid courseUid)
+    {
+        return await FindWithIncludesAsync(g => g.Assignment.CourseUid == courseUid, 
+            g => g.Student, g => g.Assignment, g => g.Teacher);
+    }
+
+    #endregion
+
+    #region Дополнительные методы
+
     /// <summary>
-    /// Получает все оценки
+    /// Получает статистику оценок студента
     /// </summary>
-    public async Task<IEnumerable<Grade>> GetAllGradesAsync(
-        Guid? courseUid = null,
-        Guid? groupUid = null,
-        (decimal? min, decimal? max)? gradeRange = null,
-        (DateTime? start, DateTime? end)? period = null)
+    public async Task<StudentGradeStatistics> GetStudentGradeStatisticsAsync(Guid studentUid)
     {
         try
         {
-            var query = _dbContext.Grades
-                .Include(g => g.Student)
-                .ThenInclude(s => s.User)
+            var grades = await _dbContext.Grades
+                .Where(g => g.StudentUid == studentUid)
                 .Include(g => g.Assignment)
-                .ThenInclude(a => a.Course)
-                .Include(g => g.GradedBy)
-                .AsQueryable();
+                    .ThenInclude(a => a.Course)
+                .ToListAsync();
 
-            if (courseUid.HasValue)
-                query = query.Where(g => g.Assignment.CourseId == courseUid.Value);
-
-            if (groupUid.HasValue)
-                query = query.Where(g => g.Student.GroupUid == groupUid.Value);
-
-            if (gradeRange.HasValue)
+            if (!grades.Any())
             {
-                if (gradeRange.Value.min.HasValue)
-                    query = query.Where(g => g.Value >= gradeRange.Value.min.Value);
-                if (gradeRange.Value.max.HasValue)
-                    query = query.Where(g => g.Value <= gradeRange.Value.max.Value);
+                return new StudentGradeStatistics
+                {
+                    StudentUid = studentUid,
+                    TotalGrades = 0,
+                    AverageGrade = 0,
+                    HighestGrade = 0,
+                    LowestGrade = 0,
+                    PassingGrades = 0,
+                    FailingGrades = 0
+                };
             }
 
-            if (period.HasValue)
+            return new StudentGradeStatistics
             {
-                if (period.Value.start.HasValue)
-                    query = query.Where(g => g.GradedAt >= period.Value.start.Value);
-                if (period.Value.end.HasValue)
-                    query = query.Where(g => g.GradedAt <= period.Value.end.Value);
-            }
-
-            return await query.OrderByDescending(g => g.GradedAt).ToListAsync();
+                StudentUid = studentUid,
+                TotalGrades = grades.Count,
+                AverageGrade = (double)grades.Average(g => g.Value),
+                HighestGrade = (double)grades.Max(g => g.Value),
+                LowestGrade = (double)grades.Min(g => g.Value),
+                PassingGrades = grades.Count(g => g.Value >= 60),
+                FailingGrades = grades.Count(g => g.Value < 60),
+                GradesBySubject = grades
+                    .GroupBy(g => g.Assignment.Course.Name)
+                    .ToDictionary(
+                        group => group.Key,
+                        group => (double)group.Average(g => g.Value)
+                    )
+            };
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Возвращаем тестовые данные при ошибке
-            return GenerateSampleGrades();
+            _logger.LogError(ex, "Error getting student grade statistics: {StudentUid}", studentUid);
+            throw;
         }
     }
 
     /// <summary>
-    /// Получает оценки с пагинацией
+    /// Получает статистику оценок по заданию
+    /// </summary>
+    public async Task<AssignmentGradeStatistics> GetAssignmentGradeStatisticsAsync(Guid assignmentUid)
+    {
+        try
+        {
+            var grades = await _dbContext.Grades
+                .Where(g => g.AssignmentUid == assignmentUid)
+                .Include(g => g.Student)
+                .ToListAsync();
+
+            if (!grades.Any())
+            {
+                return new AssignmentGradeStatistics
+                {
+                    AssignmentUid = assignmentUid,
+                    TotalSubmissions = 0,
+                    AverageGrade = 0,
+                    HighestGrade = 0,
+                    LowestGrade = 0,
+                    PassingSubmissions = 0,
+                    FailingSubmissions = 0
+                };
+            }
+
+            return new AssignmentGradeStatistics
+            {
+                AssignmentUid = assignmentUid,
+                TotalSubmissions = grades.Count,
+                AverageGrade = (double)grades.Average(g => g.Value),
+                HighestGrade = (double)grades.Max(g => g.Value),
+                LowestGrade = (double)grades.Min(g => g.Value),
+                PassingSubmissions = grades.Count(g => g.Value >= 60),
+                FailingSubmissions = grades.Count(g => g.Value < 60),
+                GradeDistribution = grades
+                    .GroupBy(g => GetGradeRange((double)g.Value))
+                    .ToDictionary(
+                        group => group.Key,
+                        group => group.Count()
+                    )
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting assignment grade statistics: {AssignmentUid}", assignmentUid);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Получает оценки с пагинацией (правильная сигнатура интерфейса)
     /// </summary>
     public async Task<(IEnumerable<Grade> Grades, int TotalCount)> GetGradesPagedAsync(
         int page,
@@ -106,31 +312,32 @@ public class GradeService(ApplicationDbContext dbContext, INotificationService n
         {
             var query = _dbContext.Grades
                 .Include(g => g.Student)
-                .ThenInclude(s => s.User)
                 .Include(g => g.Assignment)
                 .ThenInclude(a => a.Course)
-                .Include(g => g.GradedBy)
+                .Include(g => g.Teacher)
                 .AsQueryable();
 
-            if (!string.IsNullOrEmpty(searchTerm))
+            // Применяем фильтры
+            if (!string.IsNullOrWhiteSpace(searchTerm))
             {
-                query = query.Where(g => 
-                    g.Student.User.FirstName.Contains(searchTerm) ||
-                    g.Student.User.LastName.Contains(searchTerm) ||
-                    g.Assignment.Title.Contains(searchTerm) ||
-                    (g.Comment != null && g.Comment.Contains(searchTerm)));
+                query = ApplySearchFilter(query, searchTerm);
             }
 
             if (courseUid.HasValue)
-                query = query.Where(g => g.Assignment.CourseId == courseUid.Value);
+            {
+                query = query.Where(g => g.Assignment != null && g.Assignment.CourseUid == courseUid.Value);
+            }
 
             if (groupUid.HasValue)
-                query = query.Where(g => g.Student.GroupUid == groupUid.Value);
+            {
+                query = query.Where(g => g.Student != null && g.Student.GroupUid == groupUid.Value);
+            }
 
             if (gradeRange.HasValue)
             {
                 if (gradeRange.Value.min.HasValue)
                     query = query.Where(g => g.Value >= gradeRange.Value.min.Value);
+                
                 if (gradeRange.Value.max.HasValue)
                     query = query.Where(g => g.Value <= gradeRange.Value.max.Value);
             }
@@ -138,107 +345,77 @@ public class GradeService(ApplicationDbContext dbContext, INotificationService n
             if (period.HasValue)
             {
                 if (period.Value.start.HasValue)
-                    query = query.Where(g => g.GradedAt >= period.Value.start.Value);
+                    query = query.Where(g => g.CreatedAt >= period.Value.start.Value);
+                
                 if (period.Value.end.HasValue)
-                    query = query.Where(g => g.GradedAt <= period.Value.end.Value);
+                    query = query.Where(g => g.CreatedAt <= period.Value.end.Value);
             }
 
             var totalCount = await query.CountAsync();
+
             var grades = await query
-                .OrderByDescending(g => g.GradedAt)
+                .OrderByDescending(g => g.CreatedAt)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
 
             return (grades, totalCount);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Возвращаем тестовые данные при ошибке
-            var sampleGrades = GenerateSampleGrades().ToList();
-            var pagedGrades = sampleGrades.Skip((page - 1) * pageSize).Take(pageSize);
-            return (pagedGrades, sampleGrades.Count);
+            _logger.LogError(ex, "Error getting paged grades");
+            throw;
         }
     }
 
     /// <summary>
-    /// Добавляет новую оценку
+    /// Массовое выставление оценок
     /// </summary>
-    public async Task AddGradeAsync(Grade grade)
+    public async Task<BulkGradeResult> BulkCreateGradesAsync(IEnumerable<Grade> grades)
     {
-        try
-        {
-            grade.Uid = Guid.NewGuid();
-            grade.CreatedAt = DateTime.UtcNow;
-            grade.GradedAt = DateTime.UtcNow;
+        var result = new BulkGradeResult();
 
-            _dbContext.Grades.Add(grade);
-            await _dbContext.SaveChangesAsync();
-
-            // Уведомляем студента о новой оценке
-            await _notificationService.CreateNotificationAsync(
-                grade.StudentUid,
-                "Новая оценка",
-                $"Вы получили оценку {grade.Value}",
-                Domain.Models.System.NotificationType.Info);
-        }
-        catch (Exception)
+        foreach (var grade in grades)
         {
-            // В случае ошибки просто логируем
-            System.Diagnostics.Debug.WriteLine($"Error adding grade: {grade.Value}");
+            try
+            {
+                await CreateAsync(grade);
+                result.SuccessfulGrades++;
+                result.CreatedGradeUids.Add(grade.Uid);
+            }
+            catch (Exception ex)
+            {
+                result.FailedGrades++;
+                result.Errors.Add($"Ошибка при создании оценки для студента {grade.StudentUid}: {ex.Message}");
+            }
         }
+
+        _logger.LogInformation("Bulk grade creation completed: {Successful} successful, {Failed} failed", 
+            result.SuccessfulGrades, result.FailedGrades);
+
+        return result;
     }
 
     /// <summary>
-    /// Обновляет существующую оценку
+    /// Получает недавние оценки студента
     /// </summary>
-    public async Task<bool> UpdateGradeAsync(Grade grade)
+    public async Task<IEnumerable<Grade>> GetRecentGradesByStudentAsync(Guid studentUid, int count = 10)
     {
         try
         {
-            var existingGrade = await _dbContext.Grades.FindAsync(grade.Uid);
-            if (existingGrade == null)
-                return false;
-
-            existingGrade.Value = grade.Value;
-            existingGrade.Comment = grade.Comment;
-            existingGrade.LastModifiedAt = DateTime.UtcNow;
-
-            await _dbContext.SaveChangesAsync();
-
-            // Уведомляем студента об изменении оценки
-            await _notificationService.CreateNotificationAsync(
-                grade.StudentUid,
-                "Оценка изменена",
-                $"Ваша оценка изменена на {grade.Value}",
-                Domain.Models.System.NotificationType.Info);
-
-            return true;
+            return await _dbContext.Grades
+                .Include(g => g.Assignment)
+                .ThenInclude(a => a.Course)
+                .Include(g => g.Teacher)
+                .Where(g => g.StudentUid == studentUid)
+                .OrderByDescending(g => g.CreatedAt)
+                .Take(count)
+                .ToListAsync();
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// Удаляет оценку
-    /// </summary>
-    public async Task<bool> DeleteGradeAsync(Guid uid)
-    {
-        try
-        {
-            var grade = await _dbContext.Grades.FindAsync(uid);
-            if (grade == null)
-                return false;
-
-            _dbContext.Grades.Remove(grade);
-            await _dbContext.SaveChangesAsync();
-            return true;
-        }
-        catch (Exception)
-        {
-            return false;
+            _logger.LogError(ex, "Error getting recent grades for student: {StudentUid}", studentUid);
+            throw;
         }
     }
 
@@ -249,18 +426,21 @@ public class GradeService(ApplicationDbContext dbContext, INotificationService n
     {
         try
         {
-            var grade = await _dbContext.Grades.FindAsync(gradeUid);
+            var grade = await GetByUidAsync(gradeUid);
             if (grade == null)
+            {
+                _logger.LogWarning("Grade {GradeUid} not found for comment update", gradeUid);
                 return false;
+            }
 
             grade.Comment = comment;
             grade.LastModifiedAt = DateTime.UtcNow;
 
-            await _dbContext.SaveChangesAsync();
-            return true;
+            return await UpdateAsync(grade);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Error updating comment for grade {GradeUid}", gradeUid);
             return false;
         }
     }
@@ -272,30 +452,20 @@ public class GradeService(ApplicationDbContext dbContext, INotificationService n
     {
         try
         {
-            foreach (var grade in grades)
+            var gradesList = grades.ToList();
+            foreach (var grade in gradesList)
             {
                 grade.Uid = Guid.NewGuid();
                 grade.CreatedAt = DateTime.UtcNow;
-                grade.GradedAt = DateTime.UtcNow;
+                grade.LastModifiedAt = DateTime.UtcNow;
             }
 
-            _dbContext.Grades.AddRange(grades);
-            await _dbContext.SaveChangesAsync();
-
-            // Уведомляем студентов о новых оценках
-            foreach (var grade in grades)
-            {
-                await _notificationService.CreateNotificationAsync(
-                    grade.StudentUid,
-                    "Новая оценка",
-                    $"Вы получили оценку {grade.Value}",
-                    Domain.Models.System.NotificationType.Info);
-            }
-
+            await CreateManyAsync(gradesList);
             return true;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Error in bulk adding grades");
             return false;
         }
     }
@@ -303,35 +473,43 @@ public class GradeService(ApplicationDbContext dbContext, INotificationService n
     /// <summary>
     /// Получает статистику оценок
     /// </summary>
-    public async Task<GradeStatistics> GetGradeStatisticsAsync(
+    public async Task<ViewModels.Education.GradeStatistics> GetGradeStatisticsAsync(
         Guid? courseUid = null,
         Guid? groupUid = null,
         (DateTime? start, DateTime? end)? period = null)
     {
         try
         {
-            var query = _dbContext.Grades.AsQueryable();
+            var query = _dbContext.Grades
+                .Include(g => g.Assignment)
+                .ThenInclude(a => a.Course)
+                .Include(g => g.Student)
+                .AsQueryable();
 
             if (courseUid.HasValue)
-                query = query.Where(g => g.Assignment.CourseId == courseUid.Value);
+            {
+                query = query.Where(g => g.Assignment.CourseUid == courseUid.Value);
+            }
 
             if (groupUid.HasValue)
+            {
                 query = query.Where(g => g.Student.GroupUid == groupUid.Value);
+            }
 
             if (period.HasValue)
             {
                 if (period.Value.start.HasValue)
-                    query = query.Where(g => g.GradedAt >= period.Value.start.Value);
+                    query = query.Where(g => g.CreatedAt >= period.Value.start.Value);
+                
                 if (period.Value.end.HasValue)
-                    query = query.Where(g => g.GradedAt <= period.Value.end.Value);
+                    query = query.Where(g => g.CreatedAt <= period.Value.end.Value);
             }
 
             var grades = await query.ToListAsync();
-            var totalGrades = grades.Count;
 
-            if (totalGrades == 0)
+            if (!grades.Any())
             {
-                return new GradeStatistics
+                return new ViewModels.Education.GradeStatistics
                 {
                     TotalGrades = 0,
                     AverageGrade = 0,
@@ -344,16 +522,18 @@ public class GradeService(ApplicationDbContext dbContext, INotificationService n
                 };
             }
 
-            var averageGrade = grades.Average(g => (double)g.Value);
+            var totalGrades = grades.Count;
+            var averageGrade = (double)grades.Average(g => g.Value);
+            
             var excellentCount = grades.Count(g => g.Value >= 4.5m);
             var goodCount = grades.Count(g => g.Value >= 3.5m && g.Value < 4.5m);
             var satisfactoryCount = grades.Count(g => g.Value >= 2.5m && g.Value < 3.5m);
             var unsatisfactoryCount = grades.Count(g => g.Value < 2.5m);
+            
+            var successRate = totalGrades > 0 ? (double)(excellentCount + goodCount + satisfactoryCount) / totalGrades * 100 : 0;
+            var qualityRate = totalGrades > 0 ? (double)(excellentCount + goodCount) / totalGrades * 100 : 0;
 
-            var successRate = (double)(totalGrades - unsatisfactoryCount) / totalGrades * 100;
-            var qualityRate = (double)(excellentCount + goodCount) / totalGrades * 100;
-
-            return new GradeStatistics
+            return new ViewModels.Education.GradeStatistics
             {
                 TotalGrades = totalGrades,
                 AverageGrade = averageGrade,
@@ -365,20 +545,10 @@ public class GradeService(ApplicationDbContext dbContext, INotificationService n
                 QualityRate = qualityRate
             };
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Возвращаем тестовую статистику при ошибке
-            return new GradeStatistics
-            {
-                TotalGrades = 150,
-                AverageGrade = 4.2,
-                ExcellentCount = 45,
-                GoodCount = 60,
-                SatisfactoryCount = 35,
-                UnsatisfactoryCount = 10,
-                SuccessRate = 93.3,
-                QualityRate = 70.0
-            };
+            _logger.LogError(ex, "Error getting grade statistics");
+            throw;
         }
     }
 
@@ -389,19 +559,21 @@ public class GradeService(ApplicationDbContext dbContext, INotificationService n
     {
         try
         {
-            var cutoffDate = DateTime.UtcNow.AddDays(-days);
+            var fromDate = DateTime.UtcNow.AddDays(-days);
+            
             return await _dbContext.Grades
                 .Include(g => g.Student)
-                .ThenInclude(s => s.User)
                 .Include(g => g.Assignment)
-                .Where(g => g.GradedAt >= cutoffDate)
-                .OrderByDescending(g => g.GradedAt)
+                .ThenInclude(a => a.Course)
+                .Include(g => g.Teacher)
+                .Where(g => g.CreatedAt >= fromDate)
+                .OrderByDescending(g => g.CreatedAt)
                 .ToListAsync();
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Возвращаем тестовые данные при ошибке
-            return GenerateSampleGrades().Take(10);
+            _logger.LogError(ex, "Error getting recent grades for {Days} days", days);
+            throw;
         }
     }
 
@@ -417,127 +589,169 @@ public class GradeService(ApplicationDbContext dbContext, INotificationService n
         {
             var statistics = await GetGradeStatisticsAsync(courseUid, groupUid, period);
             
+            var query = _dbContext.Grades
+                .Include(g => g.Assignment)
+                .ThenInclude(a => a.Course)
+                .Include(g => g.Student)
+                .AsQueryable();
+
+            if (courseUid.HasValue)
+                query = query.Where(g => g.Assignment.CourseUid == courseUid.Value);
+
+            if (groupUid.HasValue)
+                query = query.Where(g => g.Student.GroupUid == groupUid.Value);
+
+            if (period.HasValue)
+            {
+                if (period.Value.start.HasValue)
+                    query = query.Where(g => g.CreatedAt >= period.Value.start.Value);
+                
+                if (period.Value.end.HasValue)
+                    query = query.Where(g => g.CreatedAt <= period.Value.end.Value);
+            }
+
+            var grades = await query.ToListAsync();
+
+            var topStudents = grades
+                .GroupBy(g => new { g.StudentUid, g.Student?.FirstName, g.Student?.LastName })
+                .Select(g => new
+                {
+                    StudentUid = g.Key.StudentUid,
+                    StudentName = $"{g.Key.FirstName ?? "Unknown"} {g.Key.LastName ?? "Student"}",
+                    AverageGrade = g.Average(x => x.Value),
+                    TotalGrades = g.Count()
+                })
+                .OrderByDescending(s => s.AverageGrade)
+                .Take(10)
+                .ToList();
+
+            var gradesByMonth = grades
+                .GroupBy(g => new { g.CreatedAt.Year, g.CreatedAt.Month })
+                .Select(g => new
+                {
+                    Period = $"{g.Key.Year}-{g.Key.Month:D2}",
+                    AverageGrade = g.Average(x => x.Value),
+                    TotalGrades = g.Count()
+                })
+                .OrderBy(g => g.Period)
+                .ToList();
+
             return new
             {
                 Statistics = statistics,
-                GeneratedAt = DateTime.UtcNow,
-                Period = period,
-                CourseUid = courseUid,
-                GroupUid = groupUid,
-                ReportType = "Grade Analytics"
+                TopStudents = topStudents,
+                GradesByMonth = gradesByMonth,
+                GeneratedAt = DateTime.UtcNow
             };
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            return new { Error = "Failed to generate analytics report" };
+            _logger.LogError(ex, "Error generating analytics report");
+            throw;
         }
     }
 
     /// <summary>
-    /// Получает оценки студента
+    /// Получает оценки студента (алиас)
     /// </summary>
     public async Task<IEnumerable<Grade>> GetStudentGradesAsync(Guid studentUid)
     {
-        try
-        {
-            return await _dbContext.Grades
-                .Include(g => g.Assignment)
-                .ThenInclude(a => a.Course)
-                .Include(g => g.GradedBy)
-                .Where(g => g.StudentUid == studentUid)
-                .OrderByDescending(g => g.GradedAt)
-                .ToListAsync();
-        }
-        catch (Exception)
-        {
-            // Возвращаем тестовые данные при ошибке
-            return GenerateSampleGrades().Where(g => g.StudentUid == studentUid);
-        }
+        return await GetGradesByStudentAsync(studentUid);
     }
 
     /// <summary>
-    /// Получает оценки по курсу
+    /// Получает оценки по курсу (алиас)
     /// </summary>
     public async Task<IEnumerable<Grade>> GetCourseGradesAsync(Guid courseUid)
     {
+        return await GetGradesByCourseAsync(courseUid);
+    }
+
+    /// <summary>
+    /// Получает оценки по заданию (алиас)
+    /// </summary>
+    public async Task<IEnumerable<Grade>> GetAssignmentGradesAsync(Guid assignmentUid)
+    {
+        return await GetGradesByAssignmentAsync(assignmentUid);
+    }
+
+    /// <summary>
+    /// Получает оценки курса для студента
+    /// </summary>
+    public async Task<IEnumerable<Grade>> GetCourseGradesByStudentAsync(Guid courseUid, Guid studentUid)
+    {
         try
         {
             return await _dbContext.Grades
-                .Include(g => g.Student)
-                .ThenInclude(s => s.User)
                 .Include(g => g.Assignment)
-                .Include(g => g.GradedBy)
-                .Where(g => g.Assignment.CourseId == courseUid)
-                .OrderByDescending(g => g.GradedAt)
+                .ThenInclude(a => a != null ? a.Course : null)
+                .Include(g => g.Teacher)
+                .Where(g => g.Assignment != null && g.Assignment.CourseUid == courseUid && g.StudentUid == studentUid)
+                .OrderByDescending(g => g.CreatedAt)
                 .ToListAsync();
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Возвращаем тестовые данные при ошибке
-            return GenerateSampleGrades().Take(20);
+            _logger.LogError(ex, "Error getting course grades for student {StudentUid} in course {CourseUid}", studentUid, courseUid);
+            throw;
         }
     }
 
     /// <summary>
-    /// Получает оценки по заданию
+    /// Определяет диапазон оценки
     /// </summary>
-    public async Task<IEnumerable<Grade>> GetAssignmentGradesAsync(Guid assignmentUid)
+    private static string GetGradeRange(double grade)
     {
-        try
+        return grade switch
         {
-            return await _dbContext.Grades
-                .Include(g => g.Student)
-                .ThenInclude(s => s.User)
-                .Include(g => g.GradedBy)
-                .Where(g => g.AssignmentUid == assignmentUid)
-                .OrderByDescending(g => g.GradedAt)
-                .ToListAsync();
-        }
-        catch (Exception)
-        {
-            // Возвращаем тестовые данные при ошибке
-            return GenerateSampleGrades().Take(15);
-        }
-    }
-
-    // === ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ===
-
-    private static Grade GenerateSampleGrade(Guid uid)
-    {
-        var random = new Random();
-        return new Grade
-        {
-            Uid = uid,
-            Value = (decimal)(random.NextDouble() * 4 + 1), // 1-5
-            Comment = "Тестовая оценка",
-            GradedAt = DateTime.UtcNow.AddDays(-random.Next(30)),
-            StudentUid = Guid.NewGuid(),
-            AssignmentUid = Guid.NewGuid(),
-            TeacherUid = Guid.NewGuid(),
-            CreatedAt = DateTime.UtcNow.AddDays(-random.Next(30))
+            >= 90 => "Отлично (90-100)",
+            >= 80 => "Хорошо (80-89)",
+            >= 70 => "Удовлетворительно (70-79)",
+            >= 60 => "Зачет (60-69)",
+            _ => "Неудовлетворительно (0-59)"
         };
     }
 
-    private static IEnumerable<Grade> GenerateSampleGrades()
-    {
-        var random = new Random();
-        var grades = new List<Grade>();
+    #endregion
+}
 
-        for (int i = 0; i < 50; i++)
-        {
-            grades.Add(new Grade
-            {
-                Uid = Guid.NewGuid(),
-                Value = (decimal)(random.NextDouble() * 4 + 1), // 1-5
-                Comment = $"Комментарий к оценке {i + 1}",
-                GradedAt = DateTime.UtcNow.AddDays(-random.Next(90)),
-                StudentUid = Guid.NewGuid(),
-                AssignmentUid = Guid.NewGuid(),
-                TeacherUid = Guid.NewGuid(),
-                CreatedAt = DateTime.UtcNow.AddDays(-random.Next(90))
-            });
-        }
+/// <summary>
+/// Статистика оценок студента
+/// </summary>
+public class StudentGradeStatistics
+{
+    public Guid StudentUid { get; set; }
+    public int TotalGrades { get; set; }
+    public double AverageGrade { get; set; }
+    public double HighestGrade { get; set; }
+    public double LowestGrade { get; set; }
+    public int PassingGrades { get; set; }
+    public int FailingGrades { get; set; }
+    public Dictionary<string, double> GradesBySubject { get; set; } = new();
+}
 
-        return grades;
-    }
+/// <summary>
+/// Статистика оценок по заданию
+/// </summary>
+public class AssignmentGradeStatistics
+{
+    public Guid AssignmentUid { get; set; }
+    public int TotalSubmissions { get; set; }
+    public double AverageGrade { get; set; }
+    public double HighestGrade { get; set; }
+    public double LowestGrade { get; set; }
+    public int PassingSubmissions { get; set; }
+    public int FailingSubmissions { get; set; }
+    public Dictionary<string, int> GradeDistribution { get; set; } = new();
+}
+
+/// <summary>
+/// Результат массового создания оценок
+/// </summary>
+public class BulkGradeResult
+{
+    public int SuccessfulGrades { get; set; }
+    public int FailedGrades { get; set; }
+    public List<Guid> CreatedGradeUids { get; set; } = new();
+    public List<string> Errors { get; set; } = new();
 }

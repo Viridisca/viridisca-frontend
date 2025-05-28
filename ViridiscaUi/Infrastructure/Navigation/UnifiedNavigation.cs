@@ -72,6 +72,16 @@ public class NavigationRoute
     /// </summary>
     public string Label => DisplayName;
 
+    /// <summary>
+    /// Есть ли бейдж уведомлений
+    /// </summary>
+    public bool HasBadge { get; set; } = false;
+
+    /// <summary>
+    /// Текст бейджа уведомлений
+    /// </summary>
+    public string? BadgeText { get; set; }
+
     public NavigationRoute(
         string path,
         Type viewModelType,
@@ -114,6 +124,10 @@ public class NavigationRoute
 /// </summary>
 public interface IUnifiedNavigationService
 {
+    // Свойства
+    IReadOnlyList<NavigationRoute> Routes { get; }
+    bool CanGoBack { get; }
+
     // Основная навигация
     Task<bool> NavigateToAsync(string path);
     Task<bool> NavigateToAsync<TViewModel>() where TViewModel : class, IRoutableViewModel;
@@ -121,7 +135,6 @@ public interface IUnifiedNavigationService
     Task<bool> NavigateAndResetAsync<TViewModel>() where TViewModel : class, IRoutableViewModel;
     Task<bool> GoBackAsync();
     void ClearNavigationStack();
-    bool CanGoBack { get; }
 
     // Работа с маршрутами
     NavigationRoute? GetRoute(string path);
@@ -143,19 +156,14 @@ public interface IUnifiedNavigationService
 /// <summary>
 /// Реализация единого сервиса навигации
 /// </summary>
-public class UnifiedNavigationService : IUnifiedNavigationService
+public class UnifiedNavigationService(IServiceProvider serviceProvider) : IUnifiedNavigationService
 {
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IServiceProvider _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
     private readonly List<NavigationRoute> _routes = new();
     private IScreen? _screen;
 
     public IReadOnlyList<NavigationRoute> Routes => _routes.AsReadOnly();
     public bool CanGoBack => _screen?.Router.NavigationStack.Count > 1;
-
-    public UnifiedNavigationService(IServiceProvider serviceProvider)
-    {
-        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
-    }
 
     public void Initialize(IScreen screen)
     {
@@ -337,12 +345,16 @@ public class UnifiedNavigationService : IUnifiedNavigationService
         
         if (userRoles != null && userRoles.Length > 0)
         {
-            menuRoutes = menuRoutes.Where(r => 
+            var filteredRoutes = menuRoutes.Where(r => 
                 r.RequiredRoles.Length == 0 || 
                 r.RequiredRoles.Any(role => userRoles.Contains(role, StringComparer.OrdinalIgnoreCase)));
+            
+            menuRoutes = filteredRoutes;
         }
         
-        return menuRoutes.OrderBy(r => r.Order).ThenBy(r => r.DisplayName);
+        var result = menuRoutes.OrderBy(r => r.Order).ThenBy(r => r.DisplayName);
+        
+        return result;
     }
 
     public IEnumerable<NavigationRoute> GetChildRoutes(string parentPath, string[]? userRoles = null)
@@ -404,18 +416,29 @@ public class UnifiedNavigationService : IUnifiedNavigationService
             if (route == null)
             {
                 StatusLogger.LogError($"Маршрут '{path}' не найден", "UnifiedNavigation");
-                return Observable.Return<IRoutableViewModel>(null!);
+                return Observable.Empty<IRoutableViewModel>();
             }
 
             try
             {
                 var viewModel = (IRoutableViewModel)_serviceProvider.GetRequiredService(route.ViewModelType);
-                return _screen.Router.Navigate.Execute(viewModel);
+                
+                return _screen.Router.Navigate.Execute(viewModel)
+                    .Catch<IRoutableViewModel, Exception>(ex =>
+                    {
+                        StatusLogger.LogError($"Ошибка навигации к маршруту '{path}': {ex.Message}", "UnifiedNavigation");
+                        return Observable.Empty<IRoutableViewModel>();
+                    });
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("No service for type"))
+            {
+                StatusLogger.LogError($"ViewModel типа {route.ViewModelType.Name} не зарегистрирован в DI контейнере для маршрута '{path}': {ex.Message}", "UnifiedNavigation");
+                return Observable.Empty<IRoutableViewModel>();
             }
             catch (Exception ex)
             {
                 StatusLogger.LogError($"Ошибка создания ViewModel для маршрута '{path}': {ex.Message}", "UnifiedNavigation");
-                return Observable.Return<IRoutableViewModel>(null!);
+                return Observable.Empty<IRoutableViewModel>();
             }
         });
     }
@@ -431,12 +454,23 @@ public class UnifiedNavigationService : IUnifiedNavigationService
             try
             {
                 var viewModel = _serviceProvider.GetRequiredService<TViewModel>();
-                return _screen.Router.Navigate.Execute(viewModel);
+                
+                return _screen.Router.Navigate.Execute(viewModel)
+                    .Catch<IRoutableViewModel, Exception>(ex =>
+                    {
+                        StatusLogger.LogError($"Ошибка навигации к {typeof(TViewModel).Name}: {ex.Message}", "UnifiedNavigation");
+                        return Observable.Empty<IRoutableViewModel>();
+                    });
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("No service for type"))
+            {
+                StatusLogger.LogError($"ViewModel типа {typeof(TViewModel).Name} не зарегистрирован в DI контейнере: {ex.Message}", "UnifiedNavigation");
+                return Observable.Empty<IRoutableViewModel>();
             }
             catch (Exception ex)
             {
                 StatusLogger.LogError($"Ошибка создания {typeof(TViewModel).Name}: {ex.Message}", "UnifiedNavigation");
-                return Observable.Return<IRoutableViewModel>(null!);
+                return Observable.Empty<IRoutableViewModel>();
             }
         });
     }

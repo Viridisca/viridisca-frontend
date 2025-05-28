@@ -1,222 +1,176 @@
+using System;
+using System.Collections;
+using System.Reactive;
+using System.Windows.Input;
+using Avalonia.Input;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
-using System.Collections;
+using ReactiveUI;
 
-namespace ViridiscaUi.Views.Components;
-
-/// <summary>
-/// Data Grid Component
-/// Provides comprehensive data grid functionality with search, pagination, and modern styling
-/// </summary>
-public partial class DataGridComponent : UserControl
+namespace ViridiscaUi.Views.Components
 {
-    public static readonly StyledProperty<string> TitleProperty =
-        AvaloniaProperty.Register<DataGridComponent, string>(nameof(Title), "Данные");
-
-    public static readonly StyledProperty<string> DescriptionProperty =
-        AvaloniaProperty.Register<DataGridComponent, string>(nameof(Description), "");
-
-    public static readonly StyledProperty<IEnumerable> ItemsProperty =
-        AvaloniaProperty.Register<DataGridComponent, IEnumerable>(nameof(Items));
-
-    public static readonly StyledProperty<object> SelectedItemProperty =
-        AvaloniaProperty.Register<DataGridComponent, object>(nameof(SelectedItem));
-
-    public static readonly StyledProperty<string> SearchTextProperty =
-        AvaloniaProperty.Register<DataGridComponent, string>(nameof(SearchText), "");
-
-    public static readonly StyledProperty<string> SearchWatermarkProperty =
-        AvaloniaProperty.Register<DataGridComponent, string>(nameof(SearchWatermark), "Поиск...");
-
-    public static readonly StyledProperty<bool> IsLoadingProperty =
-        AvaloniaProperty.Register<DataGridComponent, bool>(nameof(IsLoading), false);
-
-    public static readonly StyledProperty<bool> IsEmptyProperty =
-        AvaloniaProperty.Register<DataGridComponent, bool>(nameof(IsEmpty), false);
-
-    public static readonly StyledProperty<string> EmptyStateMessageProperty =
-        AvaloniaProperty.Register<DataGridComponent, string>(nameof(EmptyStateMessage), "Нет данных для отображения");
-
-    public static readonly StyledProperty<bool> ShowAddButtonProperty =
-        AvaloniaProperty.Register<DataGridComponent, bool>(nameof(ShowAddButton), true);
-
-    public static readonly StyledProperty<bool> ShowRefreshButtonProperty =
-        AvaloniaProperty.Register<DataGridComponent, bool>(nameof(ShowRefreshButton), true);
-
-    public static readonly StyledProperty<bool> ShowExportButtonProperty =
-        AvaloniaProperty.Register<DataGridComponent, bool>(nameof(ShowExportButton), true);
-
-    public static readonly StyledProperty<bool> ShowPaginationProperty =
-        AvaloniaProperty.Register<DataGridComponent, bool>(nameof(ShowPagination), true);
-
-    public static readonly StyledProperty<bool> ShowFilterOptionsProperty =
-        AvaloniaProperty.Register<DataGridComponent, bool>(nameof(ShowFilterOptions), false);
-
-    public static readonly StyledProperty<string> AddButtonTextProperty =
-        AvaloniaProperty.Register<DataGridComponent, string>(nameof(AddButtonText), "+ Добавить");
-
-    public static readonly StyledProperty<string> StatusTextProperty =
-        AvaloniaProperty.Register<DataGridComponent, string>(nameof(StatusText), "Готово");
-
-    public static readonly StyledProperty<int> TotalRecordsProperty =
-        AvaloniaProperty.Register<DataGridComponent, int>(nameof(TotalRecords), 0);
-
-    public static readonly StyledProperty<int> StartRecordProperty =
-        AvaloniaProperty.Register<DataGridComponent, int>(nameof(StartRecord), 0);
-
-    public static readonly StyledProperty<int> EndRecordProperty =
-        AvaloniaProperty.Register<DataGridComponent, int>(nameof(EndRecord), 0);
-
-    public static readonly StyledProperty<int> PageSizeProperty =
-        AvaloniaProperty.Register<DataGridComponent, int>(nameof(PageSize), 25);
-
-    public static readonly StyledProperty<bool> CanGoToPreviousPageProperty =
-        AvaloniaProperty.Register<DataGridComponent, bool>(nameof(CanGoToPreviousPage), false);
-
-    public static readonly StyledProperty<bool> CanGoToNextPageProperty =
-        AvaloniaProperty.Register<DataGridComponent, bool>(nameof(CanGoToNextPage), false);
-
-    public string Title
+    /// <summary>
+    /// Переиспользуемый компонент DataGrid с поиском и пагинацией
+    /// </summary>
+    public partial class DataGridComponent : UserControl
     {
-        get => GetValue(TitleProperty);
-        set => SetValue(TitleProperty, value);
-    }
+        // Dependency Properties
+        public static readonly StyledProperty<string> TitleProperty =
+            AvaloniaProperty.Register<DataGridComponent, string>(nameof(Title), "Данные");
 
-    public string Description
-    {
-        get => GetValue(DescriptionProperty);
-        set => SetValue(DescriptionProperty, value);
-    }
+        public static readonly StyledProperty<IEnumerable> ItemsProperty =
+            AvaloniaProperty.Register<DataGridComponent, IEnumerable>(nameof(Items));
 
-    public IEnumerable Items
-    {
-        get => GetValue(ItemsProperty);
-        set => SetValue(ItemsProperty, value);
-    }
+        public static readonly StyledProperty<object?> SelectedItemProperty =
+            AvaloniaProperty.Register<DataGridComponent, object?>(nameof(SelectedItem));
 
-    public object SelectedItem
-    {
-        get => GetValue(SelectedItemProperty);
-        set => SetValue(SelectedItemProperty, value);
-    }
+        public static readonly StyledProperty<int> CurrentPageProperty =
+            AvaloniaProperty.Register<DataGridComponent, int>(nameof(CurrentPage), 1);
 
-    public string SearchText
-    {
-        get => GetValue(SearchTextProperty);
-        set => SetValue(SearchTextProperty, value);
-    }
+        public static readonly StyledProperty<int> TotalPagesProperty =
+            AvaloniaProperty.Register<DataGridComponent, int>(nameof(TotalPages), 1);
 
-    public string SearchWatermark
-    {
-        get => GetValue(SearchWatermarkProperty);
-        set => SetValue(SearchWatermarkProperty, value);
-    }
+        public static readonly StyledProperty<int> ItemsCountProperty =
+            AvaloniaProperty.Register<DataGridComponent, int>(nameof(ItemsCount));
 
-    public bool IsLoading
-    {
-        get => GetValue(IsLoadingProperty);
-        set => SetValue(IsLoadingProperty, value);
-    }
+        public static readonly StyledProperty<int> TotalCountProperty =
+            AvaloniaProperty.Register<DataGridComponent, int>(nameof(TotalCount));
 
-    public bool IsEmpty
-    {
-        get => GetValue(IsEmptyProperty);
-        set => SetValue(IsEmptyProperty, value);
-    }
+        public static readonly StyledProperty<bool> CanGoToPreviousPageProperty =
+            AvaloniaProperty.Register<DataGridComponent, bool>(nameof(CanGoToPreviousPage));
 
-    public string EmptyStateMessage
-    {
-        get => GetValue(EmptyStateMessageProperty);
-        set => SetValue(EmptyStateMessageProperty, value);
-    }
+        public static readonly StyledProperty<bool> CanGoToNextPageProperty =
+            AvaloniaProperty.Register<DataGridComponent, bool>(nameof(CanGoToNextPage));
 
-    public bool ShowAddButton
-    {
-        get => GetValue(ShowAddButtonProperty);
-        set => SetValue(ShowAddButtonProperty, value);
-    }
+        // Command Properties
+        public static readonly StyledProperty<ICommand?> SearchCommandProperty =
+            AvaloniaProperty.Register<DataGridComponent, ICommand?>(nameof(SearchCommand));
 
-    public bool ShowRefreshButton
-    {
-        get => GetValue(ShowRefreshButtonProperty);
-        set => SetValue(ShowRefreshButtonProperty, value);
-    }
+        public static readonly StyledProperty<ICommand?> FirstPageCommandProperty =
+            AvaloniaProperty.Register<DataGridComponent, ICommand?>(nameof(FirstPageCommand));
 
-    public bool ShowExportButton
-    {
-        get => GetValue(ShowExportButtonProperty);
-        set => SetValue(ShowExportButtonProperty, value);
-    }
+        public static readonly StyledProperty<ICommand?> PreviousPageCommandProperty =
+            AvaloniaProperty.Register<DataGridComponent, ICommand?>(nameof(PreviousPageCommand));
 
-    public bool ShowPagination
-    {
-        get => GetValue(ShowPaginationProperty);
-        set => SetValue(ShowPaginationProperty, value);
-    }
+        public static readonly StyledProperty<ICommand?> NextPageCommandProperty =
+            AvaloniaProperty.Register<DataGridComponent, ICommand?>(nameof(NextPageCommand));
 
-    public bool ShowFilterOptions
-    {
-        get => GetValue(ShowFilterOptionsProperty);
-        set => SetValue(ShowFilterOptionsProperty, value);
-    }
+        public static readonly StyledProperty<ICommand?> LastPageCommandProperty =
+            AvaloniaProperty.Register<DataGridComponent, ICommand?>(nameof(LastPageCommand));
 
-    public string AddButtonText
-    {
-        get => GetValue(AddButtonTextProperty);
-        set => SetValue(AddButtonTextProperty, value);
-    }
+        // Properties
+        public string Title
+        {
+            get => GetValue(TitleProperty);
+            set => SetValue(TitleProperty, value);
+        }
 
-    public string StatusText
-    {
-        get => GetValue(StatusTextProperty);
-        set => SetValue(StatusTextProperty, value);
-    }
+        public IEnumerable Items
+        {
+            get => GetValue(ItemsProperty);
+            set => SetValue(ItemsProperty, value);
+        }
 
-    public int TotalRecords
-    {
-        get => GetValue(TotalRecordsProperty);
-        set => SetValue(TotalRecordsProperty, value);
-    }
+        public object? SelectedItem
+        {
+            get => GetValue(SelectedItemProperty);
+            set => SetValue(SelectedItemProperty, value);
+        }
 
-    public int StartRecord
-    {
-        get => GetValue(StartRecordProperty);
-        set => SetValue(StartRecordProperty, value);
-    }
+        public int CurrentPage
+        {
+            get => GetValue(CurrentPageProperty);
+            set => SetValue(CurrentPageProperty, value);
+        }
 
-    public int EndRecord
-    {
-        get => GetValue(EndRecordProperty);
-        set => SetValue(EndRecordProperty, value);
-    }
+        public int TotalPages
+        {
+            get => GetValue(TotalPagesProperty);
+            set => SetValue(TotalPagesProperty, value);
+        }
 
-    public int PageSize
-    {
-        get => GetValue(PageSizeProperty);
-        set => SetValue(PageSizeProperty, value);
-    }
+        public int ItemsCount
+        {
+            get => GetValue(ItemsCountProperty);
+            set => SetValue(ItemsCountProperty, value);
+        }
 
-    public bool CanGoToPreviousPage
-    {
-        get => GetValue(CanGoToPreviousPageProperty);
-        set => SetValue(CanGoToPreviousPageProperty, value);
-    }
+        public int TotalCount
+        {
+            get => GetValue(TotalCountProperty);
+            set => SetValue(TotalCountProperty, value);
+        }
 
-    public bool CanGoToNextPage
-    {
-        get => GetValue(CanGoToNextPageProperty);
-        set => SetValue(CanGoToNextPageProperty, value);
-    }
+        public bool CanGoToPreviousPage
+        {
+            get => GetValue(CanGoToPreviousPageProperty);
+            set => SetValue(CanGoToPreviousPageProperty, value);
+        }
 
-    public DataGridComponent()
-    {
-        InitializeComponent();
-        DataContext = this;
-    }
+        public bool CanGoToNextPage
+        {
+            get => GetValue(CanGoToNextPageProperty);
+            set => SetValue(CanGoToNextPageProperty, value);
+        }
 
-    private void InitializeComponent()
-    {
-        AvaloniaXamlLoader.Load(this);
+        // Commands
+        public ICommand? SearchCommand
+        {
+            get => GetValue(SearchCommandProperty);
+            set => SetValue(SearchCommandProperty, value);
+        }
+
+        public ICommand? FirstPageCommand
+        {
+            get => GetValue(FirstPageCommandProperty);
+            set => SetValue(FirstPageCommandProperty, value);
+        }
+
+        public ICommand? PreviousPageCommand
+        {
+            get => GetValue(PreviousPageCommandProperty);
+            set => SetValue(PreviousPageCommandProperty, value);
+        }
+
+        public ICommand? NextPageCommand
+        {
+            get => GetValue(NextPageCommandProperty);
+            set => SetValue(NextPageCommandProperty, value);
+        }
+
+        public ICommand? LastPageCommand
+        {
+            get => GetValue(LastPageCommandProperty);
+            set => SetValue(LastPageCommandProperty, value);
+        }
+
+        public DataGridComponent()
+        {
+            InitializeComponent();
+            
+            // Обновляем computed properties при изменении CurrentPage и TotalPages
+            this.GetObservable(CurrentPageProperty).Subscribe(_ => UpdatePaginationState());
+            this.GetObservable(TotalPagesProperty).Subscribe(_ => UpdatePaginationState());
+        }
+
+        private void InitializeComponent()
+        {
+            AvaloniaXamlLoader.Load(this);
+        }
+
+        private void UpdatePaginationState()
+        {
+            CanGoToPreviousPage = CurrentPage > 1;
+            CanGoToNextPage = CurrentPage < TotalPages;
+        }
+
+        /// <summary>
+        /// Получает DataGrid для программного добавления колонок
+        /// </summary>
+        public DataGrid GetDataGrid()
+        {
+            return this.FindControl<DataGrid>("MainDataGrid") ?? throw new InvalidOperationException("DataGrid not found");
+        }
     }
 } 

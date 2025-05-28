@@ -8,7 +8,7 @@ using ReactiveUI;
 using ViridiscaUi.Infrastructure;
 using ViridiscaUi.Infrastructure.Navigation;
 
-namespace ViridiscaUi.ViewModels;
+namespace ViridiscaUi.ViewModels.Bases.Navigations;
 
 /// <summary>
 /// Минималистичный базовый класс для ViewModel с поддержкой маршрутизации
@@ -179,7 +179,7 @@ public abstract class RoutableViewModelBase : ViewModelBase, IRoutableViewModel,
     /// <summary>
     /// Устанавливает состояние загрузки
     /// </summary>
-    protected virtual void SetLoading(bool isLoading, string? message = null)
+    protected new virtual void SetLoading(bool isLoading, string? message = null)
     {
         IsBusy = isLoading;
         if (!string.IsNullOrEmpty(message))

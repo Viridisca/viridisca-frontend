@@ -2,17 +2,14 @@ using Avalonia.Controls;
 using ReactiveUI;
 using ViridiscaUi.ViewModels;
 using ViridiscaUi.ViewModels.Auth;
-using ViridiscaUi.ViewModels.Profile;
-using ViridiscaUi.ViewModels.Students;
 using ViridiscaUi.Views.Auth;
-using ViridiscaUi.Views.Common.Profile;
 using ViridiscaUi.Windows;
 using ViridiscaUi.ViewModels.Education;
 using ViridiscaUi.Views.Education;
-using ViridiscaUi.Views.Education.Students;
 using ViridiscaUi.Views.Common;
 using ViridiscaUi.ViewModels.System;
 using ViridiscaUi.Views.System;
+using ViridiscaUi.Views.Common.System;
 
 namespace ViridiscaUi.Infrastructure;
 

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive;
@@ -8,187 +9,451 @@ using DynamicData;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using ViridiscaUi.Domain.Models.Education;
+using ViridiscaUi.Infrastructure.Navigation;
 using ViridiscaUi.Services.Interfaces;
+using ViridiscaUi.ViewModels;
+using ViridiscaUi.ViewModels.Bases.Navigations;
 
 namespace ViridiscaUi.ViewModels.Education
 {
     /// <summary>
-    /// ViewModel для редактирования курса
+    /// ViewModel для создания и редактирования курсов
     /// </summary>
-    public class CourseEditorViewModel : ViewModelBase
+    [Route("course-editor", DisplayName = "Редактор курсов", IconKey = "📚", Order = 302, RequiredRoles = new[] { "Admin", "Teacher" })]
+    public class CourseEditorViewModel : RoutableViewModelBase
     {
+        private readonly ICourseService _courseService;
         private readonly ITeacherService _teacherService;
+        private readonly IUnifiedNavigationService _navigationService;
         private readonly SourceCache<Teacher, Guid> _teachersSource = new(t => t.Uid);
         private ReadOnlyObservableCollection<Teacher> _teachers;
 
         public ReadOnlyObservableCollection<Teacher> Teachers => _teachers;
 
+        /// <summary>
+        /// Флаг режима редактирования (true) или создания (false)
+        /// </summary>
+        [Reactive] public bool IsEditMode { get; set; }
+
+        /// <summary>
+        /// Текущий редактируемый курс
+        /// </summary>
+        [Reactive] public Course? CurrentCourse { get; set; }
+
+        /// <summary>
+        /// Идентификатор курса для редактирования
+        /// </summary>
+        [Reactive] public Guid? CourseId { get; set; }
+
+        // Поля для редактирования
         [Reactive] public string Name { get; set; } = string.Empty;
         [Reactive] public string Code { get; set; } = string.Empty;
         [Reactive] public string Description { get; set; } = string.Empty;
         [Reactive] public string Category { get; set; } = string.Empty;
-        [Reactive] public CourseStatus Status { get; set; } = CourseStatus.Draft;
-        [Reactive] public DateTime StartDate { get; set; } = DateTime.Today;
-        [Reactive] public DateTime EndDate { get; set; } = DateTime.Today.AddMonths(3);
-        [Reactive] public int Credits { get; set; } = 3;
-        [Reactive] public Guid? TeacherUid { get; set; }
         [Reactive] public Teacher? SelectedTeacher { get; set; }
-        [Reactive] public string? Prerequisites { get; set; }
-        [Reactive] public string? LearningOutcomes { get; set; }
-        [Reactive] public int MaxEnrollments { get; set; } = 50;
+        [Reactive] public DateTime StartDate { get; set; } = DateTime.Now;
+        [Reactive] public DateTime EndDate { get; set; } = DateTime.Now.AddMonths(4);
+        [Reactive] public int Credits { get; set; } = 3;
+        [Reactive] public CourseStatus SelectedStatus { get; set; } = CourseStatus.Draft;
+        [Reactive] public string Prerequisites { get; set; } = string.Empty;
+        [Reactive] public string LearningOutcomes { get; set; } = string.Empty;
+        [Reactive] public int MaxEnrollments { get; set; } = 30;
+
+        /// <summary>
+        /// Доступные преподаватели для выбора
+        /// </summary>
+        [Reactive] public ObservableCollection<Teacher> AvailableTeachers { get; set; } = new();
+
+        /// <summary>
+        /// Доступные статусы курса
+        /// </summary>
+        [Reactive] public ObservableCollection<CourseStatus> AvailableStatuses { get; set; } = new();
+
+        /// <summary>
+        /// Предопределенные категории курсов
+        /// </summary>
+        [Reactive] public ObservableCollection<string> AvailableCategories { get; set; } = new();
+
+        /// <summary>
+        /// Флаг процесса сохранения
+        /// </summary>
+        [Reactive] public bool IsSaving { get; set; }
+
+        /// <summary>
+        /// Заголовок формы
+        /// </summary>
+        [Reactive] public string FormTitle { get; set; } = "Создание курса";
 
         [ObservableAsProperty] public bool IsLoading { get; }
         [ObservableAsProperty] public bool IsValid { get; }
         [ObservableAsProperty] public bool CanSave { get; }
 
-        public string Title => Course == null ? "Добавить курс" : "Редактировать курс";
+        // Commands
+        public ReactiveCommand<Unit, Unit> SaveCommand { get; set; } = null!;
+        public ReactiveCommand<Unit, Unit> CancelCommand { get; set; } = null!;
+        public ReactiveCommand<Unit, Unit> DeleteCommand { get; set; } = null!;
+        public ReactiveCommand<Unit, Unit> CreateNewCommand { get; set; } = null!;
+        public ReactiveCommand<Unit, Unit> GenerateCodeCommand { get; set; } = null!;
 
-        private Course? Course { get; set; }
-        public Course? Result { get; set; }
+        public string Title => CurrentCourse == null ? "Добавить курс" : "Редактировать курс";
 
-        public ReactiveCommand<Unit, Course?> SaveCommand { get; private set; }
-        public ReactiveCommand<Unit, Unit> CancelCommand { get; private set; }
-
-        // Предопределенные категории курсов
-        public ObservableCollection<string> Categories { get; } = new()
+        public CourseEditorViewModel(
+            ICourseService courseService,
+            ITeacherService teacherService,
+            IUnifiedNavigationService navigationService,
+            IScreen hostScreen) : base(hostScreen)
         {
-            "Программирование",
-            "Веб-разработка",
-            "Базы данных",
-            "Математика",
-            "Физика",
-            "Иностранные языки",
-            "Гуманитарные науки",
-            "Экономика",
-            "Менеджмент"
-        };
+            _courseService = courseService ?? throw new ArgumentNullException(nameof(courseService));
+            _teacherService = teacherService ?? throw new ArgumentNullException(nameof(teacherService));
+            _navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
 
-        public CourseEditorViewModel(ITeacherService teacherService, Course? course = null)
-        {
-            _teacherService = teacherService;
-            Course = course;
-
-            // Инициализация из существующего курса
-            if (course != null)
-            {
-                Name = course.Name;
-                Code = course.Code;
-                Description = course.Description;
-                Category = course.Category;
-                StartDate = course.StartDate ?? DateTime.Today;
-                EndDate = course.EndDate ?? DateTime.Today.AddMonths(3);
-                Credits = course.Credits;
-                Status = course.Status;
-                SelectedTeacher = Teachers.FirstOrDefault(t => t.Uid == course.TeacherUid);
-            }
-
-            // Команды
-            SaveCommand = ReactiveCommand.CreateFromTask(async () =>
-            {
-                try
-                {
-                    LoadTeachers();
-                    
-                    if (Course.Uid == Guid.Empty)
-                    {
-                        Course.Uid = Guid.NewGuid();
-                        Course.CreatedAt = DateTime.UtcNow;
-                        await _teacherService.AddTeacherAsync(new Teacher()); // Заглушка
-                    }
-                    else
-                    {
-                        Course.LastModifiedAt = DateTime.UtcNow;
-                        // await _courseService.UpdateCourseAsync(Course); // Заглушка
-                    }
-                    
-                    return Course;
-                }
-                catch (Exception ex)
-                {
-                    LogError(ex, "Ошибка при сохранении курса");
-                    return null;
-                }
-            });
-            CancelCommand = ReactiveCommand.Create(() => { });
-
-            SetupSubscriptions();
-            LoadDataAsync();
-        }
-
-        /// <summary>
-        /// Настраивает подписки на изменения свойств
-        /// </summary>
-        private void SetupSubscriptions()
-        {
-            // Sync TeacherUid and SelectedTeacher
-            this.WhenAnyValue(x => x.SelectedTeacher)
-                .Subscribe(teacher => TeacherUid = teacher?.Uid);
-
-            // Bind teachers to observable collection
+            // Инициализация кэша преподавателей
             _teachersSource.Connect()
                 .ObserveOn(RxApp.MainThreadScheduler)
                 .Bind(out _teachers)
                 .Subscribe();
 
-            // Validation
+            InitializeCommands();
+            InitializePredefinedValues();
+        }
+
+        private void InitializeCommands()
+        {
+            // Проверка валидности формы
             var canSave = this.WhenAnyValue(
                 x => x.Name,
                 x => x.Code,
                 x => x.Description,
+                x => x.SelectedTeacher,
                 x => x.StartDate,
                 x => x.EndDate,
-                x => x.Credits,
-                (name, code, description, startDate, endDate, credits) =>
+                x => x.IsSaving,
+                (name, code, description, teacher, startDate, endDate, isSaving) =>
                     !string.IsNullOrWhiteSpace(name) &&
                     !string.IsNullOrWhiteSpace(code) &&
                     !string.IsNullOrWhiteSpace(description) &&
+                    teacher != null &&
                     startDate < endDate &&
-                    credits > 0
-            );
+                    !isSaving);
 
-            canSave.ToPropertyEx(this, x => x.CanSave);
+            SaveCommand = CreateCommand(SaveAsync, canSave, "Ошибка при сохранении курса");
+            CancelCommand = CreateCommand(CancelAsync, null, "Ошибка при отмене");
+            
+            var canDelete = this.WhenAnyValue(x => x.IsEditMode, x => x.IsSaving, 
+                (isEdit, isSaving) => isEdit && !isSaving);
+            DeleteCommand = CreateCommand(DeleteAsync, canDelete, "Ошибка при удалении курса");
+            
+            CreateNewCommand = CreateCommand(CreateNewAsync, null, "Ошибка при создании нового курса");
+            GenerateCodeCommand = CreateCommand(GenerateCodeAsync, null, "Ошибка при генерации кода");
         }
 
-        /// <summary>
-        /// Загружает данные для выпадающих списков
-        /// </summary>
-        private async Task LoadDataAsync()
+        private void InitializePredefinedValues()
         {
-            try
+            // Статусы курсов
+            AvailableStatuses.Clear();
+            foreach (var status in Enum.GetValues<CourseStatus>())
             {
-                await LoadTeachersAsync();
+                AvailableStatuses.Add(status);
             }
-            catch (Exception ex)
+
+            // Категории курсов
+            var categories = new[]
             {
-                LogError(ex, "Ошибка при загрузке данных");
+                "Программирование",
+                "Математика",
+                "Физика",
+                "Химия",
+                "Экономика",
+                "Менеджмент",
+                "Иностранные языки",
+                "Гуманитарные науки",
+                "Информационные технологии",
+                "Кибербезопасность",
+                "Искусственный интеллект",
+                "Веб-разработка",
+                "Базы данных",
+                "Сетевые технологии",
+                "Мобильная разработка"
+            };
+            AvailableCategories.Clear();
+            foreach (var category in categories)
+            {
+                AvailableCategories.Add(category);
             }
         }
 
         /// <summary>
-        /// Загружает список преподавателей
+        /// Вызывается при первой загрузке ViewModel
         /// </summary>
+        protected override async Task OnFirstTimeLoadedAsync()
+        {
+            await base.OnFirstTimeLoadedAsync();
+            
+            await LoadTeachersAsync();
+            
+            if (CurrentCourse != null)
+            {
+                await LoadCourseAsync(CurrentCourse.Uid);
+            }
+            else
+            {
+                SetupForCreation();
+            }
+        }
+
         private async Task LoadTeachersAsync()
         {
             try
             {
+                ShowInfo("Загрузка преподавателей...");
                 var teachers = await _teacherService.GetAllTeachersAsync();
-                _teachersSource.AddOrUpdate(teachers);
                 
-                // Set selected teacher if editing existing course
-                if (Course?.TeacherUid != null)
+                AvailableTeachers.Clear();
+                foreach (var teacher in teachers.Where(t => t.Status == TeacherStatus.Active).OrderBy(t => t.LastName).ThenBy(t => t.FirstName))
                 {
-                    SelectedTeacher = teachers.FirstOrDefault(t => t.Uid == Course.TeacherUid);
+                    AvailableTeachers.Add(teacher);
                 }
+                
+                LogInfo("Loaded {TeacherCount} teachers", teachers.Count());
             }
             catch (Exception ex)
             {
-                SetError("Ошибка загрузки преподавателей", ex);
+                SetError("Ошибка при загрузке преподавателей", ex);
             }
         }
 
-        private void LoadTeachers()
+        private async Task LoadCourseAsync(Guid courseId)
         {
-            // Implementation of LoadTeachers method
+            try
+            {
+                ShowInfo("Загрузка данных курса...");
+                
+                var course = await _courseService.GetCourseAsync(courseId);
+                if (course == null)
+                {
+                    SetError("Курс не найден");
+                    await _navigationService.GoBackAsync();
+                    return;
+                }
+
+                CurrentCourse = course;
+                PopulateForm(course);
+                
+                ShowSuccess("Данные курса загружены");
+                LogInfo("Loaded course: {CourseName}", course.Name);
+            }
+            catch (Exception ex)
+            {
+                SetError("Ошибка при загрузке курса", ex);
+            }
+        }
+
+        private void PopulateForm(Course course)
+        {
+            Name = course.Name;
+            Code = course.Code;
+            Description = course.Description ?? string.Empty;
+            Category = course.Category ?? string.Empty;
+            StartDate = course.StartDate ?? DateTime.Now;
+            EndDate = course.EndDate ?? DateTime.Now.AddMonths(4);
+            Credits = course.Credits;
+            SelectedStatus = course.Status;
+            Prerequisites = course.Prerequisites ?? string.Empty;
+            LearningOutcomes = course.LearningOutcomes ?? string.Empty;
+            MaxEnrollments = course.MaxEnrollments;
+            
+            // Выбираем преподавателя из загруженного списка
+            SelectedTeacher = AvailableTeachers.FirstOrDefault(t => t.Uid == course.TeacherUid);
+        }
+
+        private void SetupForCreation()
+        {
+            CurrentCourse = null;
+            ClearForm();
+            GenerateCode();
+        }
+
+        private void ClearForm()
+        {
+            Name = string.Empty;
+            Code = string.Empty;
+            Description = string.Empty;
+            Category = string.Empty;
+            SelectedTeacher = null;
+            StartDate = DateTime.Now;
+            EndDate = DateTime.Now.AddMonths(4);
+            Credits = 3;
+            SelectedStatus = CourseStatus.Draft;
+            Prerequisites = string.Empty;
+            LearningOutcomes = string.Empty;
+            MaxEnrollments = 30;
+        }
+
+        private void GenerateCode()
+        {
+            var year = DateTime.Now.Year;
+            var random = new Random();
+            Code = $"COURSE{year % 100:D2}{random.Next(100, 999)}";
+        }
+
+        private async Task SaveAsync()
+        {
+            try
+            {
+                IsSaving = true;
+                ClearError();
+
+                if (IsEditMode && CurrentCourse != null)
+                {
+                    await UpdateCourseAsync();
+                }
+                else
+                {
+                    await CreateCourseAsync();
+                }
+
+                ShowSuccess(IsEditMode ? "Курс обновлен" : "Курс создан");
+                await _navigationService.NavigateToAsync("courses");
+            }
+            catch (Exception ex)
+            {
+                SetError($"Ошибка при сохранении: {ex.Message}", ex);
+            }
+            finally
+            {
+                IsSaving = false;
+            }
+        }
+
+        private async Task UpdateCourseAsync()
+        {
+            if (CurrentCourse == null || SelectedTeacher == null) return;
+
+            var updatedCourse = new Course
+            {
+                Uid = CurrentCourse.Uid,
+                Name = Name.Trim(),
+                Code = Code.Trim(),
+                Description = string.IsNullOrWhiteSpace(Description) ? null : Description.Trim(),
+                Category = string.IsNullOrWhiteSpace(Category) ? null : Category.Trim(),
+                TeacherUid = SelectedTeacher.Uid,
+                StartDate = StartDate,
+                EndDate = EndDate,
+                Credits = Credits,
+                Status = SelectedStatus,
+                Prerequisites = string.IsNullOrWhiteSpace(Prerequisites) ? null : Prerequisites.Trim(),
+                LearningOutcomes = string.IsNullOrWhiteSpace(LearningOutcomes) ? null : LearningOutcomes.Trim(),
+                MaxEnrollments = MaxEnrollments,
+                CreatedAt = CurrentCourse.CreatedAt,
+                LastModifiedAt = DateTime.UtcNow
+            };
+
+            await _courseService.UpdateCourseAsync(updatedCourse);
+            LogInfo("Updated course: {CourseName}", updatedCourse.Name);
+        }
+
+        private async Task CreateCourseAsync()
+        {
+            if (SelectedTeacher == null) return;
+
+            var newCourse = new Course
+            {
+                Uid = Guid.NewGuid(),
+                Name = Name.Trim(),
+                Code = Code.Trim(),
+                Description = string.IsNullOrWhiteSpace(Description) ? null : Description.Trim(),
+                Category = string.IsNullOrWhiteSpace(Category) ? null : Category.Trim(),
+                TeacherUid = SelectedTeacher.Uid,
+                StartDate = StartDate,
+                EndDate = EndDate,
+                Credits = Credits,
+                Status = SelectedStatus,
+                Prerequisites = string.IsNullOrWhiteSpace(Prerequisites) ? null : Prerequisites.Trim(),
+                LearningOutcomes = string.IsNullOrWhiteSpace(LearningOutcomes) ? null : LearningOutcomes.Trim(),
+                MaxEnrollments = MaxEnrollments,
+                CreatedAt = DateTime.UtcNow,
+                LastModifiedAt = DateTime.UtcNow
+            };
+
+            await _courseService.AddCourseAsync(newCourse);
+            LogInfo("Created course: {CourseName}", newCourse.Name);
+        }
+
+        private async Task DeleteAsync()
+        {
+            if (CurrentCourse == null) return;
+
+            try
+            {
+                IsSaving = true;
+                
+                // Здесь можно добавить диалог подтверждения
+                await _courseService.DeleteCourseAsync(CurrentCourse.Uid);
+                
+                ShowSuccess("Курс удален");
+                LogInfo("Deleted course: {CourseName}", CurrentCourse.Name);
+                
+                await _navigationService.NavigateToAsync("courses");
+            }
+            catch (Exception ex)
+            {
+                SetError($"Ошибка при удалении: {ex.Message}", ex);
+            }
+            finally
+            {
+                IsSaving = false;
+            }
+        }
+
+        private async Task CancelAsync()
+        {
+            await _navigationService.GoBackAsync();
+        }
+
+        private async Task CreateNewAsync()
+        {
+            SetupForCreation();
+            IsEditMode = false;
+            FormTitle = "Создание курса";
+            ClearError();
+        }
+
+        private async Task GenerateCodeAsync()
+        {
+            GenerateCode();
+            ShowInfo("Код курса сгенерирован");
+        }
+
+        /// <summary>
+        /// Получает текстовое представление статуса курса
+        /// </summary>
+        public string GetStatusText(CourseStatus status)
+        {
+            return status switch
+            {
+                CourseStatus.Draft => "Черновик",
+                CourseStatus.Published => "Опубликован",
+                CourseStatus.Active => "Активен",
+                CourseStatus.Completed => "Завершен",
+                CourseStatus.Archived => "В архиве",
+                _ => "Неизвестно"
+            };
+        }
+
+        /// <summary>
+        /// Проверяет, можно ли изменить статус курса
+        /// </summary>
+        public bool CanChangeStatus(CourseStatus newStatus)
+        {
+            return SelectedStatus switch
+            {
+                CourseStatus.Draft => newStatus == CourseStatus.Published,
+                CourseStatus.Published => newStatus == CourseStatus.Active || newStatus == CourseStatus.Draft,
+                CourseStatus.Active => newStatus == CourseStatus.Completed || newStatus == CourseStatus.Archived,
+                CourseStatus.Completed => newStatus == CourseStatus.Archived,
+                CourseStatus.Archived => false,
+                _ => false
+            };
         }
     }
 } 

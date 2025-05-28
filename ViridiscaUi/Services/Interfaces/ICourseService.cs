@@ -8,8 +8,9 @@ namespace ViridiscaUi.Services.Interfaces
 {
     /// <summary>
     /// Сервис для работы с курсами
+    /// Наследуется от IGenericCrudService для получения универсальных CRUD операций
     /// </summary>
-    public interface ICourseService
+    public interface ICourseService : IGenericCrudService<Course>
     {
         /// <summary>
         /// Получает курс по идентификатору

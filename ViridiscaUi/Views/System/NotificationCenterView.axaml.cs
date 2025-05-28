@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using Avalonia.ReactiveUI;
+using ReactiveUI;
 using ViridiscaUi.ViewModels.System;
 
 namespace ViridiscaUi.Views.System
@@ -13,6 +14,11 @@ namespace ViridiscaUi.Views.System
         public NotificationCenterView()
         {
             InitializeComponent();
+            
+            this.WhenActivated(disposables =>
+            {
+                // Здесь можно добавить дополнительную логику активации
+            });
         }
 
         private void InitializeComponent()

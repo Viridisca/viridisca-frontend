@@ -8,8 +8,9 @@ namespace ViridiscaUi.Services.Interfaces;
 
 /// <summary>
 /// Сервис для работы с преподавателями
+/// Наследуется от IGenericCrudService для получения универсальных CRUD операций
 /// </summary>
-public interface ITeacherService
+public interface ITeacherService : IGenericCrudService<Teacher>
 {
     /// <summary>
     /// Получает преподавателя по идентификатору

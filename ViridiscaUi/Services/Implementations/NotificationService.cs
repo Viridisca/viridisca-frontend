@@ -561,16 +561,27 @@ public class NotificationService(ApplicationDbContext dbContext) : INotification
         return await CreateNotificationAsync(recipientUid, title, message, type, priority, category, actionUrl);
     }
 
-    public async Task<bool> CancelScheduledNotificationAsync(Guid notificationUid) => true;
+    public async Task<bool> CancelScheduledNotificationAsync(Guid notificationUid) 
+    {
+        await Task.CompletedTask;
+        return true;
+    }
 
-    public async Task ProcessScheduledNotificationsAsync() { }
+    public async Task ProcessScheduledNotificationsAsync() 
+    {
+        await Task.CompletedTask;
+    }
 
     public async Task<Notification> CreateReminderAsync(
         Guid userUid, string title, string message, DateTime reminderTime, 
         TimeSpan? repeatInterval = null, Dictionary<string, object>? metadata = null) =>
         await CreateNotificationAsync(userUid, title, message, NotificationType.Reminder);
 
-    public async Task<IEnumerable<NotificationTemplate>> GetTemplatesAsync() => new List<NotificationTemplate>();
+    public async Task<IEnumerable<NotificationTemplate>> GetTemplatesAsync() 
+    {
+        await Task.CompletedTask;
+        return new List<NotificationTemplate>();
+    }
 
     public async Task<NotificationTemplate> CreateTemplateAsync(NotificationTemplate template) => template;
 
@@ -582,15 +593,22 @@ public class NotificationService(ApplicationDbContext dbContext) : INotification
         Guid templateUid, IEnumerable<Guid> recipientUids, Dictionary<string, object>? parameters = null) =>
         await SendBulkNotificationAsync(recipientUids, "Template", "Message");
 
-    public async Task<Interfaces.NotificationSettings> GetUserSettingsAsync(Guid userUid) =>
-        new Interfaces.NotificationSettings
+    public async Task<Interfaces.NotificationSettings> GetUserSettingsAsync(Guid userUid) 
+    {
+        await Task.CompletedTask;
+        return new Interfaces.NotificationSettings
         {
             EmailNotifications = true,
             PushNotifications = true,
             SmsNotifications = false
         };
+    }
 
-    public async Task<bool> UpdateUserSettingsAsync(Guid userUid, Interfaces.NotificationSettings settings) => true;
+    public async Task<bool> UpdateUserSettingsAsync(Guid userUid, Interfaces.NotificationSettings settings) 
+    {
+        await Task.CompletedTask;
+        return true;
+    }
 
     public async Task<Domain.Models.System.NotificationSettings> GetNotificationSettingsAsync(Guid userUid) =>
         new Domain.Models.System.NotificationSettings
@@ -619,4 +637,44 @@ public class NotificationService(ApplicationDbContext dbContext) : INotification
     public async Task<BulkNotificationResult> SendBulkNotificationAsync(
         IEnumerable<Guid> userUids, string title, string message, NotificationType type) =>
         await SendBulkNotificationAsync(userUids, title, message, type);
+
+    /// <summary>
+    /// Показывает уведомление об успехе
+    /// </summary>
+    public void ShowSuccess(string message)
+    {
+        // В реальном приложении здесь будет показ toast-уведомления
+        // Пока просто логируем
+        Console.WriteLine($"SUCCESS: {message}");
+    }
+
+    /// <summary>
+    /// Показывает уведомление об ошибке
+    /// </summary>
+    public void ShowError(string message)
+    {
+        // В реальном приложении здесь будет показ toast-уведомления
+        // Пока просто логируем
+        Console.WriteLine($"ERROR: {message}");
+    }
+
+    /// <summary>
+    /// Показывает информационное уведомление
+    /// </summary>
+    public void ShowInfo(string message)
+    {
+        // В реальном приложении здесь будет показ toast-уведомления
+        // Пока просто логируем
+        Console.WriteLine($"INFO: {message}");
+    }
+
+    /// <summary>
+    /// Показывает предупреждение
+    /// </summary>
+    public void ShowWarning(string message)
+    {
+        // В реальном приложении здесь будет показ toast-уведомления
+        // Пока просто логируем
+        Console.WriteLine($"WARNING: {message}");
+    }
 }

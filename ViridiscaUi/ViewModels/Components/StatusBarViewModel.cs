@@ -13,6 +13,7 @@ using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using ViridiscaUi.Services.Interfaces;
 using ViridiscaUi.Windows;
+using static ViridiscaUi.Services.Interfaces.StatusMessageType;
 
 namespace ViridiscaUi.ViewModels.Components;
 
@@ -39,6 +40,11 @@ public class StatusBarViewModel : ViewModelBase
     public ReactiveCommand<StatusMessage, Unit> CopyMessageCommand { get; private set; }
     public ReactiveCommand<Unit, Unit> CopyAllMessagesCommand { get; private set; }
     public ReactiveCommand<Unit, Unit> CloseHistoryCommand { get; private set; }
+    
+    // Новые команды для копирования по типу сообщений
+    public ReactiveCommand<Unit, Unit> CopyErrorMessagesCommand { get; private set; }
+    public ReactiveCommand<Unit, Unit> CopyWarningMessagesCommand { get; private set; }
+    public ReactiveCommand<Unit, Unit> CopyInfoMessagesCommand { get; private set; }
 
     public StatusBarViewModel(IStatusService statusService)
     {
@@ -70,6 +76,11 @@ public class StatusBarViewModel : ViewModelBase
 
         CopyMessageCommand = CreateCommand<StatusMessage>(CopyMessageAsync, null, "Ошибка копирования сообщения");
         CopyAllMessagesCommand = CreateCommand(CopyAllMessagesAsync, null, "Ошибка копирования всех сообщений");
+
+        // Новые команды для копирования по типу сообщений
+        CopyErrorMessagesCommand = CreateCommand(() => CopyMessagesOfTypeAsync(Error), null, "Ошибка копирования всех ошибок");
+        CopyWarningMessagesCommand = CreateCommand(() => CopyMessagesOfTypeAsync(Warning), null, "Ошибка копирования всех предупреждений");
+        CopyInfoMessagesCommand = CreateCommand(() => CopyMessagesOfTypeAsync(Info), null, "Ошибка копирования всех информационных сообщений");
     }
 
     /// <summary>
@@ -222,6 +233,28 @@ public class StatusBarViewModel : ViewModelBase
         catch (Exception ex)
         {
             _statusService?.ShowError($"Ошибка копирования всех сообщений: {ex.Message}", "StatusBar");
+        }
+    }
+
+    private async Task CopyMessagesOfTypeAsync(StatusMessageType type)
+    {
+        try
+        {
+            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            {
+                var topLevel = TopLevel.GetTopLevel(desktop.MainWindow);
+                if (topLevel?.Clipboard != null && Messages.Count > 0)
+                {
+                    var filteredMessages = Messages.Where(m => m.Type == type).Select(m => m.CopyableText);
+                    var allMessages = string.Join(Environment.NewLine, filteredMessages);
+                    await topLevel.Clipboard.SetTextAsync(allMessages);
+                    _statusService?.ShowSuccess($"Скопировано {filteredMessages.Count()} сообщений в буфер обмена", "StatusBar");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _statusService?.ShowError($"Ошибка копирования всех сообщений типа {type}: {ex.Message}", "StatusBar");
         }
     }
 } 

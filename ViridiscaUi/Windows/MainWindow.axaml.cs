@@ -4,39 +4,34 @@ using Avalonia.Markup.Xaml;
 using Avalonia.ReactiveUI;
 using ReactiveUI;
 using ViridiscaUi.ViewModels;
+using ViridiscaUi.Infrastructure;
+using System.Reactive.Disposables;
+using System.Reactive.Linq;
 
 namespace ViridiscaUi.Windows
 {
     public partial class MainWindow : ReactiveWindow<MainViewModel>
     {
+        private readonly CompositeDisposable _disposables = new();
+
         public MainWindow()
         {
-            InitializeComponent();
+            AvaloniaXamlLoader.Load(this);
             
             this.WhenActivated(disposables =>
             {
-                // Устанавливаем ViewLocator программно
-                if (MainRouterViewHost != null && ViewModel?.ViewLocator != null)
-                {
-                    MainRouterViewHost.ViewLocator = ViewModel.ViewLocator;
-                }
+                StatusLogger.LogInfo("Главное окно приложения инициализировано", "MainWindow");
+                // Route the DataContext to ViewModel upon activation
+                disposables.Add(this.WhenAnyValue(x => x.DataContext)
+                    .Subscribe(dataContext => ViewModel = dataContext as MainViewModel));
             });
         }
 
-        private void InitializeComponent()
+        protected override void OnClosed(EventArgs e)
         {
-            AvaloniaXamlLoader.Load(this);
-        }
-
-        protected override void OnDataContextChanged(EventArgs e)
-        {
-            base.OnDataContextChanged(e);
-            
-            // Устанавливаем ViewLocator при изменении DataContext
-            if (MainRouterViewHost != null && ViewModel?.ViewLocator != null)
-            {
-                MainRouterViewHost.ViewLocator = ViewModel.ViewLocator;
-            }
+            StatusLogger.LogInfo("Главное окно закрыто", "MainWindow");
+            _disposables?.Dispose();
+            base.OnClosed(e);
         }
     }
 } 

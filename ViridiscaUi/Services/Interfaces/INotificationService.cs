@@ -255,6 +255,26 @@ public interface INotificationService
     /// Уведомляет родителей об оценках студентов
     /// </summary>
     Task NotifyParentsAboutGradesAsync(IEnumerable<Grade> grades);
+
+    /// <summary>
+    /// Показывает уведомление об успехе
+    /// </summary>
+    void ShowSuccess(string message);
+
+    /// <summary>
+    /// Показывает уведомление об ошибке
+    /// </summary>
+    void ShowError(string message);
+
+    /// <summary>
+    /// Показывает информационное уведомление
+    /// </summary>
+    void ShowInfo(string message);
+
+    /// <summary>
+    /// Показывает предупреждение
+    /// </summary>
+    void ShowWarning(string message);
 }
 
 /// <summary>

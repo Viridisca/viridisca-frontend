@@ -5,426 +5,687 @@
              xmlns:vm="clr-namespace:ViridiscaUi.ViewModels.Education"
              xmlns:domain="clr-namespace:ViridiscaUi.Domain.Models.Education;assembly=ViridiscaUi.Domain"
              xmlns:local="clr-namespace:ViridiscaUi.Converters"
+             xmlns:material="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              mc:Ignorable="d" d:DesignWidth="1800" d:DesignHeight="1200"
              x:Class="ViridiscaUi.Views.Education.GradesView"
              x:DataType="vm:GradesViewModel">
 
     <UserControl.Resources>
         <local:EnumEqualityConverter x:Key="EnumEqualityConverter" />
-        <local:GradeColorConverter x:Key="GradeColorConverter" />
     </UserControl.Resources>
+        
+    <UserControl.Styles>
+        <!-- Modern Card Style -->
+        <Style Selector="Border.card">
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeMediumBrush}" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+            <Setter Property="BoxShadow" Value="0 2 8 0 #10000000" />
+        </Style>
+        
+        <!-- Action Button Style -->
+        <Style Selector="Button.action">
+            <Setter Property="Padding" Value="12,8" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        
+        <!-- Primary Action Button -->
+        <Style Selector="Button.primary">
+            <Setter Property="Background" Value="{DynamicResource SystemAccentColor}" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        
+        <!-- Secondary Action Button -->
+        <Style Selector="Button.secondary">
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseLowBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+        </Style>
+        
+        <!-- Danger Action Button -->
+        <Style Selector="Button.danger">
+            <Setter Property="Background" Value="#E74C3C" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        
+        <!-- Filter Panel Style -->
+        <Style Selector="StackPanel.filter-panel">
+            <Setter Property="Spacing" Value="8" />
+            <Setter Property="MinWidth" Value="120" />
+        </Style>
+        
+        <!-- Status Badge Style -->
+        <Style Selector="Border.status-badge">
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+        </Style>
+        
+        <!-- Grade Badge Style -->
+        <Style Selector="Border.grade-badge">
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="MinWidth" Value="60" />
+        </Style>
+    </UserControl.Styles>
 
     <Design.DataContext>
         <vm:GradesViewModel />
     </Design.DataContext>
 
-    <Grid RowDefinitions="Auto,*" ColumnDefinitions="3*,2*" Margin="16">
+    <Grid RowDefinitions="Auto,*,Auto" Margin="16">
         
-        <!-- Заголовок и панель управления -->
-        <Border Grid.Row="0" Grid.ColumnSpan="2" 
-                Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
-                CornerRadius="8" Padding="16" Margin="0,0,0,16">
+        <!-- Header Section with Actions -->
+        <Border Grid.Row="0" Classes="card" Padding="20" Margin="0,0,0,16">
             <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto">
                 
-                <!-- Заголовок -->
-                <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="12">
-                    <TextBlock Text="📊" FontSize="24" VerticalAlignment="Center"/>
+                <!-- Title and Statistics -->
+                <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="16">
+                    <material:MaterialIcon Kind="School" 
+                                               Width="28" Height="28" 
+                                               VerticalAlignment="Center"
+                                               Foreground="{DynamicResource SystemAccentColor}"/>
                     <TextBlock Text="Управление оценками" 
-                               FontSize="24" FontWeight="Bold" 
+                               FontSize="28" FontWeight="Bold" 
                                VerticalAlignment="Center"/>
-                    <Border Background="{DynamicResource SystemAccentColor}" 
-                            CornerRadius="12" Padding="8,4">
-                        <TextBlock Text="{Binding TotalGrades, StringFormat='{}{0} оценок'}" 
-                                   Foreground="White" FontSize="12" FontWeight="SemiBold"/>
-                    </Border>
-                    <Border Background="{DynamicResource SystemControlBackgroundAltMediumBrush}" 
-                            CornerRadius="12" Padding="8,4">
-                        <TextBlock Text="{Binding AverageGrade, StringFormat='Средний балл: {}{0:F2}'}" 
-                                   FontSize="12" FontWeight="SemiBold"/>
-                    </Border>
+                    
+                    <!-- Statistics Badges -->
+                    <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                        <Border Background="{DynamicResource SystemAccentColor}" 
+                                CornerRadius="16" Padding="12,6">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <material:MaterialIcon Kind="School" 
+                                                           Width="16" Height="16" 
+                                                           Foreground="White"/>
+                                <TextBlock Text="{Binding TotalGrades, StringFormat='{}{0} всего'}" 
+                                           Foreground="White" FontSize="13" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Background="#4CAF50" 
+                                CornerRadius="16" Padding="12,6">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <material:MaterialIcon Kind="CheckCircle" 
+                                                           Width="16" Height="16" 
+                                                           Foreground="White"/>
+                                <TextBlock Text="{Binding PassingGrades, StringFormat='{}{0} зачтено'}" 
+                                           Foreground="White" 
+                                           FontSize="13" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Background="#FF9800" 
+                                CornerRadius="16" Padding="12,6">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <material:MaterialIcon Kind="TrendingUp" 
+                                                           Width="16" Height="16" 
+                                                           Foreground="White"/>
+                                <TextBlock Text="{Binding AverageGrade, StringFormat='{}{0:F1} средний'}" 
+                                           Foreground="White" 
+                                           FontSize="13" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
                 </StackPanel>
 
-                <!-- Кнопки действий -->
+                <!-- Action Buttons -->
                 <StackPanel Grid.Row="0" Grid.Column="1" 
-                            Orientation="Horizontal" Spacing="8">
-                    <Button Content="➕ Добавить оценку" 
-                            Command="{Binding CreateGradeCommand}"
-                            Classes="accent" Padding="12,8"/>
-                    <Button Content="📝 Массовое оценивание" 
-                            Command="{Binding BulkGradingCommand}"
-                            Padding="12,8"/>
-                    <Button Content="📊 Экспорт отчета" 
-                            Command="{Binding ExportReportCommand}"
-                            Padding="12,8"/>
-                    <Button Content="🔄 Обновить" 
-                            Command="{Binding RefreshCommand}"
-                            Padding="12,8"/>
+                            Orientation="Horizontal" Spacing="12">
+                    <Button Command="{Binding AddGradeCommand}"
+                            Classes="action primary">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <material:MaterialIcon Kind="Plus" 
+                                                       Width="18" Height="18"/>
+                            <TextBlock Text="Добавить оценку"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding BulkGradeCommand}" 
+                            Classes="action secondary">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <material:MaterialIcon Kind="FormatListBulleted" 
+                                                       Width="18" Height="18"/>
+                            <TextBlock Text="Массовое оценивание"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding ExportGradesCommand}" 
+                            Classes="action secondary">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <material:MaterialIcon Kind="Export" 
+                                                       Width="18" Height="18"/>
+                            <TextBlock Text="Экспорт"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding RefreshCommand}" 
+                            Classes="action secondary">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <material:MaterialIcon Kind="Refresh" 
+                                                       Width="18" Height="18"/>
+                            <TextBlock Text="Обновить"/>
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
 
-                <!-- Поиск -->
-                <Grid Grid.Row="1" Grid.ColumnSpan="2" Margin="0,12,0,0">
-                    <TextBox Text="{Binding SearchText}" 
-                             Watermark="🔍 Поиск по студенту, курсу или заданию..."
-                             MinWidth="400"/>
+                <!-- Advanced Search -->
+                <Grid Grid.Row="1" Grid.ColumnSpan="2" Margin="0,20,0,0">
+                    <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                            CornerRadius="8" Padding="16">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBox Grid.Column="0"
+                                     Text="{Binding SearchText}" 
+                                     Watermark="Поиск по студенту, заданию, курсу или преподавателю..."
+                                     FontSize="14"
+                                     Padding="12,10">
+                                <TextBox.InnerLeftContent>
+                                    <material:MaterialIcon Kind="Magnify" 
+                                                               Width="20" Height="20" 
+                                                               Margin="12,0,8,0"
+                                                               Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                                </TextBox.InnerLeftContent>
+                                <TextBox.InnerRightContent>
+                                    <Button Command="{Binding ClearFiltersCommand}"
+                                            IsVisible="{Binding SearchText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Padding="8"
+                                            Margin="0,0,8,0">
+                                        <material:MaterialIcon Kind="Close" 
+                                                                   Width="16" Height="16"/>
+                                    </Button>
+                                </TextBox.InnerRightContent>
+                            </TextBox>
+                            
+                            <!-- Loading Indicator -->
+                            <ProgressBar Grid.Column="1"
+                                         IsIndeterminate="True"
+                                         IsVisible="{Binding IsLoading}"
+                                         Width="24" Height="24"
+                                         Margin="12,0"/>
+                        </Grid>
+                    </Border>
                 </Grid>
 
-                <!-- Фильтры -->
-                <Grid Grid.Row="2" Grid.ColumnSpan="2" Margin="0,12,0,0"
-                      ColumnDefinitions="Auto,*,Auto,*,Auto,*,Auto,*">
-                    
-                    <!-- Курс -->
-                    <TextBlock Grid.Column="0" Text="Курс:" 
-                               VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <ComboBox Grid.Column="1" 
-                              ItemsSource="{Binding Courses}"
-                              SelectedItem="{Binding SelectedCourseFilter}"
-                              MinWidth="200" Margin="0,0,16,0">
-                        <ComboBox.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding Name}"/>
-                            </DataTemplate>
-                        </ComboBox.ItemTemplate>
-                    </ComboBox>
-                    
-                    <!-- Группа -->
-                    <TextBlock Grid.Column="2" Text="Группа:" 
-                               VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <ComboBox Grid.Column="3" 
-                              ItemsSource="{Binding Groups}"
-                              SelectedItem="{Binding SelectedGroupFilter}"
-                              MinWidth="150" Margin="0,0,16,0">
-                        <ComboBox.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding Name}"/>
-                            </DataTemplate>
-                        </ComboBox.ItemTemplate>
-                    </ComboBox>
-                    
-                    <!-- Диапазон оценок -->
-                    <TextBlock Grid.Column="4" Text="Оценка:" 
-                               VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <ComboBox Grid.Column="5" SelectedItem="{Binding GradeRangeFilter}" 
-                              MinWidth="120" Margin="0,0,16,0">
-                        <ComboBoxItem Content="Все"/>
-                        <ComboBoxItem Content="5 (Отлично)"/>
-                        <ComboBoxItem Content="4 (Хорошо)"/>
-                        <ComboBoxItem Content="3 (Удовл.)"/>
-                        <ComboBoxItem Content="2 (Неудовл.)"/>
-                        <ComboBoxItem Content="Не оценено"/>
-                    </ComboBox>
-                    
-                    <!-- Период -->
-                    <TextBlock Grid.Column="6" Text="Период:" 
-                               VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <ComboBox Grid.Column="7" SelectedItem="{Binding PeriodFilter}" 
-                              MinWidth="120">
-                        <ComboBoxItem Content="Все время"/>
-                        <ComboBoxItem Content="Сегодня"/>
-                        <ComboBoxItem Content="Эта неделя"/>
-                        <ComboBoxItem Content="Этот месяц"/>
-                        <ComboBoxItem Content="Этот семестр"/>
-                    </ComboBox>
-                </Grid>
+                <!-- Advanced Filters -->
+                <ScrollViewer Grid.Row="2" Grid.ColumnSpan="2" 
+                              Margin="0,16,0,0"
+                              HorizontalScrollBarVisibility="Auto" 
+                              VerticalScrollBarVisibility="Disabled">
+                    <StackPanel Orientation="Horizontal" Spacing="20">
+                        
+                        <!-- Course Filter -->
+                        <StackPanel Classes="filter-panel">
+                            <TextBlock Text="Курс:" FontWeight="SemiBold" FontSize="13"/>
+                            <ComboBox SelectedItem="{Binding SelectedCourseFilter}" 
+                                      ItemsSource="{Binding Courses}"
+                                      DisplayMemberBinding="{Binding Name}"
+                                      PlaceholderText="Все курсы"
+                                      MinWidth="180">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <material:MaterialIcon Kind="BookOpenPageVariant" 
+                                                                       Width="16" Height="16"/>
+                                            <TextBlock Text="{Binding Name}"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </StackPanel>
+                        
+                        <!-- Assignment Filter -->
+                        <StackPanel Classes="filter-panel">
+                            <TextBlock Text="Задание:" FontWeight="SemiBold" FontSize="13"/>
+                            <ComboBox SelectedItem="{Binding SelectedAssignmentFilter}" 
+                                      ItemsSource="{Binding Assignments}"
+                                      DisplayMemberBinding="{Binding Title}"
+                                      PlaceholderText="Все задания"
+                                      MinWidth="180">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <material:MaterialIcon Kind="ClipboardText" 
+                                                                       Width="16" Height="16"/>
+                                            <TextBlock Text="{Binding Title}"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </StackPanel>
+                        
+                        <!-- Student Filter -->
+                        <StackPanel Classes="filter-panel">
+                            <TextBlock Text="Студент:" FontWeight="SemiBold" FontSize="13"/>
+                            <ComboBox SelectedItem="{Binding SelectedStudentFilter}" 
+                                      ItemsSource="{Binding Students}"
+                                      DisplayMemberBinding="{Binding FullName}"
+                                      PlaceholderText="Все студенты"
+                                      MinWidth="180">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <material:MaterialIcon Kind="Account" 
+                                                                       Width="16" Height="16"/>
+                                            <TextBlock Text="{Binding FullName}"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </StackPanel>
+                        
+                        <!-- Grade Range Filter -->
+                        <StackPanel Classes="filter-panel">
+                            <TextBlock Text="Диапазон оценок:" FontWeight="SemiBold" FontSize="13"/>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <NumericUpDown Value="{Binding MinGradeFilter}" 
+                                               Minimum="0" Maximum="100"
+                                               Watermark="От"
+                                               Width="80"/>
+                                <NumericUpDown Value="{Binding MaxGradeFilter}" 
+                                               Minimum="0" Maximum="100"
+                                               Watermark="До"
+                                               Width="80"/>
+                            </StackPanel>
+                        </StackPanel>
+                        
+                        <!-- Grade Status Filter -->
+                        <StackPanel Classes="filter-panel">
+                            <TextBlock Text="Статус:" FontWeight="SemiBold" FontSize="13"/>
+                            <ComboBox SelectedItem="{Binding GradeStatusFilter}" 
+                                      PlaceholderText="Все статусы"
+                                      MinWidth="150">
+                                <ComboBoxItem Content="Все"/>
+                                <ComboBoxItem Content="Зачтено"/>
+                                <ComboBoxItem Content="Не зачтено"/>
+                                <ComboBoxItem Content="Отлично"/>
+                                <ComboBoxItem Content="Хорошо"/>
+                                <ComboBoxItem Content="Удовлетворительно"/>
+                                <ComboBoxItem Content="Неудовлетворительно"/>
+                            </ComboBox>
+                        </StackPanel>
+                        
+                        <!-- Date Range Filter -->
+                        <StackPanel Classes="filter-panel">
+                            <TextBlock Text="Дата оценки:" FontWeight="SemiBold" FontSize="13"/>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <DatePicker SelectedDate="{Binding GradeDateFrom}" 
+                                            Width="120"/>
+                                <DatePicker SelectedDate="{Binding GradeDateTo}" 
+                                            Width="120"/>
+                            </StackPanel>
+                        </StackPanel>
+                        
+                        <!-- Page Size Filter -->
+                        <StackPanel Classes="filter-panel">
+                            <TextBlock Text="На странице:" FontWeight="SemiBold" FontSize="13"/>
+                            <ComboBox SelectedItem="{Binding PageSize}" MinWidth="100">
+                                <ComboBoxItem Content="10"/>
+                                <ComboBoxItem Content="15"/>
+                                <ComboBoxItem Content="25"/>
+                                <ComboBoxItem Content="50"/>
+                                <ComboBoxItem Content="100"/>
+                            </ComboBox>
+                        </StackPanel>
+                        
+                        <!-- Clear Filters Button -->
+                        <StackPanel Classes="filter-panel" VerticalAlignment="Bottom">
+                            <Button Command="{Binding ClearFiltersCommand}"
+                                    Classes="action secondary">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <material:MaterialIcon Kind="FilterRemove" 
+                                                               Width="16" Height="16"/>
+                                    <TextBlock Text="Очистить"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
             </Grid>
         </Border>
 
-        <!-- Список оценок -->
-        <Border Grid.Row="1" Grid.Column="0" 
-                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
-                CornerRadius="8" Padding="0" Margin="0,0,8,0">
-            <Grid RowDefinitions="*,Auto">
+        <!-- Main Content Area -->
+        <Border Grid.Row="1" Classes="card" Padding="0">
+            <Grid RowDefinitions="Auto,*">
                 
-                <!-- DataGrid с оценками -->
-                <DataGrid Grid.Row="0" ItemsSource="{Binding Grades}" 
-                          SelectedItem="{Binding SelectedGrade}"
-                          IsReadOnly="True" GridLinesVisibility="Horizontal"
-                          AutoGenerateColumns="False" CanUserReorderColumns="True"
-                          CanUserResizeColumns="True" CanUserSortColumns="True">
-                    
-                    <DataGrid.Columns>
-                        <!-- Студент -->
-                        <DataGridTextColumn Header="Студент" 
-                                            Binding="{Binding StudentName}" 
-                                            Width="200" FontWeight="SemiBold"/>
-                        
-                        <!-- Курс -->
-                        <DataGridTextColumn Header="Курс" 
-                                            Binding="{Binding CourseName}" 
-                                            Width="180"/>
-                        
-                        <!-- Задание -->
-                        <DataGridTextColumn Header="Задание" 
-                                            Binding="{Binding AssignmentTitle}" 
-                                            Width="200"/>
-                        
-                        <!-- Оценка -->
-                        <DataGridTemplateColumn Header="Оценка" 
-                                                Width="100">
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
-                                    <Border Background="{Binding Grade, Converter={StaticResource GradeColorConverter}}" 
-                                            CornerRadius="16" Padding="12,6"
-                                            HorizontalAlignment="Center">
-                                        <TextBlock Text="{Binding GradeDisplay}" 
-                                                   Foreground="White"
-                                                   FontWeight="Bold" FontSize="14"
-                                                   HorizontalAlignment="Center"/>
-                                    </Border>
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
-                        
-                        <!-- Максимальный балл -->
-                        <DataGridTextColumn Header="Макс. балл" 
-                                            Binding="{Binding MaxGrade}" 
-                                            Width="90"/>
-                        
-                        <!-- Процент -->
-                        <DataGridTemplateColumn Header="%" 
-                                                Width="80">
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
-                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                        <TextBlock Text="{Binding Percentage, StringFormat='{}{0:F0}%'}" 
-                                                   FontWeight="SemiBold"/>
-                                    </StackPanel>
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
-                        
-                        <!-- Дата оценивания -->
-                        <DataGridTextColumn Header="Дата оценки" 
-                                            Binding="{Binding GradedAt, StringFormat='{}{0:dd.MM.yyyy HH:mm}'}" 
-                                            Width="140"/>
-                        
-                        <!-- Преподаватель -->
-                        <DataGridTextColumn Header="Преподаватель" 
-                                            Binding="{Binding GradedByName}" 
-                                            Width="150"/>
-                        
-                        <!-- Действия -->
-                        <DataGridTemplateColumn Header="Действия" Width="200">
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate DataType="vm:GradeViewModel">
-                                    <StackPanel Orientation="Horizontal" Spacing="4">
-                                        <Button Content="👁" ToolTip.Tip="Просмотр деталей"
-                                                Command="{Binding $parent[DataGrid].DataContext.ViewGradeDetailsCommand}"
-                                                CommandParameter="{Binding}" Padding="8,4" FontSize="12"/>
-                                        <Button Content="✏️" ToolTip.Tip="Редактировать"
-                                                Command="{Binding $parent[DataGrid].DataContext.EditGradeCommand}"
-                                                CommandParameter="{Binding}" Padding="8,4" FontSize="12"/>
-                                        <Button Content="📝" ToolTip.Tip="Добавить комментарий"
-                                                Command="{Binding $parent[DataGrid].DataContext.AddCommentCommand}"
-                                                CommandParameter="{Binding}" Padding="8,4" FontSize="12"/>
-                                        <Button Content="🗑️" ToolTip.Tip="Удалить"
-                                                Command="{Binding $parent[DataGrid].DataContext.DeleteGradeCommand}"
-                                                CommandParameter="{Binding}" Padding="8,4" FontSize="12"
-                                                Classes="danger"/>
-                                    </StackPanel>
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
-                    </DataGrid.Columns>
-                </DataGrid>
-
-                <!-- Пагинация -->
-                <Border Grid.Row="1" Background="{DynamicResource SystemControlBackgroundAltHighBrush}" 
-                        Padding="16,8">
-                    <Grid ColumnDefinitions="Auto,*,Auto">
-                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
-                            <Button Content="⏮️" Command="{Binding GoToPageCommand}" CommandParameter="1"
-                                    IsEnabled="{Binding CanGoToPreviousPage}" Padding="8,4"/>
-                            <Button Content="⏪" Command="{Binding PreviousPageCommand}"
-                                    IsEnabled="{Binding CanGoToPreviousPage}" Padding="8,4"/>
-                        </StackPanel>
-                        
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" 
-                                    HorizontalAlignment="Center">
-                            <TextBlock Text="Страница" VerticalAlignment="Center"/>
-                            <TextBox Text="{Binding CurrentPage}" Width="60" 
-                                     HorizontalContentAlignment="Center"/>
-                            <TextBlock Text="{Binding TotalPages, StringFormat='из {0}'}" 
-                                       VerticalAlignment="Center"/>
-                        </StackPanel>
-                        
-                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
-                            <Button Content="⏩" Command="{Binding NextPageCommand}"
-                                    IsEnabled="{Binding CanGoToNextPage}" Padding="8,4"/>
-                            <Button Content="⏭️" Command="{Binding GoToPageCommand}" CommandParameter="{Binding TotalPages}"
-                                    IsEnabled="{Binding CanGoToNextPage}" Padding="8,4"/>
-                        </StackPanel>
-                    </Grid>
+                <!-- Bulk Actions Toolbar -->
+                <Border Grid.Row="0" 
+                        Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                        Padding="16,12"
+                        IsVisible="{Binding HasSelectedGrades}">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <TextBlock Text="{Binding SelectedGradesCount, StringFormat='Выбрано: {0}'}" 
+                                   VerticalAlignment="Center" FontWeight="SemiBold"/>
+                        <Button Command="{Binding BulkEditGradesCommand}" Classes="action secondary">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <material:MaterialIcon Kind="Pencil" 
+                                                           Width="16" Height="16"/>
+                                <TextBlock Text="Редактировать"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding BulkApproveCommand}" Classes="action primary">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <material:MaterialIcon Kind="CheckCircle" 
+                                                           Width="16" Height="16"/>
+                                <TextBlock Text="Утвердить"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding BulkRejectCommand}" Classes="action danger">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <material:MaterialIcon Kind="CloseCircle" 
+                                                           Width="16" Height="16"/>
+                                <TextBlock Text="Отклонить"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding BulkExportCommand}" Classes="action secondary">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <material:MaterialIcon Kind="Export" 
+                                                           Width="16" Height="16"/>
+                                <TextBlock Text="Экспорт"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
                 </Border>
+                
+                <!-- Enhanced DataGrid -->
+                <ScrollViewer Grid.Row="1" 
+                              HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Auto">
+                    <DataGrid ItemsSource="{Binding Grades}" 
+                              SelectedItem="{Binding SelectedGrade}"
+                              SelectionMode="Extended"
+                              IsReadOnly="False" 
+                              GridLinesVisibility="Horizontal"
+                              AutoGenerateColumns="False" 
+                              CanUserReorderColumns="True"
+                              CanUserResizeColumns="True" 
+                              CanUserSortColumns="True"
+                              HeadersVisibility="Column"
+                              MinWidth="1600">
+                        
+                        <DataGrid.Columns>
+                            <!-- Selection Checkbox -->
+                            <DataGridCheckBoxColumn Header="" Width="50" CanUserResize="False">
+                                <DataGridCheckBoxColumn.Binding>
+                                    <Binding Path="IsSelected" Mode="TwoWay"/>
+                                </DataGridCheckBoxColumn.Binding>
+                            </DataGridCheckBoxColumn>
+                            
+                            <!-- Student Info -->
+                            <DataGridTemplateColumn Header="Студент" Width="2*" MinWidth="200">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" Spacing="12" Margin="8">
+                                            <!-- Student Avatar -->
+                                            <Border Width="40" Height="40" 
+                                                    CornerRadius="20"
+                                                    Background="{DynamicResource SystemControlBackgroundAccentBrush}">
+                                                <TextBlock Text="{Binding StudentInitials}" 
+                                                           Foreground="{DynamicResource SystemAccentColorDark1}"
+                                                           FontWeight="Bold" FontSize="14"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"/>
+                                            </Border>
+                                            
+                                            <!-- Student Details -->
+                                            <StackPanel VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding StudentName}" 
+                                                           FontWeight="SemiBold" FontSize="14"/>
+                                                <TextBlock Text="{Binding StudentGroup}" 
+                                                           FontSize="12" 
+                                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            
+                            <!-- Assignment -->
+                            <DataGridTemplateColumn Header="Задание" Width="2*" MinWidth="200">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="8" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding AssignmentTitle}" 
+                                                       FontWeight="SemiBold" FontSize="13"/>
+                                            <TextBlock Text="{Binding CourseName}" 
+                                                       FontSize="11" 
+                                                       Foreground="{DynamicResource SystemAccentColor}"
+                                                       FontWeight="SemiBold"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            
+                            <!-- Grade -->
+                            <DataGridTemplateColumn Header="Оценка" Width="*" MinWidth="120">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border Classes="grade-badge">
+                                            <Border.Background>
+                                                <MultiBinding Converter="{StaticResource EnumEqualityConverter}">
+                                                    <Binding Path="Score"/>
+                                                    <Binding Source="80"/>
+                                                    <Binding Source="#4CAF50"/>
+                                                    <Binding Source="#FF9800"/>
+                                                </MultiBinding>
+                                            </Border.Background>
+                                            <StackPanel HorizontalAlignment="Center">
+                                                <TextBlock Text="{Binding Score}" 
+                                                           Foreground="White"
+                                                           FontWeight="Bold" FontSize="16"
+                                                           HorizontalAlignment="Center"/>
+                                                <TextBlock Text="{Binding MaxScore, StringFormat='из {0}'}" 
+                                                           Foreground="White"
+                                                           FontSize="10"
+                                                           HorizontalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            
+                            <!-- Percentage -->
+                            <DataGridTemplateColumn Header="Процент" Width="*" MinWidth="100">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border Classes="status-badge"
+                                                Background="{Binding PercentageColor}">
+                                            <TextBlock Text="{Binding Percentage, StringFormat='{}{0:F1}%'}" 
+                                                       Foreground="White"
+                                                       FontWeight="SemiBold" FontSize="12"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            
+                            <!-- Letter Grade -->
+                            <DataGridTemplateColumn Header="Буквенная" Width="*" MinWidth="100">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border Classes="status-badge"
+                                                Background="{Binding LetterGradeColor}">
+                                            <TextBlock Text="{Binding LetterGrade}" 
+                                                       Foreground="White"
+                                                       FontWeight="Bold" FontSize="14"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            
+                            <!-- Status -->
+                            <DataGridTemplateColumn Header="Статус" Width="*" MinWidth="120">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border Classes="status-badge"
+                                                Background="{Binding StatusColor}">
+                                            <TextBlock Text="{Binding StatusDisplayName}" 
+                                                       Foreground="White"
+                                                       FontWeight="SemiBold" FontSize="12"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            
+                            <!-- Graded Date -->
+                            <DataGridTemplateColumn Header="Дата оценки" Width="*" MinWidth="120">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding GradedAt, StringFormat='{}{0:dd.MM.yyyy}'}" 
+                                                       FontWeight="SemiBold" FontSize="13"/>
+                                            <TextBlock Text="{Binding GradedAt, StringFormat='{}{0:HH:mm}'}" 
+                                                       FontSize="11" 
+                                                       Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            
+                            <!-- Graded By -->
+                            <DataGridTemplateColumn Header="Оценил" Width="*" MinWidth="150">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="8">
+                                            <Border Width="32" Height="32" 
+                                                    CornerRadius="16"
+                                                    Background="{DynamicResource SystemControlBackgroundAccentBrush}">
+                                                <TextBlock Text="{Binding GradedByInitials}" 
+                                                           Foreground="{DynamicResource SystemAccentColorDark1}"
+                                                           FontWeight="Bold" FontSize="12"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"/>
+                                            </Border>
+                                            <TextBlock Text="{Binding GradedByName}" 
+                                                       FontWeight="SemiBold" FontSize="12"
+                                                       VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            
+                            <!-- Actions -->
+                            <DataGridTemplateColumn Header="Действия" Width="Auto" MinWidth="200">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="8">
+                                            <Button Command="{Binding $parent[DataGrid].((vm:GradesViewModel)DataContext).ViewGradeDetailsCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    Classes="action secondary"
+                                                    Padding="8,4">
+                                                <material:MaterialIcon Kind="Eye" 
+                                                                           Width="16" Height="16"/>
+                                            </Button>
+                                            <Button Command="{Binding $parent[DataGrid].((vm:GradesViewModel)DataContext).EditGradeCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    Classes="action secondary"
+                                                    Padding="8,4">
+                                                <material:MaterialIcon Kind="Pencil" 
+                                                                           Width="16" Height="16"/>
+                                            </Button>
+                                            <Button Command="{Binding $parent[DataGrid].((vm:GradesViewModel)DataContext).ViewSubmissionCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    Classes="action secondary"
+                                                    Padding="8,4">
+                                                <material:MaterialIcon Kind="FileDocument" 
+                                                                           Width="16" Height="16"/>
+                                            </Button>
+                                            <Button Command="{Binding $parent[DataGrid].((vm:GradesViewModel)DataContext).DeleteGradeCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    Classes="action danger"
+                                                    Padding="8,4">
+                                                <material:MaterialIcon Kind="Delete" 
+                                                                           Width="16" Height="16"/>
+                                            </Button>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </ScrollViewer>
             </Grid>
         </Border>
 
-        <!-- Панель деталей и статистики -->
-        <Border Grid.Row="1" Grid.Column="1" 
-                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
-                CornerRadius="8" Padding="16">
-            <ScrollViewer>
-                <StackPanel Spacing="16">
-                    
-                    <!-- Детали выбранной оценки -->
-                    <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}" 
-                            CornerRadius="8" Padding="12"
-                            IsVisible="{Binding HasSelectedGrade}">
-                        <StackPanel Spacing="8">
-                            <TextBlock Text="📋 Детали оценки" 
-                                       FontWeight="SemiBold" FontSize="16"/>
-                            
-                            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
-                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Студент:" FontWeight="SemiBold"/>
-                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding SelectedGrade.StudentName}"/>
-                                
-                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Курс:" FontWeight="SemiBold"/>
-                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedGrade.CourseName}"/>
-                                
-                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Задание:" FontWeight="SemiBold"/>
-                                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedGrade.AssignmentTitle}"/>
-                                
-                                <TextBlock Grid.Row="3" Grid.Column="0" Text="Оценка:" FontWeight="SemiBold"/>
-                                <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                                    <Border Background="{Binding SelectedGrade.Grade, Converter={StaticResource GradeColorConverter}}" 
-                                            CornerRadius="12" Padding="8,4">
-                                        <TextBlock Text="{Binding SelectedGrade.GradeDisplay}" 
-                                                   Foreground="White" FontWeight="Bold"/>
-                                    </Border>
-                                    <TextBlock Text="{Binding SelectedGrade.Percentage, StringFormat='{}{0:F0}%'}" 
-                                               VerticalAlignment="Center"/>
-                                </StackPanel>
-                                
-                                <TextBlock Grid.Row="4" Grid.Column="0" Text="Дата:" FontWeight="SemiBold"/>
-                                <TextBlock Grid.Row="4" Grid.Column="1" 
-                                           Text="{Binding SelectedGrade.GradedAt, StringFormat='{}{0:dd.MM.yyyy HH:mm}'}"/>
-                                
-                                <TextBlock Grid.Row="5" Grid.Column="0" Text="Преподаватель:" FontWeight="SemiBold"/>
-                                <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding SelectedGrade.GradedByName}"/>
-                            </Grid>
-                            
-                            <!-- Комментарий -->
-                            <Border Background="{DynamicResource SystemControlBackgroundAltMediumBrush}" 
-                                    CornerRadius="8" Padding="12" Margin="0,8,0,0"
-                                    IsVisible="{Binding SelectedGrade.Comment, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                                <StackPanel Spacing="4">
-                                    <TextBlock Text="💬 Комментарий:" FontWeight="SemiBold" FontSize="12"/>
-                                    <TextBlock Text="{Binding SelectedGrade.Comment}" 
-                                               TextWrapping="Wrap" FontStyle="Italic"/>
-                                </StackPanel>
-                            </Border>
-                        </StackPanel>
-                    </Border>
-                    
-                    <!-- Общая статистика -->
-                    <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}" 
-                            CornerRadius="8" Padding="12">
-                        <StackPanel Spacing="12">
-                            <TextBlock Text="📊 Общая статистика" 
-                                       FontWeight="SemiBold" FontSize="16"/>
-                            
-                            <!-- Распределение оценок -->
-                            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto">
-                                <Border Grid.Row="0" Grid.Column="0"
-                                        Background="#4CAF50" CornerRadius="8" Padding="12">
-                                    <StackPanel HorizontalAlignment="Center">
-                                        <TextBlock Text="{Binding ExcellentCount}" 
-                                                   FontSize="20" FontWeight="Bold" 
-                                                   Foreground="White" HorizontalAlignment="Center"/>
-                                        <TextBlock Text="Отлично (5)" FontSize="10" 
-                                                   Foreground="White" HorizontalAlignment="Center"/>
-                                    </StackPanel>
-                                </Border>
-                                
-                                <Border Grid.Row="0" Grid.Column="1" 
-                                        Background="#2196F3" CornerRadius="8" Padding="12">
-                                    <StackPanel HorizontalAlignment="Center">
-                                        <TextBlock Text="{Binding GoodCount}" 
-                                                   FontSize="20" FontWeight="Bold" 
-                                                   Foreground="White" HorizontalAlignment="Center"/>
-                                        <TextBlock Text="Хорошо (4)" FontSize="10" 
-                                                   Foreground="White" HorizontalAlignment="Center"/>
-                                    </StackPanel>
-                                </Border>
-                                
-                                <Border Grid.Row="1" Grid.Column="0" 
-                                        Background="#FF9800" CornerRadius="8" Padding="12">
-                                    <StackPanel HorizontalAlignment="Center">
-                                        <TextBlock Text="{Binding SatisfactoryCount}" 
-                                                   FontSize="20" FontWeight="Bold" 
-                                                   Foreground="White" HorizontalAlignment="Center"/>
-                                        <TextBlock Text="Удовл. (3)" FontSize="10" 
-                                                   Foreground="White" HorizontalAlignment="Center"/>
-                                    </StackPanel>
-                                </Border>
-                                
-                                <Border Grid.Row="1" Grid.Column="1" 
-                                        Background="#F44336" CornerRadius="8" Padding="12">
-                                    <StackPanel HorizontalAlignment="Center">
-                                        <TextBlock Text="{Binding UnsatisfactoryCount}" 
-                                                   FontSize="20" FontWeight="Bold" 
-                                                   Foreground="White" HorizontalAlignment="Center"/>
-                                        <TextBlock Text="Неудовл. (2)" FontSize="10" 
-                                                   Foreground="White" HorizontalAlignment="Center"/>
-                                    </StackPanel>
-                                </Border>
-                            </Grid>
-                            
-                            <!-- Средние показатели -->
-                            <StackPanel Spacing="8">
-                                <Grid ColumnDefinitions="*,Auto" Margin="0,4">
-                                    <TextBlock Grid.Column="0" Text="Средний балл:" FontWeight="SemiBold"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding AverageGrade, StringFormat='{}{0:F2}'}" 
-                                               FontWeight="Bold" FontSize="16"/>
-                                </Grid>
-                                <Grid ColumnDefinitions="*,Auto" Margin="0,4">
-                                    <TextBlock Grid.Column="0" Text="Успеваемость:" FontWeight="SemiBold"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding SuccessRate, StringFormat='{}{0:F1}%'}" 
-                                               FontWeight="Bold" FontSize="16"/>
-                                </Grid>
-                                <Grid ColumnDefinitions="*,Auto" Margin="0,4">
-                                    <TextBlock Grid.Column="0" Text="Качество знаний:" FontWeight="SemiBold"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding QualityRate, StringFormat='{}{0:F1}%'}" 
-                                               FontWeight="Bold" FontSize="16"/>
-                                </Grid>
-                            </StackPanel>
-                        </StackPanel>
-                    </Border>
-                    
-                    <!-- Быстрые действия -->
-                    <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}" 
-                            CornerRadius="8" Padding="12">
-                        <StackPanel Spacing="8">
-                            <TextBlock Text="⚡ Быстрые действия" 
-                                       FontWeight="SemiBold" FontSize="14"/>
-                            <StackPanel Spacing="4">
-                                <Button Content="📝 Массовое оценивание" 
-                                        Command="{Binding BulkGradingCommand}"
-                                        HorizontalAlignment="Stretch"/>
-                                <Button Content="📊 Экспорт в Excel" 
-                                        Command="{Binding ExportToExcelCommand}"
-                                        HorizontalAlignment="Stretch"/>
-                                <Button Content="📈 Аналитический отчет" 
-                                        Command="{Binding GenerateAnalyticsReportCommand}"
-                                        HorizontalAlignment="Stretch"/>
-                                <Button Content="🔔 Уведомить родителей" 
-                                        Command="{Binding NotifyParentsCommand}"
-                                        HorizontalAlignment="Stretch"/>
-                            </StackPanel>
+        <!-- Pagination and Status Bar -->
+        <Border Grid.Row="2" Classes="card" Padding="16" Margin="0,16,0,0">
+            <Grid ColumnDefinitions="*,Auto,*">
+                
+                <!-- Status Information -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding PaginationInfo}" 
+                               FontSize="14" 
+                               Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                    <Border Background="{DynamicResource SystemControlBackgroundAccentBrush}" 
+                            CornerRadius="12" Padding="8,4"
+                            IsVisible="{Binding IsLoading}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <ProgressBar IsIndeterminate="True" Width="16" Height="16"/>
+                            <TextBlock Text="Загрузка..." FontSize="12" FontWeight="SemiBold"/>
                         </StackPanel>
                     </Border>
                 </StackPanel>
-            </ScrollViewer>
-        </Border>
-
-        <!-- Индикатор загрузки -->
-        <Border Grid.Row="0" Grid.RowSpan="2" Grid.ColumnSpan="2"
-                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
-                Opacity="0.8" IsVisible="{Binding IsLoading}">
-            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="16">
-                <ProgressBar IsIndeterminate="True" Width="200"/>
-                <TextBlock Text="Загрузка оценок..." 
-                           HorizontalAlignment="Center" FontSize="14"/>
-            </StackPanel>
+                
+                <!-- Pagination Controls -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
+                            IsVisible="{Binding HasPages}">
+                    <Button Command="{Binding FirstPageCommand}" 
+                            Classes="action secondary"
+                            IsEnabled="{Binding CanGoToFirstPage}">
+                        <material:MaterialIcon Kind="ChevronDoubleLeft" 
+                                                   Width="16" Height="16"/>
+                    </Button>
+                    <Button Command="{Binding PreviousPageCommand}" 
+                            Classes="action secondary"
+                            IsEnabled="{Binding CanGoToPreviousPage}">
+                        <material:MaterialIcon Kind="ChevronLeft" 
+                                                   Width="16" Height="16"/>
+                    </Button>
+                    
+                    <!-- Page Numbers -->
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="Страница" VerticalAlignment="Center" Margin="8,0"/>
+                        <NumericUpDown Value="{Binding CurrentPage}" 
+                                       Minimum="1" 
+                                       Maximum="{Binding TotalPages}"
+                                       Width="80"
+                                       ShowButtonSpinner="False"/>
+                        <TextBlock Text="{Binding TotalPages, StringFormat='из {0}'}" 
+                                   VerticalAlignment="Center" Margin="8,0"/>
+                    </StackPanel>
+                    
+                    <Button Command="{Binding NextPageCommand}" 
+                            Classes="action secondary"
+                            IsEnabled="{Binding CanGoToNextPage}">
+                        <material:MaterialIcon Kind="ChevronRight" 
+                                                   Width="16" Height="16"/>
+                    </Button>
+                    <Button Command="{Binding LastPageCommand}" 
+                            Classes="action secondary"
+                            IsEnabled="{Binding CanGoToLastPage}">
+                        <material:MaterialIcon Kind="ChevronDoubleRight" 
+                                                   Width="16" Height="16"/>
+                    </Button>
+                </StackPanel>
+                
+                <!-- Quick Actions -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" 
+                            HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Button Command="{Binding SelectAllCommand}" Classes="action secondary">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <material:MaterialIcon Kind="SelectAll" 
+                                                       Width="16" Height="16"/>
+                            <TextBlock Text="Выбрать все"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding DeselectAllCommand}" Classes="action secondary">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <material:MaterialIcon Kind="SelectOff" 
+                                                       Width="16" Height="16"/>
+                            <TextBlock Text="Снять выделение"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
         </Border>
     </Grid>
 </UserControl> 

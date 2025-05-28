@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using ReactiveUI;
 using ViridiscaUi.Domain.Models.Base;
 
@@ -20,6 +18,10 @@ public class Course : ViewModelBase
     private DateTime? _endDate;
     private int _credits;
     private CourseStatus _status = CourseStatus.Draft;
+    private string _prerequisites = string.Empty;
+    private string _learningOutcomes = string.Empty;
+    private int _maxEnrollments = 100;
+    private Guid? _subjectUid;
 
     /// <summary>
     /// Название курса
@@ -121,6 +123,42 @@ public class Course : ViewModelBase
     }
 
     /// <summary>
+    /// Предварительные требования для курса
+    /// </summary>
+    public string Prerequisites
+    {
+        get => _prerequisites;
+        set => this.RaiseAndSetIfChanged(ref _prerequisites, value);
+    }
+
+    /// <summary>
+    /// Ожидаемые результаты обучения
+    /// </summary>
+    public string LearningOutcomes
+    {
+        get => _learningOutcomes;
+        set => this.RaiseAndSetIfChanged(ref _learningOutcomes, value);
+    }
+
+    /// <summary>
+    /// Максимальное количество записей на курс
+    /// </summary>
+    public int MaxEnrollments
+    {
+        get => _maxEnrollments;
+        set => this.RaiseAndSetIfChanged(ref _maxEnrollments, value);
+    }
+
+    /// <summary>
+    /// Идентификатор предмета
+    /// </summary>
+    public Guid? SubjectUid
+    {
+        get => _subjectUid;
+        set => this.RaiseAndSetIfChanged(ref _subjectUid, value);
+    }
+
+    /// <summary>
     /// Модули курса
     /// </summary>
     public ICollection<Module> Modules { get; set; } = new List<Module>();
@@ -176,6 +214,11 @@ public enum CourseStatus
     Published,
     
     /// <summary>
+    /// Завершенный
+    /// </summary>
+    Completed,
+    
+    /// <summary>
     /// Архивированный
     /// </summary>
     Archived,
@@ -184,4 +227,30 @@ public enum CourseStatus
     /// Приостановленный
     /// </summary>
     Suspended
+}
+
+/// <summary>
+/// Уровень сложности курса
+/// </summary>
+public enum CourseDifficulty
+{
+    /// <summary>
+    /// Начальный уровень
+    /// </summary>
+    Beginner,
+    
+    /// <summary>
+    /// Средний уровень
+    /// </summary>
+    Intermediate,
+    
+    /// <summary>
+    /// Продвинутый уровень
+    /// </summary>
+    Advanced,
+    
+    /// <summary>
+    /// Экспертный уровень
+    /// </summary>
+    Expert
 } 

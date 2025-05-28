@@ -61,6 +61,18 @@ public interface IDialogService
     Task<TResult?> ShowDialogAsync<TResult>(ViewModelBase viewModel);
     Task<Student?> ShowStudentEditorDialogAsync(Student? student = null);
     
+    // Диалоги для студентов
+    Task<Student?> ShowStudentEditDialogAsync(Student student);
+    Task ShowStudentDetailsDialogAsync(Student student);
+    
+    // Диалоги для департаментов
+    Task<Department?> ShowDepartmentEditDialogAsync(Department department);
+    Task ShowDepartmentDetailsDialogAsync(Department department);
+    
+    // Диалоги для предметов
+    Task<Subject?> ShowSubjectEditDialogAsync(Subject subject);
+    Task ShowSubjectDetailsDialogAsync(Subject subject);
+    
     // Диалоги для групп
     Task<Group?> ShowGroupEditDialogAsync(Group group);
     Task<Teacher?> ShowTeacherSelectionDialogAsync(IEnumerable<Teacher> teachers);

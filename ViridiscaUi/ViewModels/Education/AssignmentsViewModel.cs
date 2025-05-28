@@ -15,6 +15,7 @@ using ViridiscaUi.Infrastructure;
 using ViridiscaUi.Infrastructure.Navigation;
 using static ViridiscaUi.Services.Interfaces.IAssignmentService;
 using ViridiscaUi.Domain.Models.System;
+using ViridiscaUi.ViewModels.Bases.Navigations;
 
 namespace ViridiscaUi.ViewModels.Education
 {
@@ -22,7 +23,13 @@ namespace ViridiscaUi.ViewModels.Education
     /// ViewModel для управления заданиями
     /// Следует принципам SOLID и чистой архитектуры
     /// </summary>
-    [Route("assignments", DisplayName = "Задания", IconKey = "📝", Order = 6, Group = "Education")]
+    [Route("assignments", 
+        DisplayName = "Задания", 
+        IconKey = "ClipboardText", 
+        Order = 6,
+        Group = "Образование",
+        ShowInMenu = true,
+        Description = "Управление заданиями и домашними работами")]
     public class AssignmentsViewModel : RoutableViewModelBase
     {
         private readonly IAssignmentService _assignmentService;
@@ -86,6 +93,8 @@ namespace ViridiscaUi.ViewModels.Education
         public ReactiveCommand<int, Unit> GoToPageCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> NextPageCommand { get; private set; } = null!;
         public ReactiveCommand<Unit, Unit> PreviousPageCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> FirstPageCommand { get; private set; } = null!;
+        public ReactiveCommand<Unit, Unit> LastPageCommand { get; private set; } = null!;
 
         public AssignmentsViewModel(
             IScreen hostScreen,
@@ -133,42 +142,80 @@ namespace ViridiscaUi.ViewModels.Education
             
             NextPageCommand = CreateCommand(NextPageAsync, canGoNext, "Ошибка перехода на следующую страницу");
             PreviousPageCommand = CreateCommand(PreviousPageAsync, canGoPrevious, "Ошибка перехода на предыдущую страницу");
+
+            var canGoFirst = this.WhenAnyValue(x => x.CurrentPage, current => current > 1);
+            var canGoLast = this.WhenAnyValue(x => x.CurrentPage, x => x.TotalPages, (current, total) => current < total);
+            
+            FirstPageCommand = CreateCommand(FirstPageAsync, canGoFirst, "Ошибка перехода на первую страницу");
+            LastPageCommand = CreateCommand(LastPageAsync, canGoLast, "Ошибка перехода на последнюю страницу");
         }
 
         private void SetupSubscriptions()
         {
-            // Автопоиск при изменении текста поиска
+            // Автопоиск при изменении текста поиска - исправляем вложенную подписку
             this.WhenAnyValue(x => x.SearchText)
                 .Throttle(TimeSpan.FromMilliseconds(500))
                 .ObserveOn(RxApp.MainThreadScheduler)
+                .Select(searchText => searchText?.Trim() ?? string.Empty)
+                .DistinctUntilChanged()
+                .Catch<string, Exception>(ex =>
+                {
+                    LogError(ex, "Ошибка поиска заданий");
+                    return Observable.Empty<string>();
+                })
                 .InvokeCommand(SearchCommand)
                 .DisposeWith(Disposables);
 
-            // Загрузка статистики при выборе задания
+            // Загрузка статистики при выборе задания - добавляем обработку ошибок
             this.WhenAnyValue(x => x.SelectedAssignment)
                 .Where(assignment => assignment != null)
                 .Select(assignment => assignment!)
+                .Catch<AssignmentViewModel, Exception>(ex =>
+                {
+                    LogError(ex, "Ошибка при выборе задания");
+                    return Observable.Empty<AssignmentViewModel>();
+                })
                 .InvokeCommand(LoadAssignmentStatisticsCommand)
                 .DisposeWith(Disposables);
 
-            // Применение фильтров при изменении
+            // Применение фильтров при изменении - добавляем обработку ошибок
             this.WhenAnyValue(x => x.StatusFilter, x => x.SelectedCourseFilter, x => x.SelectedTeacherFilter, x => x.DueDateFrom, x => x.DueDateTo)
                 .Throttle(TimeSpan.FromMilliseconds(300))
                 .ObserveOn(RxApp.MainThreadScheduler)
                 .Select(_ => Unit.Default)
+                .Catch<Unit, Exception>(ex =>
+                {
+                    LogError(ex, "Ошибка применения фильтров");
+                    return Observable.Empty<Unit>();
+                })
                 .InvokeCommand(ApplyFiltersCommand)
                 .DisposeWith(Disposables);
 
-            // Уведомления об изменении computed properties
+            // Уведомления об изменении computed properties - добавляем обработку ошибок
             this.WhenAnyValue(x => x.SelectedAssignment)
+                .Catch<AssignmentViewModel?, Exception>(ex =>
+                {
+                    LogError(ex, "Ошибка обновления HasSelectedAssignment");
+                    return Observable.Return<AssignmentViewModel?>(null);
+                })
                 .Subscribe(_ => this.RaisePropertyChanged(nameof(HasSelectedAssignment)))
                 .DisposeWith(Disposables);
                 
             this.WhenAnyValue(x => x.SelectedAssignmentStatistics)
+                .Catch<AssignmentStatistics?, Exception>(ex =>
+                {
+                    LogError(ex, "Ошибка обновления HasSelectedAssignmentStatistics");
+                    return Observable.Return<AssignmentStatistics?>(null);
+                })
                 .Subscribe(_ => this.RaisePropertyChanged(nameof(HasSelectedAssignmentStatistics)))
                 .DisposeWith(Disposables);
                 
             this.WhenAnyValue(x => x.Analytics)
+                .Catch<AssignmentAnalytics?, Exception>(ex =>
+                {
+                    LogError(ex, "Ошибка обновления HasAnalytics");
+                    return Observable.Return<AssignmentAnalytics?>(null);
+                })
                 .Subscribe(_ => this.RaisePropertyChanged(nameof(HasAnalytics)))
                 .DisposeWith(Disposables);
         }
@@ -192,17 +239,14 @@ namespace ViridiscaUi.ViewModels.Education
 
         private async Task LoadAssignmentsAsync()
         {
-            LogInfo("Loading assignments with filters: SearchText={SearchText}, Status={StatusFilter}, Course={CourseFilter}", 
-                SearchText, StatusFilter, SelectedCourseFilter?.Name);
+            LogInfo("Loading assignments with filters: SearchText={SearchText}, StatusFilter={StatusFilter}", SearchText, StatusFilter);
             
             IsLoading = true;
             ShowInfo("Загрузка заданий...");
 
-            var courseFilter = SelectedCourseFilter?.Uid;
-            var teacherFilter = SelectedTeacherFilter?.Uid;
-            
-            var (assignments, totalCount) = await _assignmentService.GetAssignmentsPagedAsync(
-                CurrentPage, PageSize, SearchText, StatusFilter, courseFilter, teacherFilter, DueDateFrom, DueDateTo);
+            // Используем новый универсальный метод пагинации
+            var (assignments, totalCount) = await _assignmentService.GetPagedAsync(
+                CurrentPage, PageSize, SearchText);
             
             Assignments.Clear();
             foreach (var assignment in assignments)
@@ -221,8 +265,9 @@ namespace ViridiscaUi.ViewModels.Education
         {
             LogInfo("Loading courses and teachers for filters");
             
-            var courses = await _courseService.GetAllCoursesAsync();
-            var teachers = await _teacherService.GetAllTeachersAsync();
+            // Используем новые универсальные методы получения данных
+            var courses = await _courseService.GetAllAsync();
+            var teachers = await _teacherService.GetAllAsync();
 
             Courses.Clear();
             Teachers.Clear();
@@ -263,9 +308,9 @@ namespace ViridiscaUi.ViewModels.Education
                 DueDate = DateTime.Today.AddDays(7),
                 MaxScore = 100,
                 Type = AssignmentType.Homework,
-                Difficulty = AssignmentDifficulty.Medium,
                 Status = AssignmentStatus.Draft,
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTime.UtcNow,
+                LastModifiedAt = DateTime.UtcNow
             };
 
             var dialogResult = await _dialogService.ShowAssignmentEditDialogAsync(newAssignment);
@@ -275,19 +320,20 @@ namespace ViridiscaUi.ViewModels.Education
                 return;
             }
 
-            await _assignmentService.AddAssignmentAsync(dialogResult);
-            Assignments.Add(new AssignmentViewModel(dialogResult));
+            // Используем новый универсальный метод создания
+            var createdAssignment = await _assignmentService.CreateAsync(dialogResult);
+            Assignments.Add(new AssignmentViewModel(createdAssignment));
 
-            ShowSuccess($"Задание '{dialogResult.Title}' создано");
-            LogInfo("Assignment created successfully: {AssignmentTitle}", dialogResult.Title);
+            ShowSuccess($"Задание '{createdAssignment.Title}' создано");
+            LogInfo("Assignment created successfully: {AssignmentTitle}", createdAssignment.Title);
             
             // Уведомление о создании нового задания
-            if (dialogResult.CourseUid != Guid.Empty)
+            if (createdAssignment.CourseUid != Guid.Empty)
             {
                 await _notificationService.CreateNotificationAsync(
                     Guid.NewGuid(), // Заглушка для recipientUid
                     "Новое задание",
-                    $"Добавлено новое задание: {dialogResult.Title}",
+                    $"Добавлено новое задание: {createdAssignment.Title}",
                     Domain.Models.System.NotificationType.Info
                 );
             }
@@ -297,7 +343,8 @@ namespace ViridiscaUi.ViewModels.Education
         {
             LogInfo("Editing assignment: {AssignmentId}", assignmentViewModel.Uid);
             
-            var assignment = await _assignmentService.GetAssignmentAsync(assignmentViewModel.Uid);
+            // Используем новый универсальный метод получения
+            var assignment = await _assignmentService.GetByUidAsync(assignmentViewModel.Uid);
             if (assignment == null)
             {
                 ShowError("Задание не найдено");
@@ -311,7 +358,8 @@ namespace ViridiscaUi.ViewModels.Education
                 return;
             }
 
-            var success = await _assignmentService.UpdateAssignmentAsync(dialogResult);
+            // Используем новый универсальный метод обновления
+            var success = await _assignmentService.UpdateAsync(dialogResult);
             if (success)
             {
                 var index = Assignments.IndexOf(assignmentViewModel);
@@ -344,16 +392,7 @@ namespace ViridiscaUi.ViewModels.Education
         {
             LogInfo("Deleting assignment: {AssignmentId}", assignmentViewModel.Uid);
             
-            // Проверяем, есть ли сдачи по этому заданию
-            var submissions = await _assignmentService.GetSubmissionsByAssignmentAsync(assignmentViewModel.Uid);
-            var hasSubmissions = submissions.Any();
-            
             string warningMessage = $"Вы уверены, что хотите удалить задание '{assignmentViewModel.Title}'?";
-            
-            if (hasSubmissions)
-            {
-                warningMessage += $"\n\nВНИМАНИЕ: У задания есть {submissions.Count()} сдач, которые будут удалены!";
-            }
 
             var confirmResult = await _dialogService.ShowConfirmationAsync(
                 "Удаление задания", warningMessage);
@@ -364,7 +403,8 @@ namespace ViridiscaUi.ViewModels.Education
                 return;
             }
 
-            var success = await _assignmentService.DeleteAssignmentAsync(assignmentViewModel.Uid);
+            // Используем новый универсальный метод удаления
+            var success = await _assignmentService.DeleteAsync(assignmentViewModel.Uid);
             if (success)
             {
                 Assignments.Remove(assignmentViewModel);
@@ -606,83 +646,21 @@ namespace ViridiscaUi.ViewModels.Education
                 await GoToPageAsync(CurrentPage - 1);
             }
         }
-    }
 
-    /// <summary>
-    /// ViewModel для отображения задания в списке
-    /// </summary>
-    public class AssignmentViewModel : ReactiveObject
-    {
-        public Guid Uid { get; }
-        [Reactive] public string Title { get; set; } = string.Empty;
-        [Reactive] public string? Description { get; set; }
-        [Reactive] public string? Instructions { get; set; }
-        [Reactive] public DateTime DueDate { get; set; } = DateTime.MinValue;
-        [Reactive] public double MaxScore { get; set; }
-        [Reactive] public string Type { get; set; } = string.Empty;
-        [Reactive] public string Difficulty { get; set; } = string.Empty;
-        [Reactive] public AssignmentStatus Status { get; set; }
-        [Reactive] public string? CourseName { get; set; }
-        [Reactive] public string? TeacherName { get; set; }
-        [Reactive] public int SubmissionsCount { get; set; }
-        [Reactive] public int GradedCount { get; set; }
-        [Reactive] public DateTime CreatedAt { get; set; }
-        [Reactive] public DateTime LastModifiedAt { get; set; }
-
-        // Computed properties
-        public string StatusText => Status switch
+        private async Task FirstPageAsync()
         {
-            AssignmentStatus.Draft => "📝 Черновик",
-            AssignmentStatus.Published => "✅ Опубликовано",
-            AssignmentStatus.Closed => "🔒 Закрыто",
-            AssignmentStatus.Archived => "📦 Архивировано",
-            _ => Status.ToString()
-        };
-
-        public string DueDateText => DueDate.ToString("dd.MM.yyyy HH:mm");
-        
-        public bool IsOverdue => DateTime.Now > DueDate && Status == AssignmentStatus.Published;
-        
-        public string OverdueText => IsOverdue ? "⚠️ Просрочено" : "";
-
-        public string ProgressText => SubmissionsCount > 0 ? $"{GradedCount}/{SubmissionsCount}" : "0/0";
-
-        public AssignmentViewModel(Assignment assignment)
-        {
-            Uid = assignment.Uid;
-            Title = assignment.Title;
-            Description = assignment.Description;
-            Instructions = assignment.Instructions;
-            DueDate = assignment.DueDate ?? DateTime.MinValue;
-            MaxScore = assignment.MaxScore;
-            Type = assignment.Type.ToString();
-            Difficulty = assignment.Difficulty.ToString();
-            Status = assignment.Status;
-            CourseName = assignment.Course?.Name;
-            TeacherName = assignment.Course?.Teacher != null ? 
-                $"{assignment.Course.Teacher.FirstName} {assignment.Course.Teacher.LastName}" : null;
-            SubmissionsCount = assignment.Submissions?.Count ?? 0;
-            GradedCount = assignment.Submissions?.Count(s => s.Score.HasValue) ?? 0;
-            CreatedAt = assignment.CreatedAt;
-            LastModifiedAt = assignment.LastModifiedAt ?? DateTime.UtcNow;
+            if (CurrentPage > 1)
+            {
+                await GoToPageAsync(1);
+            }
         }
 
-        public Assignment ToAssignment()
+        private async Task LastPageAsync()
         {
-            return new Assignment
+            if (CurrentPage < TotalPages)
             {
-                Uid = Uid,
-                Title = Title,
-                Description = Description,
-                Instructions = Instructions,
-                DueDate = DueDate,
-                MaxScore = MaxScore,
-                Type = Enum.TryParse<AssignmentType>(Type, out var type) ? type : AssignmentType.Homework,
-                Difficulty = Enum.TryParse<AssignmentDifficulty>(Difficulty, out var difficulty) ? difficulty : AssignmentDifficulty.Medium,
-                Status = Status,
-                CreatedAt = CreatedAt,
-                LastModifiedAt = LastModifiedAt
-            };
+                await GoToPageAsync(TotalPages);
+            }
         }
     }
 } 

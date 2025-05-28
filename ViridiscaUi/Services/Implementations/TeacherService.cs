@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using ViridiscaUi.Domain.Models.Education;
 using ViridiscaUi.Domain.Models.Auth;
 using ViridiscaUi.Services.Interfaces;
@@ -13,43 +14,126 @@ namespace ViridiscaUi.Services.Implementations;
 
 /// <summary>
 /// Реализация сервиса для работы с преподавателями
+/// Наследуется от GenericCrudService для получения универсальных CRUD операций
 /// </summary>
-public class TeacherService(ApplicationDbContext dbContext) : ITeacherService
+public class TeacherService : GenericCrudService<Teacher>, ITeacherService
 {
-    private readonly ApplicationDbContext _dbContext = dbContext;
+    public TeacherService(ApplicationDbContext dbContext, ILogger<TeacherService> logger)
+        : base(dbContext, logger)
+    {
+    }
+
+    #region Переопределение базовых методов для специфичной логики
+
+    /// <summary>
+    /// Применяет специфичный для преподавателей поиск
+    /// </summary>
+    protected override IQueryable<Teacher> ApplySearchFilter(IQueryable<Teacher> query, string searchTerm)
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+            return query;
+
+        var lowerSearchTerm = searchTerm.ToLower();
+
+        return query.Where(t => 
+            t.FirstName.ToLower().Contains(lowerSearchTerm) ||
+            t.LastName.ToLower().Contains(lowerSearchTerm) ||
+            t.MiddleName.ToLower().Contains(lowerSearchTerm) ||
+            t.Email.ToLower().Contains(lowerSearchTerm) ||
+            t.PhoneNumber.Contains(searchTerm) ||
+            t.Specialization.ToLower().Contains(lowerSearchTerm) ||
+            t.Department.ToLower().Contains(lowerSearchTerm) ||
+            (t.User != null && (
+                t.User.FirstName.ToLower().Contains(lowerSearchTerm) ||
+                t.User.LastName.ToLower().Contains(lowerSearchTerm) ||
+                t.User.Email.ToLower().Contains(lowerSearchTerm)
+            ))
+        );
+    }
+
+    /// <summary>
+    /// Валидирует специфичные для преподавателя правила
+    /// </summary>
+    protected override async Task ValidateEntitySpecificRulesAsync(Teacher entity, List<string> errors, List<string> warnings, bool isCreate)
+    {
+        // Проверка обязательных полей
+        if (string.IsNullOrWhiteSpace(entity.FirstName))
+            errors.Add("Имя преподавателя обязательно для заполнения");
+
+        if (string.IsNullOrWhiteSpace(entity.LastName))
+            errors.Add("Фамилия преподавателя обязательна для заполнения");
+
+        if (string.IsNullOrWhiteSpace(entity.Email))
+            errors.Add("Email преподавателя обязателен для заполнения");
+
+        if (string.IsNullOrWhiteSpace(entity.Specialization))
+            warnings.Add("Рекомендуется указать специализацию преподавателя");
+
+        if (string.IsNullOrWhiteSpace(entity.Department))
+            warnings.Add("Рекомендуется указать кафедру преподавателя");
+
+        // Проверка формата email
+        if (!string.IsNullOrWhiteSpace(entity.Email) && !IsValidEmail(entity.Email))
+            errors.Add("Некорректный формат email");
+
+        // Проверка уникальности email
+        if (!string.IsNullOrWhiteSpace(entity.Email))
+        {
+            var emailExists = await _dbSet
+                .Where(t => t.Uid != entity.Uid && t.Email.ToLower() == entity.Email.ToLower())
+                .AnyAsync();
+
+            if (emailExists)
+                errors.Add($"Преподаватель с email '{entity.Email}' уже существует");
+        }
+
+        // Проверка возраста (если есть дата рождения в User)
+        if (entity.User != null && entity.User.DateOfBirth != default(DateTime))
+        {
+            var age = DateTime.Now.Year - entity.User.DateOfBirth.Year;
+            if (DateTime.Now.DayOfYear < entity.User.DateOfBirth.DayOfYear)
+                age--;
+
+            if (age < 18)
+                errors.Add("Возраст преподавателя должен быть не менее 18 лет");
+        }
+
+        // Проверка даты найма
+        if (entity.HireDate > DateTime.Now)
+            errors.Add("Дата найма не может быть в будущем");
+
+        if (entity.HireDate < DateTime.Now.AddYears(-50))
+            warnings.Add("Дата найма более 50 лет назад");
+
+        // Проверка пользователя
+        if (entity.UserUid != Guid.Empty)
+        {
+            var userExists = await _dbContext.Users
+                .Where(u => u.Uid == entity.UserUid)
+                .AnyAsync();
+
+            if (!userExists)
+                errors.Add($"Пользователь с Uid {entity.UserUid} не найден");
+        }
+
+        await base.ValidateEntitySpecificRulesAsync(entity, errors, warnings, isCreate);
+    }
+
+    #endregion
+
+    #region Реализация интерфейса ITeacherService (существующие методы)
 
     public async Task<Teacher?> GetTeacherAsync(Guid uid)
     {
-        try
-        {
-            return await _dbContext.Teachers
-                .Include(t => t.User)
-                .FirstOrDefaultAsync(t => t.Uid == uid);
-        }
-        catch
-        {
-            // Заглушка при ошибке базы данных
-            await Task.Delay(100);
-            return GenerateSampleTeachers().FirstOrDefault(t => t.Uid == uid);
-        }
+        return await GetByUidWithIncludesAsync(uid, 
+            t => t.User, 
+            t => t.Courses, 
+            t => t.CuratedGroups);
     }
 
     public async Task<IEnumerable<Teacher>> GetAllTeachersAsync()
     {
-        try
-        {
-            return await _dbContext.Teachers
-                .Include(t => t.User)
-                .OrderBy(t => t.LastName)
-                .ThenBy(t => t.FirstName)
-                .ToListAsync();
-        }
-        catch
-        {
-            // Заглушка при ошибке базы данных
-            await Task.Delay(100);
-            return GenerateSampleTeachers();
-        }
+        return await GetAllWithIncludesAsync(t => t.User);
     }
 
     public async Task<IEnumerable<Teacher>> GetTeachersAsync()
@@ -59,69 +143,185 @@ public class TeacherService(ApplicationDbContext dbContext) : ITeacherService
 
     public async Task<Teacher> CreateTeacherAsync(Teacher teacher)
     {
-        teacher.Uid = Guid.NewGuid();
-        teacher.CreatedAt = DateTime.UtcNow;
-        teacher.LastModifiedAt = DateTime.UtcNow;
-
-        await _dbContext.Teachers.AddAsync(teacher);
-        await _dbContext.SaveChangesAsync();
-
-        return teacher;
+        return await CreateAsync(teacher);
     }
 
     public async Task AddTeacherAsync(Teacher teacher)
     {
-        teacher.CreatedAt = DateTime.UtcNow;
-        teacher.LastModifiedAt = DateTime.UtcNow;
-
-        await _dbContext.Teachers.AddAsync(teacher);
-        await _dbContext.SaveChangesAsync();
+        await CreateAsync(teacher);
     }
 
     public async Task<bool> UpdateTeacherAsync(Teacher teacher)
     {
-        var existingTeacher = await _dbContext.Teachers.FindAsync(teacher.Uid);
-        if (existingTeacher == null)
-            return false;
-
-        existingTeacher.FirstName = teacher.FirstName;
-        existingTeacher.LastName = teacher.LastName;
-        existingTeacher.MiddleName = teacher.MiddleName;
-        existingTeacher.Specialization = teacher.Specialization;
-        existingTeacher.AcademicTitle = teacher.AcademicTitle;
-        existingTeacher.AcademicDegree = teacher.AcademicDegree;
-        existingTeacher.HourlyRate = teacher.HourlyRate;
-        existingTeacher.Bio = teacher.Bio;
-        existingTeacher.LastModifiedAt = DateTime.UtcNow;
-
-        await _dbContext.SaveChangesAsync();
-        return true;
+        return await UpdateAsync(teacher);
     }
 
     public async Task<bool> DeleteTeacherAsync(Guid uid)
     {
-        var teacher = await _dbContext.Teachers.FindAsync(uid);
-        if (teacher == null)
-            return false;
-
-        _dbContext.Teachers.Remove(teacher);
-        await _dbContext.SaveChangesAsync();
-        return true;
+        return await DeleteAsync(uid);
     }
 
     public async Task<bool> AssignToCourseAsync(Guid teacherUid, Guid courseUid)
     {
-        var teacher = await _dbContext.Teachers.FindAsync(teacherUid);
-        var course = await _dbContext.Courses.FindAsync(courseUid);
+        try
+        {
+            var course = await _dbContext.Courses.FindAsync(courseUid);
+            if (course == null)
+            {
+                _logger.LogWarning("Course not found for teacher assignment: {CourseUid}", courseUid);
+                return false;
+            }
 
-        if (teacher == null || course == null)
-            return false;
+            var teacher = await GetByUidAsync(teacherUid);
+            if (teacher == null)
+            {
+                _logger.LogWarning("Teacher not found for course assignment: {TeacherUid}", teacherUid);
+                return false;
+            }
 
-        course.TeacherUid = teacherUid;
-        course.LastModifiedAt = DateTime.UtcNow;
+            course.TeacherUid = teacherUid;
+            course.LastModifiedAt = DateTime.UtcNow;
 
-        await _dbContext.SaveChangesAsync();
-        return true;
+            await _dbContext.SaveChangesAsync();
+
+            _logger.LogInformation("Teacher {TeacherUid} assigned to course {CourseUid}", teacherUid, courseUid);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error assigning teacher {TeacherUid} to course {CourseUid}", teacherUid, courseUid);
+            throw;
+        }
+    }
+
+    #endregion
+
+    #region Дополнительные методы
+
+    /// <summary>
+    /// Получает преподавателей по кафедре
+    /// </summary>
+    public async Task<IEnumerable<Teacher>> GetByDepartmentAsync(string department)
+    {
+        return await FindWithIncludesAsync(t => t.Department == department, t => t.User);
+    }
+
+    /// <summary>
+    /// Получает преподавателей по специализации
+    /// </summary>
+    public async Task<IEnumerable<Teacher>> GetBySpecializationAsync(string specialization)
+    {
+        return await FindWithIncludesAsync(t => t.Specialization == specialization, t => t.User);
+    }
+
+    /// <summary>
+    /// Получает статистику преподавателя
+    /// </summary>
+    public async Task<TeacherStatistics> GetTeacherStatisticsAsync(Guid teacherUid)
+    {
+        try
+        {
+            var coursesCount = await _dbContext.Courses
+                .Where(c => c.TeacherUid == teacherUid)
+                .CountAsync();
+
+            var studentsCount = await _dbContext.Enrollments
+                .Where(e => e.Course.TeacherUid == teacherUid)
+                .Select(e => e.StudentUid)
+                .Distinct()
+                .CountAsync();
+
+            var averageGrade = await _dbContext.Grades
+                .Where(g => g.TeacherUid == teacherUid)
+                .AverageAsync(g => (double?)g.Value) ?? 0;
+
+            var totalGrades = await _dbContext.Grades
+                .Where(g => g.TeacherUid == teacherUid)
+                .CountAsync();
+
+            return new TeacherStatistics
+            {
+                TotalCourses = coursesCount,
+                ActiveCourses = coursesCount, // Simplified for now
+                TotalStudents = studentsCount,
+                AverageGrade = averageGrade
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting teacher statistics: {TeacherUid}", teacherUid);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Получает курсы преподавателя
+    /// </summary>
+    public async Task<IEnumerable<Course>> GetTeacherCoursesAsync(Guid teacherUid)
+    {
+        try
+        {
+            return await _dbContext.Courses
+                .Include(c => c.Enrollments)
+                .Where(c => c.TeacherUid == teacherUid)
+                .OrderBy(c => c.Name)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting teacher courses: {TeacherUid}", teacherUid);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Получает группы преподавателя
+    /// </summary>
+    public async Task<IEnumerable<Group>> GetTeacherGroupsAsync(Guid teacherUid)
+    {
+        try
+        {
+            return await _dbContext.Groups
+                .Where(g => g.CuratorUid == teacherUid)
+                .OrderBy(g => g.Name)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting teacher groups: {TeacherUid}", teacherUid);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Назначает преподавателя на группу
+    /// </summary>
+    public async Task<bool> AssignToGroupAsync(Guid teacherUid, Guid groupUid)
+    {
+        try
+        {
+            var teacher = await GetByUidAsync(teacherUid);
+            var group = await _dbContext.Groups.FindAsync(groupUid);
+
+            if (teacher == null || group == null)
+            {
+                _logger.LogWarning("Teacher or group not found for assignment: Teacher={TeacherUid}, Group={GroupUid}", teacherUid, groupUid);
+                return false;
+            }
+
+            group.CuratorUid = teacherUid;
+            group.LastModifiedAt = DateTime.UtcNow;
+
+            await _dbContext.SaveChangesAsync();
+
+            _logger.LogInformation("Teacher {TeacherUid} assigned to group {GroupUid}", teacherUid, groupUid);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error assigning teacher {TeacherUid} to group {GroupUid}", teacherUid, groupUid);
+            throw;
+        }
     }
 
     /// <summary>
@@ -195,83 +395,6 @@ public class TeacherService(ApplicationDbContext dbContext) : ITeacherService
 
             return (pagedTeachers, totalCount);
         }
-    }
-
-    /// <summary>
-    /// Получает статистику преподавателя
-    /// </summary>
-    public async Task<TeacherStatistics> GetTeacherStatisticsAsync(Guid teacherUid)
-    {
-        var coursesCount = await _dbContext.Courses
-            .Where(c => c.TeacherUid == teacherUid)
-            .CountAsync();
-
-        var studentsCount = await _dbContext.Enrollments
-            .Where(e => e.Course.TeacherUid == teacherUid)
-            .Select(e => e.StudentUid)
-            .Distinct()
-            .CountAsync();
-
-        var averageGrade = await _dbContext.Grades
-            .Where(g => g.TeacherUid == teacherUid)
-            .AverageAsync(g => (double?)g.Value) ?? 0;
-
-        var totalGrades = await _dbContext.Grades.Where(g => g.TeacherUid == teacherUid).CountAsync();
-
-        return new TeacherStatistics
-        {
-            // Uid = Guid.NewGuid(),
-            TotalCourses = coursesCount,
-            ActiveCourses = coursesCount, // Simplified for now
-            TotalStudents = studentsCount,
-            // ActiveStudents = studentsCount, // Simplified for now
-            AverageGrade = averageGrade,
-            //PendingAssignments = 0, // TODO: Implement
-            //GradedAssignments = totalGrades,
-            //AttendanceRate = 85.0, // TODO: Implement
-            //LastUpdated = DateTime.UtcNow
-        };
-    }
-
-    /// <summary>
-    /// Получает курсы преподавателя
-    /// </summary>
-    public async Task<IEnumerable<Course>> GetTeacherCoursesAsync(Guid teacherUid)
-    {
-        return await _dbContext.Courses
-            .Include(c => c.Enrollments)
-            .Where(c => c.TeacherUid == teacherUid)
-            .OrderBy(c => c.Name)
-            .ToListAsync();
-    }
-
-    /// <summary>
-    /// Получает группы преподавателя
-    /// </summary>
-    public async Task<IEnumerable<Group>> GetTeacherGroupsAsync(Guid teacherUid)
-    {
-        return await _dbContext.Groups
-            .Where(g => g.CuratorUid == teacherUid)
-            .OrderBy(g => g.Name)
-            .ToListAsync();
-    }
-
-    /// <summary>
-    /// Назначает преподавателя на группу
-    /// </summary>
-    public async Task<bool> AssignToGroupAsync(Guid teacherUid, Guid groupUid)
-    {
-        var teacher = await _dbContext.Teachers.FindAsync(teacherUid);
-        var group = await _dbContext.Groups.FindAsync(groupUid);
-
-        if (teacher == null || group == null)
-            return false;
-
-        group.CuratorUid = teacherUid;
-        group.LastModifiedAt = DateTime.UtcNow;
-
-        await _dbContext.SaveChangesAsync();
-        return true;
     }
 
     /// <summary>
@@ -389,4 +512,26 @@ public class TeacherService(ApplicationDbContext dbContext) : ITeacherService
             }
         };
     }
+
+    #endregion
+
+    #region Вспомогательные методы
+
+    /// <summary>
+    /// Проверяет корректность email
+    /// </summary>
+    private static bool IsValidEmail(string email)
+    {
+        try
+        {
+            var addr = new System.Net.Mail.MailAddress(email);
+            return addr.Address == email;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    #endregion
 }
