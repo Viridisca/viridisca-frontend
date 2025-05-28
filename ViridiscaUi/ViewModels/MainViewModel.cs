@@ -179,8 +179,18 @@ public class MainViewModel : ViewModelBase, IScreen, IDisposable
         // Initialize status bar
         StatusBar = new StatusBarViewModel(_statusService);
 
+        // Initialize navigation service with this screen
+        _navigationService.Initialize(this);
+        _navigationService.ScanAndRegisterRoutes();
+
+        // Initialize commands
+        InitializeCommands();
+
         // Subscribe to user changes
         SubscribeToUserChanges();
+
+        // Initialize navigation
+        InitializeNavigation();
 
         // Load initial statistics
         LoadStatisticsAsync().ConfigureAwait(false);
