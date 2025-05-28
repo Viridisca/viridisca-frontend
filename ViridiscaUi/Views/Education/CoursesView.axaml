@@ -261,7 +261,6 @@
                             <TextBlock Text="Преподаватель:" FontWeight="SemiBold" FontSize="13"/>
                             <ComboBox SelectedItem="{Binding TeacherFilter}" 
                                       ItemsSource="{Binding Teachers}"
-                                      DisplayMemberBinding="{Binding FullName}"
                                       PlaceholderText="Все преподаватели"
                                       MinWidth="180">
                                 <ComboBox.ItemTemplate>

@@ -210,11 +210,10 @@
                         <!-- Course Filter -->
                         <StackPanel Classes="filter-panel">
                             <TextBlock Text="Курс:" FontWeight="SemiBold" FontSize="13"/>
-                            <ComboBox SelectedItem="{Binding SelectedCourseFilter}" 
+                            <ComboBox SelectedItem="{Binding CourseFilter}" 
                                       ItemsSource="{Binding Courses}"
-                                      DisplayMemberBinding="{Binding Name}"
                                       PlaceholderText="Все курсы"
-                                      MinWidth="180">
+                                      MinWidth="150">
                                 <ComboBox.ItemTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal" Spacing="8">
@@ -230,9 +229,8 @@
                         <!-- Teacher Filter -->
                         <StackPanel Classes="filter-panel">
                             <TextBlock Text="Преподаватель:" FontWeight="SemiBold" FontSize="13"/>
-                            <ComboBox SelectedItem="{Binding SelectedTeacherFilter}" 
+                            <ComboBox SelectedItem="{Binding TeacherFilter}" 
                                       ItemsSource="{Binding Teachers}"
-                                      DisplayMemberBinding="{Binding FullName}"
                                       PlaceholderText="Все преподаватели"
                                       MinWidth="180">
                                 <ComboBox.ItemTemplate>

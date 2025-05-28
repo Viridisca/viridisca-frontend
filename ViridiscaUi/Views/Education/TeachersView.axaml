@@ -200,7 +200,6 @@
                             <TextBlock Text="Кафедра:" FontWeight="SemiBold" FontSize="13"/>
                             <ComboBox SelectedItem="{Binding DepartmentFilter}" 
                                       ItemsSource="{Binding Departments}"
-                                      DisplayMemberBinding="{Binding Name}"
                                       PlaceholderText="Все кафедры"
                                       MinWidth="150">
                                 <ComboBox.ItemTemplate>

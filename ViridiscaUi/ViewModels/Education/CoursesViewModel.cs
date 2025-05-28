@@ -174,60 +174,63 @@ namespace ViridiscaUi.ViewModels.Education
         /// </summary>
         private void SetupSubscriptions()
         {
-            // Автопоиск при изменении текста поиска - исправляем вложенную подписку
+            // Автопоиск при изменении текста поиска - используем безопасный подход без вложенных команд
             this.WhenAnyValue(x => x.SearchText)
                 .Throttle(TimeSpan.FromMilliseconds(500))
                 .ObserveOn(RxApp.MainThreadScheduler)
                 .Select(searchText => searchText?.Trim() ?? string.Empty)
                 .DistinctUntilChanged()
                 .Where(_ => !IsLoading) // Предотвращаем выполнение во время загрузки
-                .Subscribe(async searchText =>
+                .Subscribe(async searchText => 
                 {
                     try
                     {
-                        await SearchCoursesAsync(searchText);
+                        if (!string.IsNullOrEmpty(searchText) || CurrentPage > 1)
+                        {
+                            // Используем прямой вызов метода вместо команды
+                            await SearchCoursesAsync(searchText);
+                        }
                     }
                     catch (Exception ex)
                     {
-                        LogError(ex, "Ошибка поиска курсов");
-                        ShowError("Ошибка поиска курсов");
+                        LogError(ex, "Ошибка автопоиска");
                     }
                 })
                 .DisposeWith(Disposables);
 
-            // Загрузка статистики при выборе курса - добавляем обработку ошибок
+            // Загрузка статистики при выборе курса - используем безопасный подход
             this.WhenAnyValue(x => x.SelectedCourse)
                 .Where(course => course != null && !IsLoading)
                 .Select(course => course!)
-                .Subscribe(async course =>
+                .Subscribe(async course => 
                 {
                     try
                     {
+                        // Используем прямой вызов метода вместо команды
                         await LoadCourseStatisticsAsync(course);
                     }
                     catch (Exception ex)
                     {
                         LogError(ex, "Ошибка загрузки статистики курса");
-                        ShowError("Ошибка загрузки статистики курса");
                     }
                 })
                 .DisposeWith(Disposables);
 
-            // Применение фильтров при изменении - добавляем обработку ошибок
+            // Применение фильтров при изменении - используем безопасный подход
             this.WhenAnyValue(x => x.CategoryFilter, x => x.StatusFilter, x => x.DifficultyFilter, x => x.SelectedTeacherFilter)
                 .Throttle(TimeSpan.FromMilliseconds(300))
                 .ObserveOn(RxApp.MainThreadScheduler)
                 .Where(_ => !IsLoading) // Предотвращаем выполнение во время загрузки
-                .Subscribe(async _ =>
+                .Subscribe(async _ => 
                 {
                     try
                     {
+                        // Используем прямой вызов метода вместо команды
                         await ApplyFiltersAsync();
                     }
                     catch (Exception ex)
                     {
                         LogError(ex, "Ошибка применения фильтров");
-                        ShowError("Ошибка применения фильтров");
                     }
                 })
                 .DisposeWith(Disposables);
@@ -279,44 +282,66 @@ namespace ViridiscaUi.ViewModels.Education
 
         private async Task LoadCoursesAsync()
         {
+            // Предотвращаем множественные одновременные вызовы
+            if (IsLoading) return;
+            
             LogInfo("Loading courses with filters: SearchText={SearchText}, CategoryFilter={CategoryFilter}, StatusFilter={StatusFilter}", SearchText ?? string.Empty, CategoryFilter ?? string.Empty, StatusFilter ?? string.Empty);
             
             IsLoading = true;
             ShowInfo("Загрузка курсов...");
 
-            // Используем новый универсальный метод пагинации
-            var (courses, totalCount) = await _courseService.GetPagedAsync(
-                CurrentPage, PageSize, SearchText);
-            
-            Courses.Clear();
-            foreach (var course in courses)
+            try
             {
-                Courses.Add(new CourseViewModel(course));
+                // Используем правильный метод из сервиса
+                var (courses, totalCount) = await _courseService.GetCoursesPagedAsync(
+                    CurrentPage, PageSize, SearchText, CategoryFilter, StatusFilter, DifficultyFilter, SelectedTeacherFilter?.Uid);
+                
+                Courses.Clear();
+                foreach (var course in courses)
+                {
+                    Courses.Add(new CourseViewModel(course));
+                }
+
+                TotalCourses = totalCount;
+                TotalPages = (int)Math.Ceiling((double)totalCount / PageSize);
+                ActiveCourses = courses.Count(c => c.Status == CourseStatus.Active);
+
+                ShowSuccess($"Загружено {Courses.Count} курсов");
+                LogInfo("Loaded {CourseCount} courses, total: {TotalCount}", Courses.Count, totalCount);
             }
-
-            TotalCourses = totalCount;
-            TotalPages = (int)Math.Ceiling((double)totalCount / PageSize);
-            ActiveCourses = courses.Count(c => c.Status == CourseStatus.Active);
-
-            ShowSuccess($"Загружено {Courses.Count} курсов");
-            LogInfo("Loaded {CourseCount} courses, total: {TotalCount}", Courses.Count, totalCount);
-            
-            IsLoading = false;
+            catch (Exception ex)
+            {
+                LogError(ex, "Ошибка загрузки курсов");
+                ShowError("Не удалось загрузить курсы");
+                Courses.Clear();
+            }
+            finally
+            {
+                IsLoading = false;
+            }
         }
 
         private async Task LoadTeachersAsync()
         {
             LogInfo("Loading teachers for filter");
             
-            // Используем новый универсальный метод получения всех записей
-            var teachers = await _teacherService.GetAllAsync();
-            Teachers.Clear();
-            foreach (var teacher in teachers)
+            try
             {
-                Teachers.Add(new TeacherViewModel(teacher));
+                // Используем правильный метод из сервиса
+                var teachers = await _teacherService.GetAllTeachersAsync();
+                Teachers.Clear();
+                foreach (var teacher in teachers)
+                {
+                    Teachers.Add(new TeacherViewModel(teacher));
+                }
+                
+                LogInfo("Loaded {TeacherCount} teachers for filter", teachers.Count());
             }
-            
-            LogInfo("Loaded {TeacherCount} teachers for filter", teachers.Count());
+            catch (Exception ex)
+            {
+                LogError(ex, "Ошибка загрузки преподавателей");
+                ShowError("Не удалось загрузить список преподавателей");
+            }
         }
 
         private async Task RefreshAsync()
@@ -582,8 +607,25 @@ namespace ViridiscaUi.ViewModels.Education
 
         private async Task ApplyFiltersAsync()
         {
-            CurrentPage = 1;
-            await LoadCoursesAsync();
+            try
+            {
+                // Предотвращаем рекурсивные вызовы
+                if (IsLoading) return;
+                
+                LogInfo("Applying filters: Category={CategoryFilter}, Status={StatusFilter}, Difficulty={DifficultyFilter}, Teacher={TeacherName}", 
+                    CategoryFilter ?? "null", StatusFilter ?? "null", DifficultyFilter ?? "null", 
+                    SelectedTeacherFilter?.FullName ?? "null");
+                
+                CurrentPage = 1;
+                await LoadCoursesAsync();
+                
+                LogInfo("Filters applied successfully. Loaded {CourseCount} courses", Courses.Count);
+            }
+            catch (Exception ex)
+            {
+                LogError(ex, "Ошибка применения фильтров");
+                ShowError("Ошибка применения фильтров");
+            }
         }
 
         private async Task ClearFiltersAsync()

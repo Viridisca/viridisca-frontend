@@ -200,7 +200,6 @@
                             <TextBlock Text="Группа:" FontWeight="SemiBold" FontSize="13"/>
                             <ComboBox SelectedItem="{Binding GroupFilter}" 
                                       ItemsSource="{Binding Groups}"
-                                      DisplayMemberBinding="{Binding Name}"
                                       PlaceholderText="Все группы"
                                       MinWidth="150">
                                 <ComboBox.ItemTemplate>

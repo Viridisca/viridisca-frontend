@@ -45,6 +45,7 @@ public class ReactiveViewLocator : IViewLocator
             TeachersViewModel => new TeachersView(),
             GroupsViewModel => new GroupsView(),
             StudentsViewModel => new StudentsView(),
+            SubjectsViewModel => new SubjectsView(),
 
             // System ViewModels
             NotificationCenterViewModel => new NotificationCenterView(),

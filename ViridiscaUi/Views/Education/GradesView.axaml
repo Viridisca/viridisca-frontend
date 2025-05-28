@@ -217,11 +217,10 @@
                         <!-- Course Filter -->
                         <StackPanel Classes="filter-panel">
                             <TextBlock Text="Курс:" FontWeight="SemiBold" FontSize="13"/>
-                            <ComboBox SelectedItem="{Binding SelectedCourseFilter}" 
+                            <ComboBox SelectedItem="{Binding CourseFilter}" 
                                       ItemsSource="{Binding Courses}"
-                                      DisplayMemberBinding="{Binding Name}"
                                       PlaceholderText="Все курсы"
-                                      MinWidth="180">
+                                      MinWidth="150">
                                 <ComboBox.ItemTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal" Spacing="8">
@@ -237,11 +236,10 @@
                         <!-- Assignment Filter -->
                         <StackPanel Classes="filter-panel">
                             <TextBlock Text="Задание:" FontWeight="SemiBold" FontSize="13"/>
-                            <ComboBox SelectedItem="{Binding SelectedAssignmentFilter}" 
+                            <ComboBox SelectedItem="{Binding AssignmentFilter}" 
                                       ItemsSource="{Binding Assignments}"
-                                      DisplayMemberBinding="{Binding Title}"
                                       PlaceholderText="Все задания"
-                                      MinWidth="180">
+                                      MinWidth="150">
                                 <ComboBox.ItemTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal" Spacing="8">
@@ -257,11 +255,10 @@
                         <!-- Student Filter -->
                         <StackPanel Classes="filter-panel">
                             <TextBlock Text="Студент:" FontWeight="SemiBold" FontSize="13"/>
-                            <ComboBox SelectedItem="{Binding SelectedStudentFilter}" 
+                            <ComboBox SelectedItem="{Binding StudentFilter}" 
                                       ItemsSource="{Binding Students}"
-                                      DisplayMemberBinding="{Binding FullName}"
                                       PlaceholderText="Все студенты"
-                                      MinWidth="180">
+                                      MinWidth="150">
                                 <ComboBox.ItemTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal" Spacing="8">

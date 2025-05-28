@@ -261,7 +261,6 @@
                             <TextBlock Text="Куратор:" FontWeight="SemiBold" FontSize="13"/>
                             <ComboBox SelectedItem="{Binding CuratorFilter}" 
                                       ItemsSource="{Binding Curators}"
-                                      DisplayMemberBinding="{Binding FullName}"
                                       PlaceholderText="Все кураторы"
                                       MinWidth="180">
                                 <ComboBox.ItemTemplate>

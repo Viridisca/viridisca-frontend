@@ -410,7 +410,7 @@ public class UnifiedNavigationService(IServiceProvider serviceProvider) : IUnifi
         if (_screen == null)
             throw new InvalidOperationException("Navigation service not initialized. Call Initialize() first.");
 
-        return ReactiveCommand.CreateFromObservable(() =>
+        var command = ReactiveCommand.CreateFromObservable(() =>
         {
             var route = GetRoute(path);
             if (route == null)
@@ -441,6 +441,15 @@ public class UnifiedNavigationService(IServiceProvider serviceProvider) : IUnifi
                 return Observable.Empty<IRoutableViewModel>();
             }
         });
+
+        // Критически важно: подписываемся на ThrownExceptions для предотвращения разрыва pipeline
+        command.ThrownExceptions
+            .Subscribe(ex => 
+            {
+                StatusLogger.LogError($"Необработанная ошибка в команде навигации к '{path}': {ex.Message}", "UnifiedNavigation");
+            });
+
+        return command;
     }
 
     public ReactiveCommand<Unit, IRoutableViewModel> CreateNavigationCommand<TViewModel>() 
@@ -449,7 +458,7 @@ public class UnifiedNavigationService(IServiceProvider serviceProvider) : IUnifi
         if (_screen == null)
             throw new InvalidOperationException("Navigation service not initialized. Call Initialize() first.");
 
-        return ReactiveCommand.CreateFromObservable(() =>
+        var command = ReactiveCommand.CreateFromObservable(() =>
         {
             try
             {
@@ -473,6 +482,15 @@ public class UnifiedNavigationService(IServiceProvider serviceProvider) : IUnifi
                 return Observable.Empty<IRoutableViewModel>();
             }
         });
+
+        // Критически важно: подписываемся на ThrownExceptions для предотвращения разрыва pipeline
+        command.ThrownExceptions
+            .Subscribe(ex => 
+            {
+                StatusLogger.LogError($"Необработанная ошибка в команде навигации к {typeof(TViewModel).Name}: {ex.Message}", "UnifiedNavigation");
+            });
+
+        return command;
     }
 }
 

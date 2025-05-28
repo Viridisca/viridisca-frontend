@@ -63,12 +63,7 @@ namespace ViridiscaUi.ViewModels.Education
             _notificationService = notificationService;
 
             InitializeCommands();
-            
-            // Автоматическая загрузка при инициализации
-            this.WhenActivated(disposables =>
-            {
-                LoadSubjectsCommand.Execute().Subscribe().DisposeWith(disposables);
-            });
+            SetupSubscriptions();
         }
 
         private void InitializeCommands()
@@ -82,8 +77,31 @@ namespace ViridiscaUi.ViewModels.Education
             SearchCommand = CreateCommand<string>(SearchSubjectsAsync, null, "Ошибка поиска предметов");
         }
 
+        private void SetupSubscriptions()
+        {
+            // Автоматическая загрузка при активации - используем безопасный подход
+            this.WhenActivated(disposables =>
+            {
+                // Используем прямой вызов метода вместо команды для предотвращения вложенных подписок
+                LoadSubjectsAsync()
+                    .ContinueWith(task =>
+                    {
+                        if (task.IsFaulted)
+                        {
+                            LogError(task.Exception?.GetBaseException() ?? new Exception("Unknown error"), 
+                                "Ошибка при автоматической загрузке предметов");
+                            ShowError("Не удалось загрузить предметы при открытии страницы");
+                        }
+                    }, TaskScheduler.FromCurrentSynchronizationContext())
+                    .DisposeWith(disposables);
+            });
+        }
+
         private async Task LoadSubjectsAsync()
         {
+            // Предотвращаем множественные одновременные вызовы
+            if (IsLoading) return;
+            
             LogInfo("Loading subjects");
             IsLoading = true;
 
@@ -104,6 +122,7 @@ namespace ViridiscaUi.ViewModels.Education
             {
                 LogError(ex, "Failed to load subjects");
                 ShowError("Не удалось загрузить список предметов");
+                Subjects.Clear();
             }
             finally
             {
@@ -306,5 +325,18 @@ namespace ViridiscaUi.ViewModels.Education
         {
             _notificationService.ShowError(message);
         }
+
+        #region Lifecycle Methods
+
+        protected override async Task OnFirstTimeLoadedAsync()
+        {
+            await base.OnFirstTimeLoadedAsync();
+            LogInfo("SubjectsViewModel loaded for the first time");
+            
+            // Load subjects when view is loaded for the first time
+            await LoadSubjectsAsync();
+        }
+
+        #endregion
     }
 } 
