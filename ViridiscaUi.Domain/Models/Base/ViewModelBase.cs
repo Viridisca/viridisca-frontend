@@ -1,7 +1,5 @@
-using ReactiveUI;
-using System;
-using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using ReactiveUI;
 
 namespace ViridiscaUi.Domain.Models.Base;
 
@@ -41,7 +39,9 @@ public abstract class ViewModelBase : ReactiveObject
         
         field = newValue;
         this.RaisePropertyChanged(propertyName);
+
         LastModifiedAt = DateTime.UtcNow;
+
         return true;
     }
 } 

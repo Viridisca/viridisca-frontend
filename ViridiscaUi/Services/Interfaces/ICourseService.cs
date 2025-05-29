@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using ViridiscaUi.Domain.Models.Education;
-using CourseStatus = ViridiscaUi.Domain.Models.Education.CourseStatus;
+using CourseStatus = ViridiscaUi.Domain.Models.Education.Enums.CourseStatus;
 
 namespace ViridiscaUi.Services.Interfaces
 {

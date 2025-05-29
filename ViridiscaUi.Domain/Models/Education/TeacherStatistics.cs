@@ -1,6 +1,5 @@
-using System;
-using ReactiveUI;
 using ViridiscaUi.Domain.Models.Base;
+using ReactiveUI;
 
 namespace ViridiscaUi.Domain.Models.Education;
 
@@ -12,11 +11,13 @@ public class TeacherStatistics : ViewModelBase
     private int _totalCourses;
     private int _activeCourses;
     private int _totalStudents;
+
     private double _averageGrade;
+    private double _completionRate;
+    
     private int _totalGrades;
     private int _totalAssignments;
     private int _pendingGrades;
-    private double _completionRate;
 
     /// <summary>
     /// Общее количество курсов

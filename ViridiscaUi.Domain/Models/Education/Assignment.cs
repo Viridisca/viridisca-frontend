@@ -1,7 +1,6 @@
-using System;
-using System.Collections.Generic;
-using ReactiveUI;
 using ViridiscaUi.Domain.Models.Base;
+using ReactiveUI;
+using ViridiscaUi.Domain.Models.Education.Enums;
 
 namespace ViridiscaUi.Domain.Models.Education;
 
@@ -12,17 +11,23 @@ public class Assignment : ViewModelBase
 {
     private string _title = string.Empty;
     private string _description = string.Empty;
+
     private DateTime? _dueDate;
     private double _maxScore = 100.0;
+    
     private AssignmentType _type = AssignmentType.Homework;
+     
+    private Guid? _moduleUid;
     private Guid _courseUid;
     private Guid? _lessonUid;
+    
     private Course? _course;
     private Lesson? _lesson;
+    
     private string _instructions = string.Empty;
+    
     private AssignmentDifficulty _difficulty = AssignmentDifficulty.Medium;
     private AssignmentStatus _status = AssignmentStatus.Draft;
-    private Guid? _moduleUid;
 
     /// <summary>
     /// Название задания
@@ -211,98 +216,3 @@ public class Assignment : ViewModelBase
         _ => "Неизвестный тип"
     };
 }
-
-/// <summary>
-/// Тип задания
-/// </summary>
-public enum AssignmentType
-{
-    /// <summary>
-    /// Домашнее задание
-    /// </summary>
-    Homework,
-    
-    /// <summary>
-    /// Тест
-    /// </summary>
-    Quiz,
-    
-    /// <summary>
-    /// Экзамен
-    /// </summary>
-    Exam,
-    
-    /// <summary>
-    /// Проект
-    /// </summary>
-    Project,
-    
-    /// <summary>
-    /// Лабораторная работа
-    /// </summary>
-    LabWork,
-    Test,
-    Essay
-}
-
-/// <summary>
-/// Сложность задания
-/// </summary>
-public enum AssignmentDifficulty
-{
-    /// <summary>
-    /// Легкая
-    /// </summary>
-    Easy,
-    
-    /// <summary>
-    /// Средняя
-    /// </summary>
-    Medium,
-    
-    /// <summary>
-    /// Сложная
-    /// </summary>
-    Hard
-}
-
-/// <summary>
-/// Статус задания
-/// </summary>
-public enum AssignmentStatus
-{
-    /// <summary>
-    /// Черновик
-    /// </summary>
-    Draft,
-    
-    /// <summary>
-    /// Опубликовано
-    /// </summary>
-    Published,
-    
-    /// <summary>
-    /// Активно (доступно для выполнения)
-    /// </summary>
-    Active,
-    
-    /// <summary>
-    /// Завершено
-    /// </summary>
-    Completed,
-    
-    /// <summary>
-    /// Просрочено
-    /// </summary>
-    Overdue,
-    
-    /// <summary>
-    /// Закрыто для сдачи
-    /// </summary>
-    Closed,
-    
-    /// <summary>
-    /// Архивировано
-    /// </summary>
-    Archived
-} 

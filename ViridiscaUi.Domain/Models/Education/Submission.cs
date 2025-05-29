@@ -1,6 +1,7 @@
 using System;
 using ReactiveUI;
 using ViridiscaUi.Domain.Models.Base;
+using ViridiscaUi.Domain.Models.Education.Enums;
 
 namespace ViridiscaUi.Domain.Models.Education;
 
@@ -10,17 +11,22 @@ namespace ViridiscaUi.Domain.Models.Education;
 public class Submission : ViewModelBase
 {
     private Guid _studentUid;
+    private Student? _student;
+
     private Guid _assignmentUid;
+    private Assignment? _assignment;
+
+    private Guid? _gradedByUid;
+    private Teacher? _gradedBy;
+
     private DateTime _submissionDate = DateTime.UtcNow;
+
+    private string _feedback = string.Empty;
     private string _content = string.Empty;
     private double? _score;
-    private string _feedback = string.Empty;
-    private Guid? _gradedByUid;
+
     private DateTime? _gradedDate;
     private SubmissionStatus _status = SubmissionStatus.Submitted;
-    private Student? _student;
-    private Assignment? _assignment;
-    private Teacher? _gradedBy;
 
     /// <summary>
     /// Идентификатор студента
@@ -203,39 +209,3 @@ public class Submission : ViewModelBase
     public bool IsLate => Status == SubmissionStatus.Late || 
                          (Assignment?.DueDate.HasValue == true && SubmissionDate > Assignment.DueDate.Value);
 }
-
-/// <summary>
-/// Статус сданной работы
-/// </summary>
-public enum SubmissionStatus
-{
-    /// <summary>
-    /// Черновик (не сдано)
-    /// </summary>
-    Draft,
-    
-    /// <summary>
-    /// Сдано
-    /// </summary>
-    Submitted,
-    
-    /// <summary>
-    /// Сдано с опозданием
-    /// </summary>
-    Late,
-    
-    /// <summary>
-    /// На проверке
-    /// </summary>
-    UnderReview,
-    
-    /// <summary>
-    /// Оценено
-    /// </summary>
-    Graded,
-    
-    /// <summary>
-    /// Возвращено на доработку
-    /// </summary>
-    Returned
-} 

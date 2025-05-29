@@ -1,6 +1,5 @@
-using System;
-using ReactiveUI;
 using ViridiscaUi.Domain.Models.Base;
+using ReactiveUI;
 
 namespace ViridiscaUi.Domain.Models.System;
 

@@ -9,8 +9,10 @@ namespace ViridiscaUi.Converters;
 /// <summary>
 /// Конвертер для определения цвета индикатора статуса
 /// </summary>
-public class StatusColorConverter : IMultiValueConverter
+public class StatusColorConverter : IMultiValueConverter, IValueConverter
 {
+    public static readonly StatusColorConverter Instance = new();
+
     public object? Convert(IList<object?> values, Type targetType, object? parameter, CultureInfo culture)
     {
         if (values == null || values.Count < 2)
@@ -28,7 +30,22 @@ public class StatusColorConverter : IMultiValueConverter
         return Colors.Green;
     }
 
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is bool isActive)
+        {
+            return isActive ? "#27AE60" : "#E67E22"; // Green for active, Orange for inactive
+        }
+        
+        return "#95A5A6"; // Gray for unknown
+    }
+
     public object?[] ConvertBack(object? value, Type[] targetTypes, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         throw new NotImplementedException();
     }

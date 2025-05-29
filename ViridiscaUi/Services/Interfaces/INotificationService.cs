@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using ViridiscaUi.Domain.Models.System; 
 using ViridiscaUi.Domain.Models.Education;
+using ViridiscaUi.Domain.Models.System.Enums;
 
 namespace ViridiscaUi.Services.Interfaces;
 

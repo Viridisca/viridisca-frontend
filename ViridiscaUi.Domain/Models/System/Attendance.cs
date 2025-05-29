@@ -2,6 +2,7 @@ using System;
 using ReactiveUI;
 using ViridiscaUi.Domain.Models.Base;
 using ViridiscaUi.Domain.Models.Education;
+using ViridiscaUi.Domain.Models.System.Enums;
 
 namespace ViridiscaUi.Domain.Models.System;
 
@@ -11,13 +12,17 @@ namespace ViridiscaUi.Domain.Models.System;
 public class Attendance : ViewModelBase
 {
     private Guid _studentUid;
+    private Student? _student;
+
     private Guid _lessonUid;
+    private Lesson? _lesson;
+
     private AttendanceStatus _status;
+    
     private string _notes = string.Empty;
+    
     private DateTime _checkedAt;
     private Guid _checkedByUid;
-    private Student? _student;
-    private Lesson? _lesson;
 
     /// <summary>
     /// Идентификатор студента
@@ -118,34 +123,3 @@ public class Attendance : ViewModelBase
         _checkedAt = DateTime.UtcNow;
     }
 }
-
-/// <summary>
-/// Статус посещения
-/// </summary>
-public enum AttendanceStatus
-{
-    /// <summary>
-    /// Присутствовал
-    /// </summary>
-    Present = 0,
-
-    /// <summary>
-    /// Отсутствовал
-    /// </summary>
-    Absent = 1,
-
-    /// <summary>
-    /// Опоздал
-    /// </summary>
-    Late = 2,
-
-    /// <summary>
-    /// Ушел раньше
-    /// </summary>
-    LeftEarly = 3,
-
-    /// <summary>
-    /// Уважительная причина
-    /// </summary>
-    Excused = 4
-} 

@@ -1,9 +1,7 @@
-using System;
 using System.Collections.ObjectModel;
-using System.Linq;
-using ReactiveUI;
 using ViridiscaUi.Domain.Models.Base;
 using ViridiscaUi.Domain.Models.System;
+using ReactiveUI;
 
 namespace ViridiscaUi.Domain.Models.Education;
 
@@ -15,12 +13,16 @@ public class Subject : ViewModelBase
     private string _code = string.Empty;
     private string _name = string.Empty;
     private string _description = string.Empty;
+
     private int _credits;
     private int _lessonsPerWeek;
+
     private SubjectType _type;
-    private Guid? _departmentUid;
+
     private bool _isActive;
-    private ObservableCollection<TeacherSubject> _teacherSubjects = new();
+    private ObservableCollection<TeacherSubject> _teacherSubjects = [];
+
+    private Guid? _departmentUid;
     private Department? _department;
 
     /// <summary>

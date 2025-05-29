@@ -16,6 +16,7 @@ using System.Collections.Generic;
 using DynamicData;
 using DynamicData.Binding;
 using ViridiscaUi.ViewModels.Bases.Navigations;
+using ViridiscaUi.Domain.Models.Education.Enums;
 
 namespace ViridiscaUi.ViewModels.Education;
 

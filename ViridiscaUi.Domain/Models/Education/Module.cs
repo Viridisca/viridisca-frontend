@@ -1,7 +1,5 @@
-using System;
-using System.Collections.Generic;
-using ReactiveUI;
 using ViridiscaUi.Domain.Models.Base;
+using ReactiveUI;
 
 namespace ViridiscaUi.Domain.Models.Education;
 
@@ -12,8 +10,10 @@ public class Module : ViewModelBase
 {
     private string _name = string.Empty;
     private string _description = string.Empty;
+
     private Guid _courseUid;
     private Course? _course;
+    
     private int _orderIndex;
     private bool _isPublished;
 

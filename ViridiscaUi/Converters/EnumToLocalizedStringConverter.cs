@@ -1,9 +1,10 @@
 using System;
 using System.Globalization;
 using Avalonia.Data.Converters;
-using ViridiscaUi.Domain.Models.System;
 using ViridiscaUi.Domain.Models.Auth;
 using ViridiscaUi.Domain.Models.Education;
+using ViridiscaUi.Domain.Models.Education.Enums;
+using ViridiscaUi.Domain.Models.System.Enums;
 
 namespace ViridiscaUi.Converters;
 
@@ -12,6 +13,11 @@ namespace ViridiscaUi.Converters;
 /// </summary>
 public class EnumToLocalizedStringConverter : IValueConverter
 {
+    /// <summary>
+    /// Статический экземпляр конвертера для использования в XAML
+    /// </summary>
+    public static EnumToLocalizedStringConverter Instance { get; } = new();
+
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         if (value == null)
@@ -40,27 +46,43 @@ public class EnumToLocalizedStringConverter : IValueConverter
             // StudentStatus
             StudentStatus.Active => "Активный",
             StudentStatus.Inactive => "Неактивный",
-            StudentStatus.Graduated => "Выпускник",
+            StudentStatus.AcademicLeave => "Академический отпуск",
             StudentStatus.Expelled => "Отчислен",
-            StudentStatus.AcademicLeave => "В академическом отпуске",
+            StudentStatus.Graduated => "Выпущен",
+            StudentStatus.Transferred => "Переведен",
+            StudentStatus.Suspended => "Приостановлен",
             
             // TeacherStatus
             TeacherStatus.Active => "Активный",
             TeacherStatus.Inactive => "Неактивный",
             TeacherStatus.OnLeave => "В отпуске",
+            TeacherStatus.Terminated => "Уволен",
             TeacherStatus.Retired => "На пенсии",
+            TeacherStatus.Suspended => "Отстранен",
             
             // CourseStatus
             CourseStatus.Draft => "Черновик",
             CourseStatus.Active => "Активный",
+            CourseStatus.Published => "Опубликован",
             CourseStatus.Completed => "Завершен",
             CourseStatus.Archived => "Архивный",
+            CourseStatus.Suspended => "Приостановлен",
+            
+            // GroupStatus
+            GroupStatus.Active => "Активная",
+            GroupStatus.Forming => "Формирование",
+            GroupStatus.Suspended => "Приостановлена",
+            GroupStatus.Completed => "Завершена",
+            GroupStatus.Archived => "Архивная",
             
             // SubjectType
-            SubjectType.Lecture => "Лекция",
-            SubjectType.Practicum => "Практика",
-            SubjectType.Laboratory => "Лабораторная",
+            SubjectType.Required => "Обязательный",
+            SubjectType.Elective => "Факультативный", 
+            SubjectType.Specialized => "Специализированный",
+            SubjectType.Practicum => "Практикум",
             SubjectType.Seminar => "Семинар",
+            SubjectType.Laboratory => "Лабораторный",
+            SubjectType.Lecture => "Лекционный",
             
             // AssignmentType
             AssignmentType.Homework => "Домашнее задание",

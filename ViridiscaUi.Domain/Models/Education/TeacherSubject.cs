@@ -1,6 +1,5 @@
-using System;
-using ReactiveUI;
 using ViridiscaUi.Domain.Models.Base;
+using ReactiveUI;
 
 namespace ViridiscaUi.Domain.Models.Education;
 
@@ -10,13 +9,16 @@ namespace ViridiscaUi.Domain.Models.Education;
 public class TeacherSubject : ViewModelBase
 {
     private Guid _teacherUid;
+    private Teacher? _teacher;
+
     private Guid _subjectUid;
+    private Subject? _subject;
+
     private bool _isMainTeacher;
+    private bool _isActive;
+    
     private DateTime _assignedDate;
     private DateTime? _deactivatedDate;
-    private bool _isActive;
-    private Teacher? _teacher;
-    private Subject? _subject;
 
     /// <summary>
     /// Идентификатор преподавателя

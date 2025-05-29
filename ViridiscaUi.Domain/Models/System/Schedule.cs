@@ -1,7 +1,7 @@
-using System;
-using ReactiveUI;
-using ViridiscaUi.Domain.Models.Base;
 using ViridiscaUi.Domain.Models.Education;
+using ViridiscaUi.Domain.Models.Base;
+using ReactiveUI;
+using ViridiscaUi.Domain.Models.System.Enums;
 
 namespace ViridiscaUi.Domain.Models.System;
 
@@ -11,20 +11,26 @@ namespace ViridiscaUi.Domain.Models.System;
 public class Schedule : ViewModelBase
 {
     private Guid _groupUid;
-    private Guid _subjectUid;
-    private Guid _teacherUid;
-    private DayOfWeek _dayOfWeek;
-    private TimeSpan _startTime;
-    private TimeSpan _endTime;
-    private string _classroom = string.Empty;
-    private ScheduleType _type;
-    private DateTime _validFrom;
-    private DateTime? _validTo;
-    private bool _isActive;
     private Group? _group;
+    
+    private Guid _subjectUid;
     private Subject? _subject;
+    
+    private Guid _teacherUid;
     private Teacher? _teacher;
 
+    private DayOfWeek _dayOfWeek;
+    private ScheduleType _type;
+    
+    private string _classroom = string.Empty;
+    
+    private TimeSpan _startTime;
+    private TimeSpan _endTime;
+    private DateTime _validFrom;
+    private DateTime? _validTo;
+    
+    private bool _isActive;
+     
     /// <summary>
     /// Идентификатор группы
     /// </summary>
@@ -192,39 +198,3 @@ public class Schedule : ViewModelBase
         _isActive = true;
     }
 }
-
-/// <summary>
-/// Тип занятия в расписании
-/// </summary>
-public enum ScheduleType
-{
-    /// <summary>
-    /// Лекция
-    /// </summary>
-    Lecture = 0,
-
-    /// <summary>
-    /// Семинар
-    /// </summary>
-    Seminar = 1,
-
-    /// <summary>
-    /// Лабораторная работа
-    /// </summary>
-    Laboratory = 2,
-
-    /// <summary>
-    /// Практическое занятие
-    /// </summary>
-    Practice = 3,
-
-    /// <summary>
-    /// Экзамен
-    /// </summary>
-    Exam = 4,
-
-    /// <summary>
-    /// Зачет
-    /// </summary>
-    Test = 5
-} 

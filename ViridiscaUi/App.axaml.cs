@@ -1,18 +1,12 @@
-﻿using Avalonia;
-using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Markup.Xaml;
-using ReactiveUI;
-using Splat;
-using System;
+﻿using Avalonia.Controls.ApplicationLifetimes;
 using ViridiscaUi.Infrastructure;
-using ViridiscaUi.ViewModels;
+using Avalonia.Markup.Xaml;
+using Avalonia; 
 
 namespace ViridiscaUi;
 
 public partial class App : Application
-{
-    public static IServiceProvider Services => ApplicationBootstrapper.Services;
-
+{ 
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);

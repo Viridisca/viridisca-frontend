@@ -1,9 +1,8 @@
-using System;
 using System.Collections.ObjectModel;
-using System.Linq;
-using ReactiveUI;
 using ViridiscaUi.Domain.Models.Base;
 using ViridiscaUi.Domain.Models.Auth;
+using ReactiveUI;
+using ViridiscaUi.Domain.Models.Education.Enums;
 
 namespace ViridiscaUi.Domain.Models.Education;
 
@@ -11,33 +10,43 @@ namespace ViridiscaUi.Domain.Models.Education;
 /// Студент
 /// </summary>
 public class Student : ViewModelBase
-{
-    private Guid _userUid;
+{ 
     private string _firstName = string.Empty;
     private string _lastName = string.Empty;
     private string _middleName = string.Empty;
+    
     private string _email = string.Empty;
     private string _phoneNumber = string.Empty;
+    
     private DateTime _birthDate;
+    
     private Guid? _groupUid;
+    private Group? _group;
+
+    private Guid? _userUid;
+    private User? _user;
+
     private bool _isActive;
     private string _studentCode = string.Empty;
+
     private DateTime _enrollmentDate;
+    
     private StudentStatus _status;
+    
     private string _emergencyContactName = string.Empty;
     private string _emergencyContactPhone = string.Empty;
     private string _medicalInformation = string.Empty;
     private string _address = string.Empty;
+    
     private DateTime? _graduationDate;
-    private ObservableCollection<StudentParent> _parents = new();
-    private ObservableCollection<Grade> _grades = new();
-    private Group? _group;
-    private User? _user;
+
+    private ObservableCollection<StudentParent> _parents = [];
+    private ObservableCollection<Grade> _grades = [];
 
     /// <summary>
     /// Идентификатор пользователя
     /// </summary>
-    public Guid UserUid
+    public Guid? UserUid
     {
         get => _userUid;
         set => this.RaiseAndSetIfChanged(ref _userUid, value);
@@ -267,7 +276,7 @@ public class Student : ViewModelBase
     /// Создает новый экземпляр студента с указанными параметрами
     /// </summary>
     public Student(
-        Guid userUid,
+        Guid? userUid,
         string firstName,
         string lastName,
         string email,

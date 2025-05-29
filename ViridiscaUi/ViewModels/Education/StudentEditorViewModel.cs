@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using ViridiscaUi.Domain.Models.Education;
+using ViridiscaUi.Domain.Models.Education.Enums;
 using ViridiscaUi.Infrastructure.Navigation;
 using ViridiscaUi.Services.Interfaces;
 using ViridiscaUi.ViewModels;
@@ -54,6 +55,26 @@ public class StudentEditorViewModel : RoutableViewModelBase
     [Reactive] public int AcademicYear { get; set; } = 1;
 
     /// <summary>
+    /// Адрес студента
+    /// </summary>
+    [Reactive] public string Address { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Имя экстренного контакта
+    /// </summary>
+    [Reactive] public string EmergencyContactName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Телефон экстренного контакта
+    /// </summary>
+    [Reactive] public string EmergencyContactPhone { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Медицинская информация
+    /// </summary>
+    [Reactive] public string MedicalInformation { get; set; } = string.Empty;
+
+    /// <summary>
     /// Доступные группы для выбора
     /// </summary>
     [Reactive] public ObservableCollection<Group> AvailableGroups { get; set; } = new();
@@ -72,6 +93,16 @@ public class StudentEditorViewModel : RoutableViewModelBase
     /// Заголовок формы
     /// </summary>
     [Reactive] public string FormTitle { get; set; } = "Создание студента";
+
+    /// <summary>
+    /// Полное имя студента для отображения
+    /// </summary>
+    public string FullName => $"{LastName} {FirstName} {MiddleName}".Trim();
+
+    /// <summary>
+    /// Имя группы для отображения
+    /// </summary>
+    public string GroupName => SelectedGroup?.Name ?? "Не назначена";
 
     #endregion
 
@@ -97,6 +128,16 @@ public class StudentEditorViewModel : RoutableViewModelBase
     /// </summary>
     public ReactiveCommand<Unit, Unit> CreateNewCommand { get; set; } = null!;
 
+    /// <summary>
+    /// Команда редактирования из диалога деталей
+    /// </summary>
+    public ReactiveCommand<Unit, Unit> EditCommand { get; set; } = null!;
+
+    /// <summary>
+    /// Команда закрытия диалога деталей
+    /// </summary>
+    public ReactiveCommand<Unit, Unit> CloseCommand { get; set; } = null!;
+
     #endregion
 
     public StudentEditorViewModel(
@@ -111,6 +152,33 @@ public class StudentEditorViewModel : RoutableViewModelBase
 
         InitializeCommands();
         InitializeStatuses();
+    }
+
+    /// <summary>
+    /// Конструктор для диалогов с упрощенным набором зависимостей
+    /// </summary>
+    public StudentEditorViewModel(IStudentService studentService, IGroupService groupService, Student? student = null)
+        : base(hostScreen: null!)  // Для диалогов hostScreen не нужен
+    {
+        _studentService = studentService ?? throw new ArgumentNullException(nameof(studentService));
+        _groupService = groupService ?? throw new ArgumentNullException(nameof(groupService));
+        _navigationService = null!; // Для диалогов навигация не нужна
+
+        InitializeCommands();
+        InitializeStatuses();
+
+        if (student != null)
+        {
+            CurrentStudent = student;
+            IsEditMode = true;
+            PopulateForm(student);
+            FormTitle = "Редактирование студента";
+        }
+        else
+        {
+            SetupForCreation();
+            FormTitle = "Создание студента";
+        }
     }
 
     #region Lifecycle Methods
@@ -164,6 +232,9 @@ public class StudentEditorViewModel : RoutableViewModelBase
         DeleteCommand = CreateCommand(DeleteAsync, canDelete, "Ошибка при удалении студента");
         
         CreateNewCommand = CreateCommand(CreateNewAsync, null, "Ошибка при создании нового студента");
+        
+        EditCommand = CreateCommand(EditAsync, null, "Ошибка при редактировании студента");
+        CloseCommand = CreateCommand(CloseAsync, null, "Ошибка при закрытии диалога");
     }
 
     private void InitializeStatuses()
@@ -233,6 +304,10 @@ public class StudentEditorViewModel : RoutableViewModelBase
         EnrollmentDate = student.EnrollmentDate;
         BirthDate = student.BirthDate;
         SelectedStatus = student.Status;
+        Address = student.Address ?? string.Empty;
+        EmergencyContactName = student.EmergencyContactName ?? string.Empty;
+        EmergencyContactPhone = student.EmergencyContactPhone ?? string.Empty;
+        MedicalInformation = student.MedicalInformation ?? string.Empty;
         
         // Выбираем группу из загруженного списка
         SelectedGroup = AvailableGroups.FirstOrDefault(g => g.Uid == student.GroupUid);
@@ -257,6 +332,10 @@ public class StudentEditorViewModel : RoutableViewModelBase
         BirthDate = DateTime.Now;
         SelectedGroup = null;
         SelectedStatus = StudentStatus.Active;
+        Address = string.Empty;
+        EmergencyContactName = string.Empty;
+        EmergencyContactPhone = string.Empty;
+        MedicalInformation = string.Empty;
     }
 
     private void GenerateStudentNumber()
@@ -283,11 +362,16 @@ public class StudentEditorViewModel : RoutableViewModelBase
             }
 
             ShowSuccess(IsEditMode ? "Студент обновлен" : "Студент создан");
-            await _navigationService.NavigateToAsync("students");
+            
+            // Для диалогов не используем навигацию
+            if (_navigationService != null)
+            {
+                await _navigationService.NavigateToAsync("students");
+            }
         }
         catch (Exception ex)
         {
-            SetError($"Ошибка при сохранении: {ex.Message}", ex);
+            SetError("Ошибка при сохранении студента", ex);
         }
         finally
         {
@@ -375,7 +459,11 @@ public class StudentEditorViewModel : RoutableViewModelBase
 
     private async Task CancelAsync()
     {
-        await _navigationService.GoBackAsync();
+        // Для диалогов не используем навигацию
+        if (_navigationService != null)
+        {
+            await _navigationService.GoBackAsync();
+        }
     }
 
     private async Task CreateNewAsync()
@@ -384,6 +472,20 @@ public class StudentEditorViewModel : RoutableViewModelBase
         IsEditMode = false;
         FormTitle = "Создание студента";
         ClearError();
+    }
+
+    private async Task EditAsync()
+    {
+        // Этот метод вызывается из диалога деталей для перехода к редактированию
+        // Логика будет обработана в code-behind диалога
+        await Task.CompletedTask;
+    }
+
+    private async Task CloseAsync()
+    {
+        // Этот метод вызывается для закрытия диалога деталей
+        // Логика будет обработана в code-behind диалога
+        await Task.CompletedTask;
     }
 
     #endregion

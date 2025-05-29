@@ -1,6 +1,5 @@
-using System;
-using ReactiveUI;
 using ViridiscaUi.Domain.Models.Base;
+using ReactiveUI;
 
 namespace ViridiscaUi.Domain.Models.Auth;
 
@@ -11,8 +10,11 @@ public class UserRole : ViewModelBase
 {
     private Guid _userUid;
     private Guid _roleUid;
+
     private Role _role = null!;
+    
     private bool _isActive;
+    
     private DateTime _assignedAt;
     private DateTime? _expiresAt;
 

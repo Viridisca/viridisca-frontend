@@ -73,7 +73,7 @@ public class FileService : IFileService
                 FilePath = filePath,
                 ContentType = contentType,
                 FileSize = fileStream.Length,
-                EntityType = entityType,
+                EntityType = entityType, // ParseEntityType(entityType),
                 EntityUid = entityUid,
                 CreatedAt = DateTime.UtcNow
             };
@@ -272,7 +272,8 @@ public class FileService : IFileService
 
         if (!string.IsNullOrEmpty(entityType))
         {
-            query = query.Where(f => f.EntityType == entityType);
+            var parsedEntityType = entityType; // ParseEntityType(entityType);
+            query = query.Where(f => f.EntityType == parsedEntityType);
         }
 
         var fileRecords = await query
@@ -288,7 +289,7 @@ public class FileService : IFileService
             CreatedAt = f.CreatedAt,
             LastModifiedAt = f.LastModifiedAt ?? f.CreatedAt,
             EntityUid = f.EntityUid,
-            EntityType = f.EntityType,
+            EntityType = f.EntityType.ToString(),
             FilePath = f.FilePath
         });
     }
@@ -308,7 +309,7 @@ public class FileService : IFileService
             CreatedAt = fileRecord.CreatedAt,
             LastModifiedAt = fileRecord.LastModifiedAt ?? fileRecord.CreatedAt,
             EntityUid = fileRecord.EntityUid,
-            EntityType = fileRecord.EntityType,
+            EntityType = fileRecord.EntityType.ToString(),
             FilePath = fileRecord.FilePath
         };
     }
@@ -499,5 +500,5 @@ public class FileService : IFileService
             ".rar" => "application/x-rar-compressed",
             _ => "application/octet-stream"
         };
-    }
+    } 
 } 

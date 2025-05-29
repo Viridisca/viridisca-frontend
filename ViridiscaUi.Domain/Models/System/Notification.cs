@@ -1,8 +1,7 @@
-using System;
-using System.Collections.Generic;
-using ReactiveUI;
 using ViridiscaUi.Domain.Models.Base;
 using ViridiscaUi.Domain.Models.Auth;
+using ReactiveUI;
+using ViridiscaUi.Domain.Models.System.Enums;
 
 namespace ViridiscaUi.Domain.Models.System;
 
@@ -12,22 +11,29 @@ namespace ViridiscaUi.Domain.Models.System;
 public class Notification : ViewModelBase
 {
     private Guid _recipientUid;
+    private User? _recipient;
+    
     private string _title = string.Empty;
     private string _message = string.Empty;
+
     private NotificationType _type;
     private NotificationPriority _priority;
+    
     private bool _isRead;
+    private bool _isImportant;
+    
     private DateTime _sentAt;
     private DateTime? _readAt;
-    private User? _recipient;
+    
     private string? _category;
     private string? _actionUrl;
-    private bool _isImportant;
+    private string? _metadataJson;
+    
     private DateTime? _expiresAt;
     private DateTime? _scheduledFor;
     private TimeSpan? _repeatInterval;
+
     private Dictionary<string, object>? _metadata;
-    private string? _metadataJson;
 
     /// <summary>
     /// Идентификатор получателя
@@ -223,80 +229,3 @@ public class Notification : ViewModelBase
         }
     }
 }
-
-/// <summary>
-/// Тип уведомления
-/// </summary>
-public enum NotificationType
-{
-    /// <summary>
-    /// Информационное
-    /// </summary>
-    Info = 0,
-
-    /// <summary>
-    /// Предупреждение
-    /// </summary>
-    Warning = 1,
-
-    /// <summary>
-    /// Ошибка
-    /// </summary>
-    Error = 2,
-
-    /// <summary>
-    /// Успех
-    /// </summary>
-    Success = 3,
-
-    /// <summary>
-    /// Системное
-    /// </summary>
-    System = 4,
-
-    /// <summary>
-    /// Оценка
-    /// </summary>
-    Grade = 5,
-
-    /// <summary>
-    /// Посещаемость
-    /// </summary>
-    Attendance = 6,
-
-    /// <summary>
-    /// Задание
-    /// </summary>
-    Assignment = 7,
-
-    /// <summary>
-    /// Напоминание
-    /// </summary>
-    Reminder = 8
-}
-
-/// <summary>
-/// Приоритет уведомления
-/// </summary>
-public enum NotificationPriority
-{
-    /// <summary>
-    /// Низкий
-    /// </summary>
-    Low = 0,
-
-    /// <summary>
-    /// Обычный
-    /// </summary>
-    Normal = 1,
-
-    /// <summary>
-    /// Высокий
-    /// </summary>
-    High = 2,
-
-    /// <summary>
-    /// Критический
-    /// </summary>
-    Critical = 3
-} 

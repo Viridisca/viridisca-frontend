@@ -27,6 +27,9 @@ namespace ViridiscaUi.ViewModels.Education
         [Reactive] public int LessonsPerWeek { get; set; } = 2;
         [Reactive] public Guid? DepartmentUid { get; set; }
         [Reactive] public Department? SelectedDepartment { get; set; }
+        [Reactive] public SubjectType SelectedSubjectType { get; set; } = SubjectType.Required;
+        [Reactive] public string? SelectedKnowledgeArea { get; set; }
+        [Reactive] public string? ValidationError { get; set; }
 
         [ObservableAsProperty] public bool IsLoading { get; }
         [ObservableAsProperty] public bool IsValid { get; }
@@ -44,15 +47,16 @@ namespace ViridiscaUi.ViewModels.Education
         // Список доступных департаментов
         public ObservableCollection<Department> AvailableDepartments { get; } = new();
 
-        // Предопределенные типы предметов
-        public ObservableCollection<string> SubjectTypes { get; } = new()
+        // Типы предметов из enum
+        public ObservableCollection<SubjectType> SubjectTypes { get; } = new()
         {
-            "Теоретический",
-            "Практический",
-            "Лабораторный",
-            "Семинарский",
-            "Лекционный",
-            "Проектный"
+            SubjectType.Required,
+            SubjectType.Elective,
+            SubjectType.Specialized,
+            SubjectType.Practicum,
+            SubjectType.Seminar,
+            SubjectType.Laboratory,
+            SubjectType.Lecture
         };
 
         // Предопределенные области знаний
@@ -85,11 +89,13 @@ namespace ViridiscaUi.ViewModels.Education
                 Credits = subject.Credits;
                 LessonsPerWeek = subject.LessonsPerWeek;
                 DepartmentUid = subject.DepartmentUid;
+                SelectedSubjectType = subject.Type;
             }
             else
             {
-                // Генерируем код предмета для нового
+                // Значения по умолчанию для нового предмета
                 Code = GenerateSubjectCode();
+                SelectedSubjectType = SubjectType.Required;
             }
 
             InitializeCommands();
@@ -214,6 +220,33 @@ namespace ViridiscaUi.ViewModels.Education
         {
             try
             {
+                // Валидация перед сохранением
+                ValidationError = null;
+                
+                if (string.IsNullOrWhiteSpace(Name))
+                {
+                    ValidationError = "Название предмета обязательно";
+                    return null;
+                }
+                
+                if (string.IsNullOrWhiteSpace(Code))
+                {
+                    ValidationError = "Код предмета обязателен";
+                    return null;
+                }
+                
+                if (Credits <= 0 || Credits > 20)
+                {
+                    ValidationError = "Количество кредитов должно быть от 1 до 20";
+                    return null;
+                }
+                
+                if (LessonsPerWeek <= 0 || LessonsPerWeek > 40)
+                {
+                    ValidationError = "Количество занятий в неделю должно быть от 1 до 40";
+                    return null;
+                }
+
                 var subject = Subject ?? new Subject();
                 
                 subject.Name = Name.Trim();
@@ -223,6 +256,7 @@ namespace ViridiscaUi.ViewModels.Education
                 subject.Credits = Credits;
                 subject.LessonsPerWeek = LessonsPerWeek;
                 subject.DepartmentUid = DepartmentUid == Guid.Empty ? null : DepartmentUid;
+                subject.Type = SelectedSubjectType;
 
                 if (Subject == null)
                 {
@@ -237,7 +271,7 @@ namespace ViridiscaUi.ViewModels.Education
             }
             catch (Exception ex)
             {
-                SetError("Ошибка при сохранении предмета", ex);
+                ValidationError = ex.Message;
                 return null;
             }
         }

@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using ReactiveUI;
 using ViridiscaUi.Domain.Models.Base;
+using ViridiscaUi.Domain.Models.Education.Enums;
 
 namespace ViridiscaUi.Domain.Models.Education;
 

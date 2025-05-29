@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using ReactiveUI;
 using ViridiscaUi.Domain.Models.Base;
+using ViridiscaUi.Domain.Models.System.Enums;
 
 namespace ViridiscaUi.Domain.Models.System;
 

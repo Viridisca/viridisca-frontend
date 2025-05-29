@@ -3,7 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:ViridiscaUi.ViewModels.Education"
-             xmlns:domain="clr-namespace:ViridiscaUi.Domain.Models.Education;assembly=ViridiscaUi.Domain"
+             xmlns:domain="clr-namespace:ViridiscaUi.Domain.Models.Education.Enums;assembly=ViridiscaUi.Domain"
              xmlns:converters="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
              xmlns:local="clr-namespace:ViridiscaUi.Converters"
              xmlns:material="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"

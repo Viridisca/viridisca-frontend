@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive;
@@ -7,6 +8,7 @@ using System.Threading.Tasks;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using ViridiscaUi.Domain.Models.Education;
+using ViridiscaUi.Domain.Models.Education.Enums;
 using ViridiscaUi.Infrastructure.Navigation;
 using ViridiscaUi.Services.Interfaces;
 using ViridiscaUi.ViewModels;
@@ -87,6 +89,42 @@ public class TeacherEditorViewModel : RoutableViewModelBase
     [Reactive] public ObservableCollection<string> Departments { get; set; } = new();
     [Reactive] public string? SelectedDepartment { get; set; }
 
+    // Additional properties for dialogs
+    [Reactive] public string EmployeeCode { get; set; } = string.Empty;
+    [Reactive] public string Phone { get; set; } = string.Empty;
+    [Reactive] public DateTime? BirthDate { get; set; }
+    [Reactive] public string OfficeNumber { get; set; } = string.Empty;
+    [Reactive] public string Address { get; set; } = string.Empty;
+    [Reactive] public DateTime HireDate { get; set; } = DateTime.Today;
+    [Reactive] public DateTime? TerminationDate { get; set; }
+    [Reactive] public TeacherStatus Status { get; set; } = TeacherStatus.Active;
+    [Reactive] public decimal HourlyRate { get; set; } = 0;
+    [Reactive] public string DepartmentName { get; set; } = string.Empty;
+
+    // Computed properties for details dialog
+    public string FullName => $"{LastName} {FirstName} {MiddleName}".Trim();
+    public bool IsTerminated => Status == TeacherStatus.Terminated;
+    
+    // Statistics properties for details dialog
+    [Reactive] public int CoursesCount { get; set; } = 0;
+    [Reactive] public int GroupsCount { get; set; } = 0;
+    [Reactive] public int StudentsCount { get; set; } = 0;
+    [Reactive] public double AverageRating { get; set; } = 0.0;
+    [Reactive] public string WorkExperience { get; set; } = "0 лет";
+    [Reactive] public int ActiveCoursesCount { get; set; } = 0;
+    [Reactive] public int TotalStudentsCount { get; set; } = 0;
+    [Reactive] public double AverageCourseRating { get; set; } = 0.0;
+    [Reactive] public int CompletedCoursesCount { get; set; } = 0;
+    [Reactive] public int PublicationsCount { get; set; } = 0;
+    
+    // Collections for details dialog
+    [Reactive] public ObservableCollection<Course> Courses { get; set; } = new();
+    [Reactive] public ObservableCollection<Group> CuratedGroups { get; set; } = new();
+    
+    // Computed properties for collections
+    public bool HasCourses => Courses.Any();
+    public bool HasGroups => CuratedGroups.Any();
+
     #endregion
 
     #region Commands
@@ -111,6 +149,41 @@ public class TeacherEditorViewModel : RoutableViewModelBase
     /// </summary>
     public ReactiveCommand<Unit, Unit> CreateNewCommand { get; set; } = null!;
 
+    /// <summary>
+    /// Команда редактирования (для диалога деталей)
+    /// </summary>
+    public ReactiveCommand<Unit, Unit> EditCommand { get; set; } = null!;
+
+    /// <summary>
+    /// Команда закрытия (для диалога деталей)
+    /// </summary>
+    public ReactiveCommand<Unit, Unit> CloseCommand { get; set; } = null!;
+
+    /// <summary>
+    /// Команда генерации кода сотрудника
+    /// </summary>
+    public ReactiveCommand<Unit, Unit> GenerateEmployeeCodeCommand { get; set; } = null!;
+
+    /// <summary>
+    /// Команда управления курсами
+    /// </summary>
+    public ReactiveCommand<Unit, Unit> ManageCoursesCommand { get; set; } = null!;
+
+    /// <summary>
+    /// Команда управления группами
+    /// </summary>
+    public ReactiveCommand<Unit, Unit> ManageGroupsCommand { get; set; } = null!;
+
+    /// <summary>
+    /// Команда просмотра статистики
+    /// </summary>
+    public ReactiveCommand<Unit, Unit> ViewStatisticsCommand { get; set; } = null!;
+
+    /// <summary>
+    /// Команда отправки сообщения
+    /// </summary>
+    public ReactiveCommand<Unit, Unit> SendMessageCommand { get; set; } = null!;
+
     #endregion
 
     /// <summary>
@@ -128,6 +201,33 @@ public class TeacherEditorViewModel : RoutableViewModelBase
 
         InitializeCommands();
         InitializePredefinedValues();
+    }
+
+    /// <summary>
+    /// Конструктор для диалогов с упрощенным набором зависимостей
+    /// </summary>
+    public TeacherEditorViewModel(ITeacherService teacherService, Teacher? teacher = null)
+        : base(hostScreen: null!)  // Для диалогов hostScreen не нужен
+    {
+        _teacherService = teacherService ?? throw new ArgumentNullException(nameof(teacherService));
+        _navigationService = null!; // Для диалогов навигация не нужна
+        _dialogService = null!; // Для диалогов DialogService может не понадобиться
+
+        InitializeCommands();
+        InitializePredefinedValues();
+
+        if (teacher != null)
+        {
+            CurrentTeacher = teacher;
+            IsEditMode = true;
+            PopulateForm(teacher);
+            FormTitle = "Редактирование преподавателя";
+        }
+        else
+        {
+            SetupForCreation();
+            FormTitle = "Создание преподавателя";
+        }
     }
 
     #region Lifecycle Methods
@@ -179,6 +279,15 @@ public class TeacherEditorViewModel : RoutableViewModelBase
         DeleteCommand = CreateCommand(DeleteAsync, canDelete, "Ошибка при удалении преподавателя");
         
         CreateNewCommand = CreateCommand(CreateNewAsync, null, "Ошибка при создании нового преподавателя");
+        
+        // Additional commands for dialogs
+        EditCommand = CreateCommand(EditAsync, null, "Ошибка при редактировании");
+        CloseCommand = CreateCommand(CloseAsync, null, "Ошибка при закрытии");
+        GenerateEmployeeCodeCommand = CreateCommand(GenerateEmployeeCodeAsync, null, "Ошибка при генерации кода");
+        ManageCoursesCommand = CreateCommand(ManageCoursesAsync, null, "Ошибка при управлении курсами");
+        ManageGroupsCommand = CreateCommand(ManageGroupsAsync, null, "Ошибка при управлении группами");
+        ViewStatisticsCommand = CreateCommand(ViewStatisticsAsync, null, "Ошибка при просмотре статистики");
+        SendMessageCommand = CreateCommand(SendMessageAsync, null, "Ошибка при отправке сообщения");
     }
 
     private void InitializePredefinedValues()
@@ -258,17 +367,42 @@ public class TeacherEditorViewModel : RoutableViewModelBase
         }
     }
 
-    private void PopulateForm(Teacher teacher)
+    public void PopulateForm(Teacher teacher)
     {
         FirstName = teacher.FirstName;
         LastName = teacher.LastName;
         MiddleName = teacher.MiddleName;
-        // Email и PhoneNumber - read-only свойства из User
-        // Position - read-only свойство
+        EmployeeCode = teacher.EmployeeCode;
+        Specialization = teacher.Specialization ?? string.Empty;
         AcademicDegree = teacher.AcademicDegree ?? string.Empty;
         AcademicTitle = teacher.AcademicTitle ?? string.Empty;
-        Specialization = teacher.Specialization ?? string.Empty;
-        // Не используем несуществующие свойства
+        HireDate = teacher.HireDate;
+        HourlyRate = teacher.HourlyRate;
+        Status = teacher.Status;
+        
+        // Для работы в диалогах добавляем дополнительные поля
+        // TODO: Эти поля нужно будет добавить в модель Teacher при необходимости
+        // Phone = teacher.PhoneNumber ?? string.Empty;
+        // BirthDate = teacher.BirthDate;
+        // OfficeNumber = teacher.OfficeNumber ?? string.Empty;
+        // Address = teacher.Address ?? string.Empty;
+        // TerminationDate = teacher.TerminationDate;
+        // Biography = teacher.Biography ?? string.Empty;
+        
+        // Устанавливаем статистику (для диалога деталей)
+        // TODO: Получать реальную статистику из сервиса
+        CoursesCount = 5;
+        GroupsCount = 2;
+        StudentsCount = 45;
+        AverageRating = 4.8;
+        WorkExperience = $"{DateTime.Now.Year - teacher.HireDate.Year} лет";
+        ActiveCoursesCount = 3;
+        TotalStudentsCount = 45;
+        AverageCourseRating = 4.7;
+        CompletedCoursesCount = 12;
+        PublicationsCount = 8;
+        
+        DepartmentName = "Кафедра информационных технологий"; // TODO: Получать из департамента
     }
 
     private void SetupForCreation()
@@ -310,7 +444,12 @@ public class TeacherEditorViewModel : RoutableViewModelBase
             }
 
             ShowSuccess(IsEditMode ? "Преподаватель обновлен" : "Преподаватель создан");
-            await _navigationService.NavigateToAsync("teachers");
+            
+            // Для диалогов не используем навигацию
+            if (_navigationService != null)
+            {
+                await _navigationService.NavigateToAsync("teachers");
+            }
         }
         catch (Exception ex)
         {
@@ -385,7 +524,11 @@ public class TeacherEditorViewModel : RoutableViewModelBase
 
     private async Task CancelAsync()
     {
-        await _navigationService.GoBackAsync();
+        // Для диалогов не используем навигацию
+        if (_navigationService != null)
+        {
+            await _navigationService.GoBackAsync();
+        }
     }
 
     private async Task CreateNewAsync()
@@ -394,6 +537,106 @@ public class TeacherEditorViewModel : RoutableViewModelBase
         IsEditMode = false;
         FormTitle = "Создание преподавателя";
         ClearError();
+    }
+
+    private async Task EditAsync()
+    {
+        // Этот метод вызывается из диалога деталей для перехода к редактированию
+        // Логика будет обработана в code-behind диалога
+        await Task.CompletedTask;
+    }
+
+    private async Task CloseAsync()
+    {
+        // Этот метод вызывается для закрытия диалога деталей
+        // Логика будет обработана в code-behind диалога
+        await Task.CompletedTask;
+    }
+
+    private async Task GenerateEmployeeCodeAsync()
+    {
+        try
+        {
+            var random = new Random();
+            EmployeeCode = $"T{DateTime.Now:yy}{random.Next(1000, 9999)}";
+            ShowInfo("Код сотрудника сгенерирован");
+        }
+        catch (Exception ex)
+        {
+            SetError("Ошибка при генерации кода", ex);
+        }
+    }
+
+    private async Task ManageCoursesAsync()
+    {
+        if (CurrentTeacher == null) return;
+
+        try
+        {
+            // TODO: Получить все доступные курсы
+            var allCourses = new List<Course>(); // await _courseService.GetAllCoursesAsync();
+            await _dialogService.ShowTeacherCoursesManagementDialogAsync(CurrentTeacher, allCourses);
+        }
+        catch (Exception ex)
+        {
+            SetError("Ошибка при управлении курсами", ex);
+        }
+    }
+
+    private async Task ManageGroupsAsync()
+    {
+        if (CurrentTeacher == null) return;
+
+        try
+        {
+            // TODO: Получить все доступные группы
+            var allGroups = new List<Group>(); // await _groupService.GetAllGroupsAsync();
+            await _dialogService.ShowTeacherGroupsManagementDialogAsync(CurrentTeacher, allGroups);
+        }
+        catch (Exception ex)
+        {
+            SetError("Ошибка при управлении группами", ex);
+        }
+    }
+
+    private async Task ViewStatisticsAsync()
+    {
+        if (CurrentTeacher == null) return;
+
+        try
+        {
+            // TODO: Получить статистику преподавателя
+            var statistics = new
+            {
+                CoursesCount = CoursesCount,
+                GroupsCount = GroupsCount,
+                StudentsCount = StudentsCount,
+                AverageRating = AverageRating,
+                WorkExperience = WorkExperience
+            };
+
+            await _dialogService.ShowTeacherStatisticsDialogAsync(FullName, statistics);
+        }
+        catch (Exception ex)
+        {
+            SetError("Ошибка при просмотре статистики", ex);
+        }
+    }
+
+    private async Task SendMessageAsync()
+    {
+        if (CurrentTeacher == null) return;
+
+        try
+        {
+            // TODO: Реализовать отправку сообщения преподавателю
+            ShowInfo($"Отправка сообщения преподавателю {FullName}");
+            await Task.CompletedTask;
+        }
+        catch (Exception ex)
+        {
+            SetError("Ошибка при отправке сообщения", ex);
+        }
     }
 
     #endregion

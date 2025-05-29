@@ -16,6 +16,7 @@ using ViridiscaUi.Infrastructure.Navigation;
 using static ViridiscaUi.Services.Interfaces.IAssignmentService;
 using ViridiscaUi.Domain.Models.System;
 using ViridiscaUi.ViewModels.Bases.Navigations;
+using ViridiscaUi.Domain.Models.Education.Enums;
 
 namespace ViridiscaUi.ViewModels.Education
 {
@@ -334,7 +335,7 @@ namespace ViridiscaUi.ViewModels.Education
                     Guid.NewGuid(), // Заглушка для recipientUid
                     "Новое задание",
                     $"Добавлено новое задание: {createdAssignment.Title}",
-                    Domain.Models.System.NotificationType.Info
+                    Domain.Models.System.Enums.NotificationType.Info
                 );
             }
         }
@@ -378,7 +379,7 @@ namespace ViridiscaUi.ViewModels.Education
                         Guid.NewGuid(), // Заглушка для recipientUid
                         "Задание изменено",
                         $"Задание '{dialogResult.Title}' было изменено",
-                        Domain.Models.System.NotificationType.Info
+                        Domain.Models.System.Enums.NotificationType.Info
                     );
                 }
             }
@@ -418,7 +419,7 @@ namespace ViridiscaUi.ViewModels.Education
                         Guid.NewGuid(), // Заглушка для recipientUid
                         "Задание удалено",
                         $"Задание '{assignmentViewModel.Title}' было удалено",
-                        Domain.Models.System.NotificationType.Warning);
+                        Domain.Models.System.Enums.NotificationType.Warning);
                 }
             }
             else

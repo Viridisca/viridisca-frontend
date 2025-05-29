@@ -9,6 +9,7 @@ using DynamicData;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using ViridiscaUi.Domain.Models.Education;
+using ViridiscaUi.Domain.Models.Education.Enums;
 using ViridiscaUi.Infrastructure.Navigation;
 using ViridiscaUi.Services.Interfaces;
 using ViridiscaUi.ViewModels;
@@ -94,6 +95,8 @@ namespace ViridiscaUi.ViewModels.Education
         public ReactiveCommand<Unit, Unit> DeleteCommand { get; set; } = null!;
         public ReactiveCommand<Unit, Unit> CreateNewCommand { get; set; } = null!;
         public ReactiveCommand<Unit, Unit> GenerateCodeCommand { get; set; } = null!;
+        public ReactiveCommand<Unit, Unit> EditCommand { get; set; } = null!;
+        public ReactiveCommand<Unit, Unit> CloseCommand { get; set; } = null!;
 
         public string Title => CurrentCourse == null ? "Добавить курс" : "Редактировать курс";
 
@@ -145,6 +148,9 @@ namespace ViridiscaUi.ViewModels.Education
             
             CreateNewCommand = CreateCommand(CreateNewAsync, null, "Ошибка при создании нового курса");
             GenerateCodeCommand = CreateCommand(GenerateCodeAsync, null, "Ошибка при генерации кода");
+            
+            EditCommand = CreateCommand(EditAsync, null, "Ошибка при редактировании курса");
+            CloseCommand = CreateCommand(CloseAsync, null, "Ошибка при закрытии курса");
         }
 
         private void InitializePredefinedValues()
@@ -253,7 +259,7 @@ namespace ViridiscaUi.ViewModels.Education
             Name = course.Name;
             Code = course.Code;
             Description = course.Description ?? string.Empty;
-            Category = course.Category ?? string.Empty;
+            Category = course.Category;
             StartDate = course.StartDate ?? DateTime.Now;
             EndDate = course.EndDate ?? DateTime.Now.AddMonths(4);
             Credits = course.Credits;
@@ -278,7 +284,7 @@ namespace ViridiscaUi.ViewModels.Education
             Name = string.Empty;
             Code = string.Empty;
             Description = string.Empty;
-            Category = string.Empty;
+            Category = null;
             SelectedTeacher = null;
             StartDate = DateTime.Now;
             EndDate = DateTime.Now.AddMonths(4);
@@ -313,7 +319,12 @@ namespace ViridiscaUi.ViewModels.Education
                 }
 
                 ShowSuccess(IsEditMode ? "Курс обновлен" : "Курс создан");
-                await _navigationService.NavigateToAsync("courses");
+                
+                // Для диалогов не используем навигацию
+                if (_navigationService != null)
+                {
+                    await _navigationService.NavigateToAsync("courses");
+                }
             }
             catch (Exception ex)
             {
@@ -335,7 +346,7 @@ namespace ViridiscaUi.ViewModels.Education
                 Name = Name.Trim(),
                 Code = Code.Trim(),
                 Description = string.IsNullOrWhiteSpace(Description) ? null : Description.Trim(),
-                Category = string.IsNullOrWhiteSpace(Category) ? null : Category.Trim(),
+                Category = Category,
                 TeacherUid = SelectedTeacher.Uid,
                 StartDate = StartDate,
                 EndDate = EndDate,
@@ -362,7 +373,7 @@ namespace ViridiscaUi.ViewModels.Education
                 Name = Name.Trim(),
                 Code = Code.Trim(),
                 Description = string.IsNullOrWhiteSpace(Description) ? null : Description.Trim(),
-                Category = string.IsNullOrWhiteSpace(Category) ? null : Category.Trim(),
+                Category = Category, // CategoryUid,
                 TeacherUid = SelectedTeacher.Uid,
                 StartDate = StartDate,
                 EndDate = EndDate,
@@ -407,7 +418,11 @@ namespace ViridiscaUi.ViewModels.Education
 
         private async Task CancelAsync()
         {
-            await _navigationService.GoBackAsync();
+            // Для диалогов не используем навигацию
+            if (_navigationService != null)
+            {
+                await _navigationService.GoBackAsync();
+            }
         }
 
         private async Task CreateNewAsync()
@@ -454,6 +469,92 @@ namespace ViridiscaUi.ViewModels.Education
                 CourseStatus.Archived => false,
                 _ => false
             };
+        }
+
+        private async Task EditAsync()
+        {
+            // Команда редактирования - просто уведомляем о том, что нужно перейти к редактированию
+            // Логика будет обрабатываться в диалоге
+            await Task.CompletedTask;
+        }
+
+        private async Task CloseAsync()
+        {
+            // Команда закрытия - просто уведомляем о том, что нужно закрыть диалог
+            // Логика будет обрабатываться в диалоге
+            await Task.CompletedTask;
+        }
+
+        // Дополнительные свойства для диалога деталей
+        [Reactive] public ObservableCollection<Module> Modules { get; set; } = new();
+        [Reactive] public ObservableCollection<Enrollment> Enrollments { get; set; } = new();
+        [Reactive] public string CourseDuration { get; set; } = string.Empty;
+        [Reactive] public bool HasErrors { get; set; }
+
+        /// <summary>
+        /// Конструктор для диалогов с упрощенным набором зависимостей
+        /// </summary>
+        public CourseEditorViewModel(ICourseService courseService, ITeacherService teacherService, Course? course = null)
+            : base(hostScreen: null!)  // Для диалогов hostScreen не нужен
+        {
+            _courseService = courseService ?? throw new ArgumentNullException(nameof(courseService));
+            _teacherService = teacherService ?? throw new ArgumentNullException(nameof(teacherService));
+            _navigationService = null!; // Для диалогов навигация не нужна
+
+            // Инициализация кэша преподавателей
+            _teachersSource.Connect()
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Bind(out _teachers)
+                .Subscribe();
+
+            InitializeCommands();
+            InitializePredefinedValues();
+
+            if (course != null)
+            {
+                CurrentCourse = course;
+                IsEditMode = true;
+                FormTitle = "Редактирование курса";
+                PopulateForm(course);
+                LoadModulesAndEnrollments(course);
+            }
+            else
+            {
+                SetupForCreation();
+            }
+        }
+
+        private void LoadModulesAndEnrollments(Course course)
+        {
+            // Загружаем модули и записи курса
+            Modules.Clear();
+            if (course.Modules != null)
+            {
+                foreach (var module in course.Modules.OrderBy(m => m.OrderIndex))
+                {
+                    Modules.Add(module);
+                }
+            }
+
+            Enrollments.Clear();
+            if (course.Enrollments != null)
+            {
+                foreach (var enrollment in course.Enrollments.OrderBy(e => e.EnrollmentDate))
+                {
+                    Enrollments.Add(enrollment);
+                }
+            }
+
+            // Вычисляем продолжительность курса
+            if (course.StartDate.HasValue && course.EndDate.HasValue)
+            {
+                var duration = course.EndDate.Value - course.StartDate.Value;
+                CourseDuration = $"{duration.Days} дней ({Math.Round(duration.TotalDays / 7, 1)} недель)";
+            }
+            else
+            {
+                CourseDuration = "Не определена";
+            }
         }
     }
 } 

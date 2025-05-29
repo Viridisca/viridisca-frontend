@@ -340,7 +340,7 @@ namespace ViridiscaUi.ViewModels.Education
                 createdGrade.StudentUid,
                 "Новая оценка",
                 $"Вы получили оценку {createdGrade.Value}/100",
-                Domain.Models.System.NotificationType.Info);
+                Domain.Models.System.Enums.NotificationType.Info);
 
             // Обновляем статистику
             await LoadStatisticsAsync();
@@ -387,7 +387,7 @@ namespace ViridiscaUi.ViewModels.Education
                     dialogResult.StudentUid,
                     "Оценка изменена",
                     $"Ваша оценка изменена на {dialogResult.Value}/100",
-                    Domain.Models.System.NotificationType.Info);
+                    Domain.Models.System.Enums.NotificationType.Info);
 
                 // Обновляем статистику
                 await LoadStatisticsAsync();

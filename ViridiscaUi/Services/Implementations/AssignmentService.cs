@@ -5,9 +5,10 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using ViridiscaUi.Domain.Models.Education;
+using ViridiscaUi.Domain.Models.Education.Enums;
+using ViridiscaUi.Domain.Models.System.Enums;
 using ViridiscaUi.Infrastructure;
-using ViridiscaUi.Services.Interfaces;
-using NotificationType = ViridiscaUi.Domain.Models.System.NotificationType;
+using ViridiscaUi.Services.Interfaces; 
 
 namespace ViridiscaUi.Services.Implementations;
 

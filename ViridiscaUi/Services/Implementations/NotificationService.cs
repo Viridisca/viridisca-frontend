@@ -7,6 +7,8 @@ using ViridiscaUi.Domain.Models.System;
 using ViridiscaUi.Domain.Models.Education;
 using ViridiscaUi.Infrastructure;
 using ViridiscaUi.Services.Interfaces;
+using ViridiscaUi.Domain.Models.System.Enums;
+using ViridiscaUi.Domain.Models.Education.Enums;
 
 namespace ViridiscaUi.Services.Implementations;
 
@@ -37,7 +39,7 @@ public class NotificationService(ApplicationDbContext dbContext) : INotification
             Message = message,
             Type = type,
             Priority = priority,
-            Category = category,
+            Category = category, // ParseCategoryToUid(category),
             ActionUrl = actionUrl,
             CreatedAt = DateTime.UtcNow,
             IsRead = false
@@ -71,7 +73,7 @@ public class NotificationService(ApplicationDbContext dbContext) : INotification
             Message = message,
             Type = type,
             Priority = priority,
-            Category = category,
+            Category = category, // ParseCategoryToUid(category),
             ActionUrl = actionUrl,
             CreatedAt = DateTime.UtcNow,
             IsRead = false,
@@ -109,8 +111,8 @@ public class NotificationService(ApplicationDbContext dbContext) : INotification
         if (priorityFilter.HasValue)
             query = query.Where(n => n.Priority == priorityFilter.Value);
 
-        if (!string.IsNullOrEmpty(categoryFilter))
-            query = query.Where(n => n.Category == categoryFilter);
+        //if (!string.IsNullOrEmpty(categoryFilter) && Guid.TryParse(categoryFilter, out var categoryUid))
+        //    query = query.Where(n => n.Category == categoryUid);
 
         // Исключаем истекшие уведомления
         query = query.Where(n => n.ExpiresAt == null || n.ExpiresAt > DateTime.UtcNow);
@@ -278,7 +280,7 @@ public class NotificationService(ApplicationDbContext dbContext) : INotification
                     Message = message,
                     Type = type,
                     Priority = priority,
-                    Category = category,
+                    Category = category, // ParseCategoryToUid(category),
                     ActionUrl = actionUrl,
                     CreatedAt = DateTime.UtcNow,
                     IsRead = false,
@@ -676,5 +678,5 @@ public class NotificationService(ApplicationDbContext dbContext) : INotification
         // В реальном приложении здесь будет показ toast-уведомления
         // Пока просто логируем
         Console.WriteLine($"WARNING: {message}");
-    }
+    } 
 }

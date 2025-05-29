@@ -6,47 +6,70 @@ using ViridiscaUi.Domain.Models.Education;
 namespace ViridiscaUi.Services.Interfaces;
 
 /// <summary>
-/// Сервис для экспорта данных
+/// Интерфейс сервиса для экспорта данных
 /// </summary>
 public interface IExportService
 {
     /// <summary>
-    /// Экспортирует оценки в PDF
+    /// Экспортирует список студентов в Excel файл
     /// </summary>
-    Task<string?> ExportGradesToPdfAsync(IEnumerable<Grade> grades, string title);
+    /// <param name="students">Список студентов для экспорта</param>
+    /// <param name="fileName">Имя файла (без расширения)</param>
+    /// <returns>Путь к созданному файлу или null в случае ошибки</returns>
+    Task<string?> ExportStudentsToExcelAsync(IEnumerable<Student> students, string fileName = "Students");
     
     /// <summary>
-    /// Экспортирует оценки в Excel
+    /// Экспортирует список студентов в CSV файл
     /// </summary>
-    Task<string?> ExportGradesToExcelAsync(IEnumerable<Grade> grades, string title);
+    /// <param name="students">Список студентов для экспорта</param>
+    /// <param name="fileName">Имя файла (без расширения)</param>
+    /// <returns>Путь к созданному файлу или null в случае ошибки</returns>
+    Task<string?> ExportStudentsToCsvAsync(IEnumerable<Student> students, string fileName = "Students");
     
     /// <summary>
-    /// Экспортирует аналитический отчет
+    /// Экспортирует список студентов в PDF файл
     /// </summary>
-    Task<string?> ExportAnalyticsReportAsync(object analytics, string title);
+    /// <param name="students">Список студентов для экспорта</param>
+    /// <param name="fileName">Имя файла (без расширения)</param>
+    /// <returns>Путь к созданному файлу или null в случае ошибки</returns>
+    Task<string?> ExportStudentsToPdfAsync(IEnumerable<Student> students, string fileName = "Students");
     
     /// <summary>
-    /// Экспортирует курсы в Excel
+    /// Экспортирует подробный отчет по студенту
     /// </summary>
-    Task<string?> ExportCoursesToExcelAsync(IEnumerable<Course> courses, string title);
+    /// <param name="student">Студент для экспорта</param>
+    /// <param name="includeGrades">Включать ли оценки</param>
+    /// <param name="includeCourses">Включать ли курсы</param>
+    /// <param name="fileName">Имя файла (без расширения)</param>
+    /// <returns>Путь к созданному файлу или null в случае ошибки</returns>
+    Task<string?> ExportStudentDetailAsync(Student student, bool includeGrades = true, bool includeCourses = true, string? fileName = null);
     
     /// <summary>
-    /// Экспортирует преподавателей в Excel
+    /// Экспортирует список групп в Excel файл
     /// </summary>
-    Task<string?> ExportTeachersToExcelAsync(IEnumerable<Teacher> teachers, string title);
+    /// <param name="groups">Список групп для экспорта</param>
+    /// <param name="fileName">Имя файла (без расширения)</param>
+    /// <returns>Путь к созданному файлу или null в случае ошибки</returns>
+    Task<string?> ExportGroupsToExcelAsync(IEnumerable<Group> groups, string fileName = "Groups");
     
     /// <summary>
-    /// Экспортирует студентов в Excel
+    /// Экспортирует статистику по студентам
     /// </summary>
-    Task<string?> ExportStudentsToExcelAsync(IEnumerable<Student> students, string title);
+    /// <param name="statistics">Данные статистики</param>
+    /// <param name="fileName">Имя файла (без расширения)</param>
+    /// <returns>Путь к созданному файлу или null в случае ошибки</returns>
+    Task<string?> ExportStudentStatisticsAsync(object statistics, string fileName = "StudentStatistics");
     
     /// <summary>
-    /// Экспортирует группы в Excel
+    /// Получает поддерживаемые форматы экспорта
     /// </summary>
-    Task<string?> ExportGroupsToExcelAsync(IEnumerable<Group> groups, string title);
+    /// <returns>Список поддерживаемых форматов</returns>
+    IEnumerable<string> GetSupportedExportFormats();
     
     /// <summary>
-    /// Экспортирует задания в Excel
+    /// Проверяет, поддерживается ли указанный формат
     /// </summary>
-    Task<string?> ExportAssignmentsToExcelAsync(IEnumerable<Assignment> assignments, string title);
+    /// <param name="format">Формат файла (например, "xlsx", "csv", "pdf")</param>
+    /// <returns>True если формат поддерживается</returns>
+    bool IsFormatSupported(string format);
 }

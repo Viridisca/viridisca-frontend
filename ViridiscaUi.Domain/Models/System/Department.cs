@@ -1,8 +1,7 @@
-using System;
-using System.Collections.ObjectModel;
-using ReactiveUI;
-using ViridiscaUi.Domain.Models.Base;
 using ViridiscaUi.Domain.Models.Education;
+using System.Collections.ObjectModel;
+using ViridiscaUi.Domain.Models.Base;
+using ReactiveUI;
 
 namespace ViridiscaUi.Domain.Models.System;
 
@@ -14,12 +13,15 @@ public class Department : ViewModelBase
     private string _name = string.Empty;
     private string _description = string.Empty;
     private string _code = string.Empty;
+
     private Guid? _headOfDepartmentUid;
     private Teacher? _headOfDepartment;
+    
     private bool _isActive;
-    private ObservableCollection<Subject> _subjects = new();
-    private ObservableCollection<Group> _groups = new();
-    private ObservableCollection<Teacher> _teachers = new();
+
+    private ObservableCollection<Teacher> _teachers = [];
+    private ObservableCollection<Subject> _subjects = [];
+    private ObservableCollection<Group> _groups = [];
 
     /// <summary>
     /// Название департамента

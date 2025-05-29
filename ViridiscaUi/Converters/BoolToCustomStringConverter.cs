@@ -9,13 +9,45 @@ namespace ViridiscaUi.Converters;
 /// </summary>
 public class BoolToCustomStringConverter : IValueConverter
 {
+    /// <summary>
+    /// Статический экземпляр конвертера для использования в XAML
+    /// </summary>
+    public static BoolToCustomStringConverter Instance { get; } = new();
+
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        if (value is not bool boolValue)
+        if (parameter is not string parameterString)
             return string.Empty;
 
-        if (parameter is not string parameterString)
-            return boolValue.ToString();
+        bool boolValue;
+        
+        // Обрабатываем различные типы входных значений
+        if (value is bool directBool)
+        {
+            boolValue = directBool;
+        }
+        else if (value is int intValue)
+        {
+            boolValue = intValue > 0;
+        }
+        else if (value is double doubleValue)
+        {
+            boolValue = doubleValue > 0;
+        }
+        else if (value is string stringValue)
+        {
+            boolValue = !string.IsNullOrEmpty(stringValue);
+        }
+        else
+        {
+            boolValue = value != null;
+        }
+
+        // Проверяем на invert параметр
+        if (parameterString.Equals("invert", StringComparison.OrdinalIgnoreCase))
+        {
+            return !boolValue;
+        }
 
         // Параметр должен быть в формате "TrueString|FalseString"
         var parts = parameterString.Split('|');

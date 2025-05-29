@@ -1,7 +1,6 @@
-using System;
 using System.ComponentModel.DataAnnotations;
-using ReactiveUI;
 using ViridiscaUi.Domain.Models.Base;
+using ReactiveUI;
 
 namespace ViridiscaUi.Domain.Models.Auth;
 
@@ -12,12 +11,16 @@ public class RegisterRequest : ViewModelBase
 {
     private string _email = string.Empty;
     private string _username = string.Empty;
+
     private string _password = string.Empty;
     private string _confirmPassword = string.Empty;
+
     private string _firstName = string.Empty;
     private string _lastName = string.Empty;
     private string _middleName = string.Empty;
+
     private string _phoneNumber = string.Empty;
+    
     private DateTime _dateOfBirth;
 
     /// <summary>

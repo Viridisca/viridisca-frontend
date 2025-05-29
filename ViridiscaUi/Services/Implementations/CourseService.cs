@@ -8,7 +8,8 @@ using ViridiscaUi.Domain.Models.Education;
 using ViridiscaUi.Domain.Models.Auth;
 using ViridiscaUi.Services.Interfaces;
 using ViridiscaUi.Infrastructure;
-using CourseStatus = ViridiscaUi.Domain.Models.Education.CourseStatus;
+using CourseStatus = ViridiscaUi.Domain.Models.Education.Enums.CourseStatus;
+using ViridiscaUi.Domain.Models.Education.Enums;
 
 namespace ViridiscaUi.Services.Implementations
 {

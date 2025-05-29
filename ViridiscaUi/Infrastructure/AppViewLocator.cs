@@ -5,6 +5,7 @@ using ViridiscaUi.ViewModels.Auth;
 using ViridiscaUi.Views.Auth;
 using ViridiscaUi.Windows;
 using ViridiscaUi.ViewModels.Education;
+using ViridiscaUi.ViewModels.Students;
 using ViridiscaUi.Views.Education;
 using ViridiscaUi.Views.Common;
 using ViridiscaUi.ViewModels.System;
@@ -38,7 +39,7 @@ public class ReactiveViewLocator : IViewLocator
             MainViewModel => new MainWindow(),
             HomeViewModel => new HomeView(),
 
-            // Education ViewModels
+            // Education ViewModels - Main Views
             CoursesViewModel => new CoursesView(),
             AssignmentsViewModel => new AssignmentsView(),
             GradesViewModel => new GradesView(),
@@ -47,8 +48,18 @@ public class ReactiveViewLocator : IViewLocator
             StudentsViewModel => new StudentsView(),
             SubjectsViewModel => new SubjectsView(),
 
+            // Education ViewModels - Editor Views (for navigation)
+            TeacherEditorViewModel => new TeacherEditorView(),
+            StudentEditorViewModel => new StudentEditorView(),
+            CourseEditorViewModel => new CourseEditorView(),
+            GroupEditorViewModel => new GroupEditorView(),
+            SubjectEditorViewModel => new SubjectEditorView(),
+            GradeEditorViewModel => new GradeEditorView(),
+            AssignmentEditorViewModel => new AssignmentEditorView(),
+
             // System ViewModels
             NotificationCenterViewModel => new NotificationCenterView(),
+            DepartmentsViewModel => new DepartmentsView(),
 
             // Fallback - создаем простой UserControl с TextBlock
             _ => new FallbackView { DataContext = viewModel }

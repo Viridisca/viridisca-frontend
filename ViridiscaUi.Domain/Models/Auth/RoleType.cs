@@ -121,9 +121,12 @@ public static class RoleTypeExtensions
     public static string GetDisplayName(this RoleType roleType)
     {
         var fieldInfo = roleType.GetType().GetField(roleType.ToString());
-        if (fieldInfo == null) return roleType.ToString();
+
+        if (fieldInfo is null) 
+            return roleType.ToString();
 
         var attributes = (DescriptionAttribute[])fieldInfo.GetCustomAttributes(typeof(DescriptionAttribute), false);
+
         return attributes.Length > 0 ? attributes[0].Description : roleType.ToString();
     }
 } 

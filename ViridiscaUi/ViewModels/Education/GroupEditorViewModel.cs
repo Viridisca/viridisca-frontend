@@ -8,6 +8,7 @@ using DynamicData;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using ViridiscaUi.Domain.Models.Education;
+using ViridiscaUi.Domain.Models.Education.Enums;
 using ViridiscaUi.Services.Interfaces;
 
 namespace ViridiscaUi.ViewModels.Education
@@ -35,6 +36,17 @@ namespace ViridiscaUi.ViewModels.Education
         [Reactive] public Teacher? SelectedCurator { get; set; }
         [Reactive] public Guid DepartmentUid { get; set; } = Guid.NewGuid();
 
+        // Дополнительные свойства для отображения деталей
+        [Reactive] public DateTime? PlannedEndDate { get; set; }
+        [Reactive] public DateTime? ActualEndDate { get; set; }
+        [Reactive] public bool IsActive { get; set; } = true;
+        [Reactive] public Course? Course { get; set; }
+        [Reactive] public Teacher? Curator { get; set; }
+        [Reactive] public ObservableCollection<Student> Students { get; set; } = new();
+        [Reactive] public DateTime CreatedAt { get; set; }
+        [Reactive] public DateTime UpdatedAt { get; set; }
+        [Reactive] public Guid Uid { get; set; }
+
         [ObservableAsProperty] public bool IsLoading { get; }
         [ObservableAsProperty] public bool IsValid { get; }
 
@@ -44,6 +56,8 @@ namespace ViridiscaUi.ViewModels.Education
 
         public ReactiveCommand<Unit, Group?> SaveCommand { get; private set; }
         public ReactiveCommand<Unit, Unit> CancelCommand { get; private set; }
+        public ReactiveCommand<Unit, Unit> EditCommand { get; private set; }
+        public ReactiveCommand<Unit, Unit> CloseCommand { get; private set; }
 
         public GroupEditorViewModel(ITeacherService teacherService, Group? group = null)
         {
@@ -69,6 +83,16 @@ namespace ViridiscaUi.ViewModels.Education
                 Status = group.Status;
                 CuratorUid = group.CuratorUid;
                 DepartmentUid = group.DepartmentUid;
+                
+                // Дополнительные свойства для диалога деталей
+                PlannedEndDate = group.EndDate;
+                ActualEndDate = group.Status == GroupStatus.Completed ? group.EndDate : null;
+                IsActive = group.Status == GroupStatus.Active || group.Status == GroupStatus.Forming;
+                Curator = group.Curator;
+                Students = group.Students ?? new ObservableCollection<Student>();
+                CreatedAt = group.CreatedAt;
+                UpdatedAt = group.LastModifiedAt ?? group.CreatedAt;
+                Uid = group.Uid;
             }
 
             InitializeCommands();
@@ -99,6 +123,8 @@ namespace ViridiscaUi.ViewModels.Education
             // Создаем команды с обработкой ошибок
             SaveCommand = CreateCommand(SaveAsync, canSave, "Ошибка сохранения группы");
             CancelCommand = CreateSyncCommand(() => { }, null, "Ошибка отмены");
+            EditCommand = CreateSyncCommand(() => { }, null, "Ошибка редактирования");
+            CloseCommand = CreateSyncCommand(() => { }, null, "Ошибка закрытия");
         }
 
         /// <summary>

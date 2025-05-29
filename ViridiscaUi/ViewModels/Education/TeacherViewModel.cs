@@ -14,6 +14,7 @@ using ViridiscaUi.Infrastructure.Navigation;
 using ViridiscaUi.Infrastructure;
 using ViridiscaUi.ViewModels;
 using System.Text.RegularExpressions;
+using ViridiscaUi.Domain.Models.Education.Enums;
 
 namespace ViridiscaUi.ViewModels.Education;
 

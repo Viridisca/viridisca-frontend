@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using ReactiveUI;
 using ViridiscaUi.Domain.Models.Base;
+using ViridiscaUi.Domain.Models.Education.Enums;
 
 namespace ViridiscaUi.Domain.Models.Education;
 
@@ -16,16 +17,24 @@ public class Grade : ViewModelBase
     private Guid _teacherUid;
     private Guid? _lessonUid;
     private Guid? _assignmentUid;
+    private Guid? _gradedByUid;
+
     private decimal _value;
+    
     private string _description = string.Empty;
     private string _comment = string.Empty;
+    
     private GradeType _type;
+    
     private DateTime _issuedAt;
     private DateTime _gradedAt;
-    private bool _isPublished;
     private DateTime? _publishedAt;
-    private ObservableCollection<GradeComment> _comments = new();
-    private ObservableCollection<GradeRevision> _revisions = new();
+    
+    private bool _isPublished;
+
+    private ObservableCollection<GradeComment> _comments = [];
+    private ObservableCollection<GradeRevision> _revisions = [];
+
     private Student? _student;
     private Subject? _subject;
     private Teacher? _teacher;
@@ -102,6 +111,15 @@ public class Grade : ViewModelBase
     {
         get => _assignmentUid;
         set => this.RaiseAndSetIfChanged(ref _assignmentUid, value);
+    }
+
+    /// <summary>
+    /// Идентификатор преподавателя, выставившего оценку
+    /// </summary>
+    public Guid? GradedByUid
+    {
+        get => _gradedByUid;
+        set => this.RaiseAndSetIfChanged(ref _gradedByUid, value);
     }
 
     /// <summary>

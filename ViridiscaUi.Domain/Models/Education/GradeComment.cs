@@ -1,6 +1,6 @@
-using System;
-using ReactiveUI;
 using ViridiscaUi.Domain.Models.Base;
+using ReactiveUI;
+using ViridiscaUi.Domain.Models.Education.Enums;
 
 namespace ViridiscaUi.Domain.Models.Education;
 
@@ -11,10 +11,13 @@ public class GradeComment : ViewModelBase
 {
     private Guid _gradeUid;
     private Guid _authorUid;
+
     private GradeCommentType _type;
+
     private string _content = string.Empty;
-    private bool _isDeleted;
     private DateTime? _deletedAt;
+    private bool _isDeleted; 
+
     private GradeCommentStatus _status;
 
     /// <summary>

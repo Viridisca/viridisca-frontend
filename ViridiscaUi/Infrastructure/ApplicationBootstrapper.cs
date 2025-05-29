@@ -1,13 +1,13 @@
-using System;
-using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.ReactiveUI;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection; 
-using ReactiveUI;
-using Splat;
-using ViridiscaUi.DI;
+using Avalonia.Controls.ApplicationLifetimes;
+using Microsoft.Extensions.Configuration;
 using ViridiscaUi.ViewModels;
 using ViridiscaUi.Windows;
+using Avalonia.ReactiveUI;
+using ViridiscaUi.DI;
+using ReactiveUI;
+using System;
+using Splat;
 
 namespace ViridiscaUi.Infrastructure;
 

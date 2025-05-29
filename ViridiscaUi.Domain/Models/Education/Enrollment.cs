@@ -1,6 +1,6 @@
-using System;
-using ReactiveUI;
 using ViridiscaUi.Domain.Models.Base;
+using ReactiveUI;
+using ViridiscaUi.Domain.Models.Education.Enums;
 
 namespace ViridiscaUi.Domain.Models.Education;
 
@@ -11,10 +11,13 @@ public class Enrollment : ViewModelBase
 {
     private Guid _studentUid;
     private Student? _student;
+
     private Guid _courseUid;
     private Course? _course;
+
     private DateTime _enrollmentDate = DateTime.UtcNow;
     private DateTime? _completedAt;
+
     private EnrollmentStatus _status = EnrollmentStatus.Active;
 
     /// <summary>
@@ -105,34 +108,3 @@ public class Enrollment : ViewModelBase
         _enrollmentDate = DateTime.UtcNow;
     }
 }
-
-/// <summary>
-/// Статус зачисления
-/// </summary>
-public enum EnrollmentStatus
-{
-    /// <summary>
-    /// Активное зачисление
-    /// </summary>
-    Active,
-    
-    /// <summary>
-    /// Завершено
-    /// </summary>
-    Completed,
-    
-    /// <summary>
-    /// Отменено
-    /// </summary>
-    Cancelled,
-    
-    /// <summary>
-    /// Приостановлено
-    /// </summary>
-    Suspended,
-    
-    /// <summary>
-    /// В ожидании
-    /// </summary>
-    Pending
-} 

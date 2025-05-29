@@ -9,8 +9,9 @@ namespace ViridiscaUi.Domain.Models.Auth;
 /// </summary>
 public class AuthTokenInfo : ViewModelBase
 {
-    private string _token = string.Empty;
     private string _refreshToken = string.Empty;
+    private string _token = string.Empty;
+
     private DateTime _expiresAt;
     private bool _isValid;
 

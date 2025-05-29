@@ -1,47 +1,44 @@
-using System;
 using ViridiscaUi.Domain.Models.Base;
-using ViridiscaUi.Domain.Models.Auth;
 
-namespace ViridiscaUi.Domain.Models.Auth
+namespace ViridiscaUi.Domain.Models.Auth;
+
+/// <summary>
+/// Связь между ролью и разрешением
+/// </summary>
+public class RolePermission : ViewModelBase
 {
     /// <summary>
-    /// Связь между ролью и разрешением
+    /// Уникальный идентификатор связи
     /// </summary>
-    public class RolePermission : ViewModelBase
-    {
-        /// <summary>
-        /// Уникальный идентификатор связи
-        /// </summary>
-        public new Guid Uid { get; set; }
+    public new Guid Uid { get; set; }
 
-        /// <summary>
-        /// Идентификатор роли
-        /// </summary>
-        public Guid RoleUid { get; set; }
+    /// <summary>
+    /// Идентификатор роли
+    /// </summary>
+    public Guid RoleUid { get; set; }
 
-        /// <summary>
-        /// Идентификатор разрешения
-        /// </summary>
-        public Guid PermissionUid { get; set; }
+    /// <summary>
+    /// Идентификатор разрешения
+    /// </summary>
+    public Guid PermissionUid { get; set; }
 
-        /// <summary>
-        /// Роль
-        /// </summary>
-        public Role? Role { get; set; }
+    /// <summary>
+    /// Роль
+    /// </summary>
+    public Role? Role { get; set; }
 
-        /// <summary>
-        /// Разрешение
-        /// </summary>
-        public Permission? Permission { get; set; }
+    /// <summary>
+    /// Разрешение
+    /// </summary>
+    public Permission? Permission { get; set; }
 
-        /// <summary>
-        /// Флаг активности
-        /// </summary>
-        public bool IsActive { get; set; } = true;
+    /// <summary>
+    /// Флаг активности
+    /// </summary>
+    public bool IsActive { get; set; } = true;
 
-        /// <summary>
-        /// Дата назначения
-        /// </summary>
-        public DateTime AssignedAt { get; set; } = DateTime.UtcNow;
-    }
-} 
+    /// <summary>
+    /// Дата назначения
+    /// </summary>
+    public DateTime AssignedAt { get; set; } = DateTime.UtcNow;
+}

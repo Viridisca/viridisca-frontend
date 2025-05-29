@@ -17,7 +17,7 @@ namespace ViridiscaUi.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.1")
+                .HasAnnotation("ProductVersion", "9.0.5")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -166,7 +166,7 @@ namespace ViridiscaUi.Migrations
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Description = "Системный администратор",
                             LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Name = "Administrator",
+                            Name = "SystemAdmin",
                             RoleType = 1
                         },
                         new
@@ -358,19 +358,55 @@ namespace ViridiscaUi.Migrations
                         {
                             Uid = new Guid("44444444-4444-4444-4444-444444444444"),
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DateOfBirth = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DateOfBirth = new DateTime(1989, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Email = "admin@viridisca.local",
-                            FirstName = "Admin",
+                            FirstName = "Админ",
                             IsActive = true,
                             IsEmailConfirmed = true,
                             LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            LastName = "Viridisca",
+                            LastName = "Системы",
                             MiddleName = "",
-                            PasswordHash = "$2a$11$8EPP7eDbOSFPG6YcVEWzsu81jRo550.5.b9INI7muBAMpfwa3ftcS",
+                            PasswordHash = "$2a$11$zB8qMTPJpxxzG4YCbtHVqeicEwEiVl3R9sbxvMFyp/LZh6HOei7HO",
                             PhoneNumber = "",
                             ProfileImageUrl = "",
                             RoleId = new Guid("11111111-1111-1111-1111-111111111111"),
                             Username = "admin"
+                        },
+                        new
+                        {
+                            Uid = new Guid("55555555-5555-5555-5555-555555555555"),
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DateOfBirth = new DateTime(1984, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Email = "teacher@viridisca.local",
+                            FirstName = "Преподаватель",
+                            IsActive = true,
+                            IsEmailConfirmed = true,
+                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            LastName = "Тестовый",
+                            MiddleName = "Иванович",
+                            PasswordHash = "$2a$11$tbIMTpxXyQlMI5VBHg/C7upPPPRuP9jBbRXQdfDWqpsBVE8.y.y4q",
+                            PhoneNumber = "+7 (900) 123-45-67",
+                            ProfileImageUrl = "",
+                            RoleId = new Guid("22222222-2222-2222-2222-222222222222"),
+                            Username = "teacher"
+                        },
+                        new
+                        {
+                            Uid = new Guid("66666666-6666-6666-6666-666666666666"),
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DateOfBirth = new DateTime(2004, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Email = "student@viridisca.local",
+                            FirstName = "Студент",
+                            IsActive = true,
+                            IsEmailConfirmed = true,
+                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            LastName = "Тестовый",
+                            MiddleName = "Петрович",
+                            PasswordHash = "$2a$11$k5lDUlQiStw0lSFiIvteaeMqM7E1BWK8LuAAtLA6LAsNr6PxsRXkS",
+                            PhoneNumber = "+7 (900) 987-65-43",
+                            ProfileImageUrl = "",
+                            RoleId = new Guid("33333333-3333-3333-3333-333333333333"),
+                            Username = "student"
                         });
                 });
 
@@ -437,13 +473,33 @@ namespace ViridiscaUi.Migrations
                     b.HasData(
                         new
                         {
-                            Uid = new Guid("55555555-5555-5555-5555-555555555555"),
+                            Uid = new Guid("77777777-7777-7777-7777-777777777777"),
                             AssignedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             RoleUid = new Guid("11111111-1111-1111-1111-111111111111"),
                             UserUid = new Guid("44444444-4444-4444-4444-444444444444")
+                        },
+                        new
+                        {
+                            Uid = new Guid("88888888-8888-8888-8888-888888888888"),
+                            AssignedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            RoleUid = new Guid("22222222-2222-2222-2222-222222222222"),
+                            UserUid = new Guid("55555555-5555-5555-5555-555555555555")
+                        },
+                        new
+                        {
+                            Uid = new Guid("99999999-9999-9999-9999-999999999999"),
+                            AssignedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            RoleUid = new Guid("33333333-3333-3333-3333-333333333333"),
+                            UserUid = new Guid("66666666-6666-6666-6666-666666666666")
                         });
                 });
 
@@ -547,6 +603,59 @@ namespace ViridiscaUi.Migrations
                         .HasDatabaseName("ix_assignments_lesson_uid1");
 
                     b.ToTable("assignments", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Uid = new Guid("61111111-1111-1111-1111-111111111111"),
+                            CourseId = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1"),
+                            CourseUid = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1"),
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Выполнение базовых задач по программированию на C#",
+                            Difficulty = 1,
+                            DueDate = new DateTime(2024, 1, 15, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Instructions = "Создать консольное приложение с базовыми операциями",
+                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            MaxGrade = 100.0,
+                            MaxScore = 100.0,
+                            Status = 1,
+                            Title = "Лабораторная работа №1 - Основы C#",
+                            Type = 4
+                        },
+                        new
+                        {
+                            Uid = new Guid("62222222-2222-2222-2222-222222222222"),
+                            CourseId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1"),
+                            CourseUid = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1"),
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Вычисление производных функций",
+                            Difficulty = 0,
+                            DueDate = new DateTime(2024, 1, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Instructions = "Решить задачи 1-10 из учебника",
+                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            MaxGrade = 50.0,
+                            MaxScore = 50.0,
+                            Status = 1,
+                            Title = "Домашнее задание - Производные",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Uid = new Guid("63333333-3333-3333-3333-333333333333"),
+                            CourseId = new Guid("cccccccc-cccc-cccc-cccc-ccccccccccc1"),
+                            CourseUid = new Guid("cccccccc-cccc-cccc-cccc-ccccccccccc1"),
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Комплексное исследование механических систем",
+                            Difficulty = 2,
+                            DueDate = new DateTime(2024, 1, 31, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Instructions = "Создать проект по моделированию физической системы",
+                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            MaxGrade = 200.0,
+                            MaxScore = 200.0,
+                            Status = 1,
+                            Title = "Проект - Механика",
+                            Type = 3
+                        });
                 });
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Course", b =>
@@ -558,12 +667,14 @@ namespace ViridiscaUi.Migrations
 
                     b.Property<string>("Category")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("category");
 
                     b.Property<string>("Code")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("code");
 
                     b.Property<DateTime>("CreatedAt")
@@ -588,11 +699,25 @@ namespace ViridiscaUi.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_modified_at");
 
+                    b.Property<string>("LearningOutcomes")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("learning_outcomes");
+
+                    b.Property<int>("MaxEnrollments")
+                        .HasColumnType("integer")
+                        .HasColumnName("max_enrollments");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("name");
+
+                    b.Property<string>("Prerequisites")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("prerequisites");
 
                     b.Property<DateTime?>("StartDate")
                         .HasColumnType("timestamp with time zone")
@@ -601,6 +726,10 @@ namespace ViridiscaUi.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("integer")
                         .HasColumnName("status");
+
+                    b.Property<Guid?>("SubjectUid")
+                        .HasColumnType("uuid")
+                        .HasColumnName("subject_uid");
 
                     b.Property<Guid?>("TeacherUid")
                         .HasColumnType("uuid")
@@ -625,6 +754,65 @@ namespace ViridiscaUi.Migrations
                         .HasDatabaseName("ix_courses_teacher_uid1");
 
                     b.ToTable("courses", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Uid = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1"),
+                            Category = "Программирование",
+                            Code = "PROG101",
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Credits = 4,
+                            Description = "Изучение основ программирования на языке C#",
+                            EndDate = new DateTime(2024, 5, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            LearningOutcomes = "Понимание основных концепций программирования, умение создавать простые программы",
+                            MaxEnrollments = 50,
+                            Name = "Основы программирования",
+                            Prerequisites = "",
+                            StartDate = new DateTime(2023, 11, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Status = 1,
+                            TeacherUid = new Guid("dddddddd-dddd-dddd-dddd-dddddddddddd"),
+                            Title = "Основы программирования"
+                        },
+                        new
+                        {
+                            Uid = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1"),
+                            Category = "Математика",
+                            Code = "MATH201",
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Credits = 5,
+                            Description = "Дифференциальное и интегральное исчисление",
+                            EndDate = new DateTime(2024, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            LearningOutcomes = "Владение методами дифференциального и интегрального исчисления",
+                            MaxEnrollments = 40,
+                            Name = "Математический анализ",
+                            Prerequisites = "Школьная математика",
+                            StartDate = new DateTime(2023, 12, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Status = 1,
+                            TeacherUid = new Guid("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"),
+                            Title = "Математический анализ"
+                        },
+                        new
+                        {
+                            Uid = new Guid("cccccccc-cccc-cccc-cccc-ccccccccccc1"),
+                            Category = "Физика",
+                            Code = "PHYS101",
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Credits = 4,
+                            Description = "Основы механики и термодинамики",
+                            EndDate = new DateTime(2024, 4, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            LearningOutcomes = "Понимание основных законов механики и термодинамики",
+                            MaxEnrollments = 35,
+                            Name = "Общая физика",
+                            Prerequisites = "Школьная физика и математика",
+                            StartDate = new DateTime(2023, 10, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Status = 1,
+                            TeacherUid = new Guid("ffffffff-ffff-ffff-ffff-ffffffffffff"),
+                            Title = "Общая физика"
+                        });
                 });
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Enrollment", b =>
@@ -633,6 +821,10 @@ namespace ViridiscaUi.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("uid");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
 
                     b.Property<Guid>("CourseUid")
                         .HasColumnType("uuid")
@@ -684,6 +876,48 @@ namespace ViridiscaUi.Migrations
                         .HasDatabaseName("ix_enrollments_student_uid1");
 
                     b.ToTable("enrollments", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Uid = new Guid("71111111-1111-1111-1111-111111111111"),
+                            CourseUid = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1"),
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            EnrollmentDate = new DateTime(2023, 12, 2, 0, 0, 0, 0, DateTimeKind.Utc),
+                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Status = 0,
+                            StudentUid = new Guid("11111111-1111-1111-1111-111111111110")
+                        },
+                        new
+                        {
+                            Uid = new Guid("72222222-2222-2222-2222-222222222222"),
+                            CourseUid = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1"),
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            EnrollmentDate = new DateTime(2023, 12, 7, 0, 0, 0, 0, DateTimeKind.Utc),
+                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Status = 0,
+                            StudentUid = new Guid("22222222-2222-2222-2222-222222222220")
+                        },
+                        new
+                        {
+                            Uid = new Guid("73333333-3333-3333-3333-333333333333"),
+                            CourseUid = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1"),
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            EnrollmentDate = new DateTime(2023, 12, 12, 0, 0, 0, 0, DateTimeKind.Utc),
+                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Status = 0,
+                            StudentUid = new Guid("33333333-3333-3333-3333-333333333330")
+                        },
+                        new
+                        {
+                            Uid = new Guid("74444444-4444-4444-4444-444444444444"),
+                            CourseUid = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1"),
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            EnrollmentDate = new DateTime(2023, 12, 17, 0, 0, 0, 0, DateTimeKind.Utc),
+                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Status = 0,
+                            StudentUid = new Guid("44444444-4444-4444-4444-444444444440")
+                        });
                 });
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Grade", b =>
@@ -696,6 +930,10 @@ namespace ViridiscaUi.Migrations
                     b.Property<Guid?>("AssignmentUid")
                         .HasColumnType("uuid")
                         .HasColumnName("assignment_uid");
+
+                    b.Property<Guid?>("AssignmentUid1")
+                        .HasColumnType("uuid")
+                        .HasColumnName("assignment_uid1");
 
                     b.Property<string>("Comment")
                         .IsRequired()
@@ -781,6 +1019,9 @@ namespace ViridiscaUi.Migrations
                     b.HasIndex("AssignmentUid")
                         .HasDatabaseName("ix_grades_assignment_uid");
 
+                    b.HasIndex("AssignmentUid1")
+                        .HasDatabaseName("ix_grades_assignment_uid1");
+
                     b.HasIndex("GradedByUid")
                         .HasDatabaseName("ix_grades_graded_by_uid");
 
@@ -806,6 +1047,62 @@ namespace ViridiscaUi.Migrations
                         .HasDatabaseName("ix_grades_teacher_uid1");
 
                     b.ToTable("grades", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Uid = new Guid("81111111-1111-1111-1111-111111111111"),
+                            AssignmentUid = new Guid("61111111-1111-1111-1111-111111111111"),
+                            Comment = "Хорошая работа! Есть небольшие замечания по стилю кода.",
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Лабораторная работа по программированию",
+                            GradedAt = new DateTime(2023, 12, 27, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsPublished = true,
+                            IssuedAt = new DateTime(2023, 12, 27, 0, 0, 0, 0, DateTimeKind.Utc),
+                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            PublishedAt = new DateTime(2023, 12, 28, 0, 0, 0, 0, DateTimeKind.Utc),
+                            StudentUid = new Guid("11111111-1111-1111-1111-111111111110"),
+                            SubjectUid = new Guid("51111111-1111-1111-1111-111111111111"),
+                            TeacherUid = new Guid("dddddddd-dddd-dddd-dddd-dddddddddddd"),
+                            Type = 0,
+                            Value = 85m
+                        },
+                        new
+                        {
+                            Uid = new Guid("82222222-2222-2222-2222-222222222222"),
+                            AssignmentUid = new Guid("61111111-1111-1111-1111-111111111111"),
+                            Comment = "Отличная работа! Код чистый и хорошо структурированный.",
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Лабораторная работа по программированию",
+                            GradedAt = new DateTime(2023, 12, 29, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsPublished = true,
+                            IssuedAt = new DateTime(2023, 12, 29, 0, 0, 0, 0, DateTimeKind.Utc),
+                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            PublishedAt = new DateTime(2023, 12, 30, 0, 0, 0, 0, DateTimeKind.Utc),
+                            StudentUid = new Guid("22222222-2222-2222-2222-222222222220"),
+                            SubjectUid = new Guid("51111111-1111-1111-1111-111111111111"),
+                            TeacherUid = new Guid("dddddddd-dddd-dddd-dddd-dddddddddddd"),
+                            Type = 0,
+                            Value = 92m
+                        },
+                        new
+                        {
+                            Uid = new Guid("83333333-3333-3333-3333-333333333333"),
+                            AssignmentUid = new Guid("62222222-2222-2222-2222-222222222222"),
+                            Comment = "Все задачи решены правильно.",
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Домашнее задание по производным",
+                            GradedAt = new DateTime(2023, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsPublished = true,
+                            IssuedAt = new DateTime(2023, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc),
+                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            PublishedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            StudentUid = new Guid("33333333-3333-3333-3333-333333333330"),
+                            SubjectUid = new Guid("52222222-2222-2222-2222-222222222222"),
+                            TeacherUid = new Guid("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"),
+                            Type = 0,
+                            Value = 45m
+                        });
                 });
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.GradeComment", b =>
@@ -1031,6 +1328,53 @@ namespace ViridiscaUi.Migrations
                         .HasDatabaseName("ix_groups_year");
 
                     b.ToTable("groups", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Uid = new Guid("11111110-1111-1111-1111-111111111111"),
+                            Code = "IT-301",
+                            CreatedAt = new DateTime(2021, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CuratorUid = new Guid("dddddddd-dddd-dddd-dddd-dddddddddddd"),
+                            DepartmentUid = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+                            Description = "Информационные технологии, 3 курс, группа 1",
+                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            MaxStudents = 25,
+                            Name = "ИТ-301",
+                            StartDate = new DateTime(2021, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Status = 1,
+                            Year = 3
+                        },
+                        new
+                        {
+                            Uid = new Guid("22222220-2222-2222-2222-222222222222"),
+                            Code = "MAT-201",
+                            CreatedAt = new DateTime(2022, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CuratorUid = new Guid("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"),
+                            DepartmentUid = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+                            Description = "Математика, 2 курс, группа 1",
+                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            MaxStudents = 30,
+                            Name = "МАТ-201",
+                            StartDate = new DateTime(2022, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Status = 1,
+                            Year = 2
+                        },
+                        new
+                        {
+                            Uid = new Guid("33333330-3333-3333-3333-333333333333"),
+                            Code = "PHYS-401",
+                            CreatedAt = new DateTime(2020, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CuratorUid = new Guid("ffffffff-ffff-ffff-ffff-ffffffffffff"),
+                            DepartmentUid = new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc"),
+                            Description = "Физика, 4 курс, группа 1",
+                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            MaxStudents = 20,
+                            Name = "ФИЗ-401",
+                            StartDate = new DateTime(2020, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Status = 1,
+                            Year = 4
+                        });
                 });
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Lesson", b =>
@@ -1431,7 +1775,7 @@ namespace ViridiscaUi.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("student_code");
 
-                    b.Property<Guid>("UserUid")
+                    b.Property<Guid?>("UserUid")
                         .HasColumnType("uuid")
                         .HasColumnName("user_uid");
 
@@ -1466,6 +1810,119 @@ namespace ViridiscaUi.Migrations
                         .HasDatabaseName("ix_students_user_uid1");
 
                     b.ToTable("students", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Uid = new Guid("11111111-1111-1111-1111-111111111110"),
+                            Address = "",
+                            BirthDate = new DateTime(2004, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Email = "alexey.ivanov@student.viridisca.local",
+                            EmergencyContactName = "",
+                            EmergencyContactPhone = "",
+                            EnrollmentDate = new DateTime(2021, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FirstName = "Алексей",
+                            GroupUid = new Guid("11111110-1111-1111-1111-111111111111"),
+                            IsActive = true,
+                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            LastName = "Иванов",
+                            MedicalInformation = "",
+                            MiddleName = "Петрович",
+                            Phone = "+7 (910) 123-45-67",
+                            PhoneNumber = "+7 (910) 123-45-67",
+                            Status = 1,
+                            StudentCode = "ST301001",
+                            UserUid = new Guid("66666666-6666-6666-6666-666666666666")
+                        },
+                        new
+                        {
+                            Uid = new Guid("22222222-2222-2222-2222-222222222220"),
+                            Address = "",
+                            BirthDate = new DateTime(2003, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Email = "elena.smirnova@student.viridisca.local",
+                            EmergencyContactName = "",
+                            EmergencyContactPhone = "",
+                            EnrollmentDate = new DateTime(2021, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FirstName = "Елена",
+                            GroupUid = new Guid("11111110-1111-1111-1111-111111111111"),
+                            IsActive = true,
+                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            LastName = "Смирнова",
+                            MedicalInformation = "",
+                            MiddleName = "Александровна",
+                            Phone = "+7 (911) 234-56-78",
+                            PhoneNumber = "+7 (911) 234-56-78",
+                            Status = 1,
+                            StudentCode = "ST301002"
+                        },
+                        new
+                        {
+                            Uid = new Guid("33333333-3333-3333-3333-333333333330"),
+                            Address = "",
+                            BirthDate = new DateTime(2005, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Email = "dmitry.volkov@student.viridisca.local",
+                            EmergencyContactName = "",
+                            EmergencyContactPhone = "",
+                            EnrollmentDate = new DateTime(2022, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FirstName = "Дмитрий",
+                            GroupUid = new Guid("22222220-2222-2222-2222-222222222222"),
+                            IsActive = true,
+                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            LastName = "Волков",
+                            MedicalInformation = "",
+                            MiddleName = "Сергеевич",
+                            Phone = "+7 (912) 345-67-89",
+                            PhoneNumber = "+7 (912) 345-67-89",
+                            Status = 1,
+                            StudentCode = "ST201001"
+                        },
+                        new
+                        {
+                            Uid = new Guid("44444444-4444-4444-4444-444444444440"),
+                            Address = "",
+                            BirthDate = new DateTime(2005, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Email = "anna.kuznetsova@student.viridisca.local",
+                            EmergencyContactName = "",
+                            EmergencyContactPhone = "",
+                            EnrollmentDate = new DateTime(2022, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FirstName = "Анна",
+                            GroupUid = new Guid("22222220-2222-2222-2222-222222222222"),
+                            IsActive = true,
+                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            LastName = "Кузнецова",
+                            MedicalInformation = "",
+                            MiddleName = "Владимировна",
+                            Phone = "+7 (913) 456-78-90",
+                            PhoneNumber = "+7 (913) 456-78-90",
+                            Status = 1,
+                            StudentCode = "ST201002"
+                        },
+                        new
+                        {
+                            Uid = new Guid("55555555-5555-5555-5555-555555555550"),
+                            Address = "",
+                            BirthDate = new DateTime(2002, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Email = "mikhail.morozov@student.viridisca.local",
+                            EmergencyContactName = "",
+                            EmergencyContactPhone = "",
+                            EnrollmentDate = new DateTime(2020, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FirstName = "Михаил",
+                            GroupUid = new Guid("33333330-3333-3333-3333-333333333333"),
+                            IsActive = true,
+                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            LastName = "Морозов",
+                            MedicalInformation = "",
+                            MiddleName = "Игоревич",
+                            Phone = "+7 (914) 567-89-01",
+                            PhoneNumber = "+7 (914) 567-89-01",
+                            Status = 1,
+                            StudentCode = "ST401001"
+                        });
                 });
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.StudentParent", b =>
@@ -1511,18 +1968,11 @@ namespace ViridiscaUi.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("student_uid");
 
-                    b.Property<Guid?>("StudentUid1")
-                        .HasColumnType("uuid")
-                        .HasColumnName("student_uid1");
-
                     b.HasKey("Uid")
                         .HasName("pk_student_parents");
 
                     b.HasIndex("ParentUserUid")
                         .HasDatabaseName("ix_student_parents_parent_user_uid");
-
-                    b.HasIndex("StudentUid1")
-                        .HasDatabaseName("ix_student_parents_student_uid1");
 
                     b.HasIndex("StudentUid", "ParentUserUid")
                         .IsUnique()
@@ -1552,9 +2002,13 @@ namespace ViridiscaUi.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("credits");
 
-                    b.Property<Guid>("DepartmentUid")
+                    b.Property<Guid?>("DepartmentUid")
                         .HasColumnType("uuid")
                         .HasColumnName("department_uid");
+
+                    b.Property<Guid?>("DepartmentUid1")
+                        .HasColumnType("uuid")
+                        .HasColumnName("department_uid1");
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -1596,6 +2050,9 @@ namespace ViridiscaUi.Migrations
                     b.HasIndex("DepartmentUid")
                         .HasDatabaseName("ix_subjects_department_uid");
 
+                    b.HasIndex("DepartmentUid1")
+                        .HasDatabaseName("ix_subjects_department_uid1");
+
                     b.HasIndex("IsActive")
                         .HasDatabaseName("ix_subjects_is_active");
 
@@ -1603,6 +2060,50 @@ namespace ViridiscaUi.Migrations
                         .HasDatabaseName("ix_subjects_type");
 
                     b.ToTable("subjects", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Uid = new Guid("51111111-1111-1111-1111-111111111111"),
+                            Code = "PROG101",
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Credits = 4,
+                            DepartmentUid = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+                            Description = "Введение в программирование на языке C#",
+                            IsActive = true,
+                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            LessonsPerWeek = 2,
+                            Name = "Основы программирования",
+                            Type = 1
+                        },
+                        new
+                        {
+                            Uid = new Guid("52222222-2222-2222-2222-222222222222"),
+                            Code = "MATH201",
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Credits = 5,
+                            DepartmentUid = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+                            Description = "Дифференциальное и интегральное исчисление",
+                            IsActive = true,
+                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            LessonsPerWeek = 3,
+                            Name = "Математический анализ",
+                            Type = 1
+                        },
+                        new
+                        {
+                            Uid = new Guid("53333333-3333-3333-3333-333333333333"),
+                            Code = "PHYS101",
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Credits = 4,
+                            DepartmentUid = new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc"),
+                            Description = "Основы механики и термодинамики",
+                            IsActive = true,
+                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            LessonsPerWeek = 2,
+                            Name = "Общая физика",
+                            Type = 1
+                        });
                 });
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Submission", b =>
@@ -1789,7 +2290,7 @@ namespace ViridiscaUi.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("termination_date");
 
-                    b.Property<Guid>("UserUid")
+                    b.Property<Guid?>("UserUid")
                         .HasColumnType("uuid")
                         .HasColumnName("user_uid");
 
@@ -1821,6 +2322,66 @@ namespace ViridiscaUi.Migrations
                         .HasDatabaseName("ix_teachers_user_uid1");
 
                     b.ToTable("teachers", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Uid = new Guid("dddddddd-dddd-dddd-dddd-dddddddddddd"),
+                            AcademicDegree = "Кандидат технических наук",
+                            AcademicTitle = "Доцент",
+                            Bio = "Опытный преподаватель программирования с 5-летним стажем",
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DepartmentUid = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+                            EmployeeCode = "T001",
+                            FirstName = "Иван",
+                            HireDate = new DateTime(2019, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            HourlyRate = 1500m,
+                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            LastName = "Петров",
+                            MiddleName = "Иванович",
+                            Phone = "+7 (901) 234-56-78",
+                            Specialization = "Программирование",
+                            Status = 1,
+                            UserUid = new Guid("55555555-5555-5555-5555-555555555555")
+                        },
+                        new
+                        {
+                            Uid = new Guid("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"),
+                            AcademicDegree = "Доктор физико-математических наук",
+                            AcademicTitle = "Профессор",
+                            Bio = "Профессор математики, автор более 50 научных работ",
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DepartmentUid = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+                            EmployeeCode = "T002",
+                            FirstName = "Мария",
+                            HireDate = new DateTime(2021, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            HourlyRate = 1400m,
+                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            LastName = "Сидорова",
+                            MiddleName = "Петровна",
+                            Phone = "+7 (902) 345-67-89",
+                            Specialization = "Математика",
+                            Status = 1
+                        },
+                        new
+                        {
+                            Uid = new Guid("ffffffff-ffff-ffff-ffff-ffffffffffff"),
+                            AcademicDegree = "Кандидат физико-математических наук",
+                            AcademicTitle = "Старший преподаватель",
+                            Bio = "Специалист по теоретической физике и механике",
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DepartmentUid = new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc"),
+                            EmployeeCode = "T003",
+                            FirstName = "Александр",
+                            HireDate = new DateTime(2016, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            HourlyRate = 1600m,
+                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            LastName = "Козлов",
+                            MiddleName = "Николаевич",
+                            Phone = "+7 (903) 456-78-90",
+                            Specialization = "Физика",
+                            Status = 1
+                        });
                 });
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.TeacherGroup", b =>
@@ -2088,7 +2649,7 @@ namespace ViridiscaUi.Migrations
                     b.HasData(
                         new
                         {
-                            Uid = new Guid("66666666-6666-6666-6666-666666666666"),
+                            Uid = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
                             Code = "IT",
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Description = "Кафедра информационных технологий и программирования",
@@ -2098,13 +2659,23 @@ namespace ViridiscaUi.Migrations
                         },
                         new
                         {
-                            Uid = new Guid("77777777-7777-7777-7777-777777777777"),
+                            Uid = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
                             Code = "MATH",
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Description = "Кафедра высшей математики и математического анализа",
                             IsActive = true,
                             LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Name = "Математический анализ"
+                        },
+                        new
+                        {
+                            Uid = new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc"),
+                            Code = "PHYS",
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Кафедра общей физики",
+                            IsActive = true,
+                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Name = "Физика"
                         });
                 });
 
@@ -2591,14 +3162,14 @@ namespace ViridiscaUi.Migrations
                         .HasConstraintName("fk_user_roles_roles_role_uid");
 
                     b.HasOne("ViridiscaUi.Domain.Models.Auth.User", null)
-                        .WithMany()
+                        .WithMany("UserRoles")
                         .HasForeignKey("UserUid")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_user_roles_users_user_uid");
 
                     b.HasOne("ViridiscaUi.Domain.Models.Auth.User", "User")
-                        .WithMany("UserRoles")
+                        .WithMany()
                         .HasForeignKey("UserUid1")
                         .HasConstraintName("fk_user_roles_users_user_uid1");
 
@@ -2686,10 +3257,16 @@ namespace ViridiscaUi.Migrations
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Grade", b =>
                 {
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Assignment", "Assignment")
+                    b.HasOne("ViridiscaUi.Domain.Models.Education.Assignment", null)
                         .WithMany()
                         .HasForeignKey("AssignmentUid")
+                        .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_grades_assignments_assignment_uid");
+
+                    b.HasOne("ViridiscaUi.Domain.Models.Education.Assignment", "Assignment")
+                        .WithMany()
+                        .HasForeignKey("AssignmentUid1")
+                        .HasConstraintName("fk_grades_assignments_assignment_uid1");
 
                     b.HasOne("ViridiscaUi.Domain.Models.Education.Teacher", "GradedBy")
                         .WithMany()
@@ -2730,7 +3307,6 @@ namespace ViridiscaUi.Migrations
                         .WithMany()
                         .HasForeignKey("TeacherUid")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .IsRequired()
                         .HasConstraintName("fk_grades_teachers_teacher_uid");
 
                     b.HasOne("ViridiscaUi.Domain.Models.Education.Teacher", "Teacher")
@@ -2914,16 +3490,11 @@ namespace ViridiscaUi.Migrations
                         .HasConstraintName("fk_student_parents_users_parent_user_uid");
 
                     b.HasOne("ViridiscaUi.Domain.Models.Education.Student", null)
-                        .WithMany()
+                        .WithMany("Parents")
                         .HasForeignKey("StudentUid")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_student_parents_students_student_uid");
-
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Student", null)
-                        .WithMany("Parents")
-                        .HasForeignKey("StudentUid1")
-                        .HasConstraintName("fk_student_parents_students_student_uid1");
                 });
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Subject", b =>
@@ -2932,8 +3503,14 @@ namespace ViridiscaUi.Migrations
                         .WithMany("Subjects")
                         .HasForeignKey("DepartmentUid")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
                         .HasConstraintName("fk_subjects_departments_department_uid");
+
+                    b.HasOne("ViridiscaUi.Domain.Models.System.Department", "Department")
+                        .WithMany()
+                        .HasForeignKey("DepartmentUid1")
+                        .HasConstraintName("fk_subjects_departments_department_uid1");
+
+                    b.Navigation("Department");
                 });
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Submission", b =>
@@ -3050,26 +3627,26 @@ namespace ViridiscaUi.Migrations
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.TeacherSubject", b =>
                 {
                     b.HasOne("ViridiscaUi.Domain.Models.Education.Subject", null)
-                        .WithMany()
+                        .WithMany("TeacherSubjects")
                         .HasForeignKey("SubjectUid")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_teacher_subjects_subjects_subject_uid");
 
                     b.HasOne("ViridiscaUi.Domain.Models.Education.Subject", "Subject")
-                        .WithMany("TeacherSubjects")
+                        .WithMany()
                         .HasForeignKey("SubjectUid1")
                         .HasConstraintName("fk_teacher_subjects_subjects_subject_uid1");
 
                     b.HasOne("ViridiscaUi.Domain.Models.Education.Teacher", null)
-                        .WithMany()
+                        .WithMany("Subjects")
                         .HasForeignKey("TeacherUid")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_teacher_subjects_teachers_teacher_uid");
 
                     b.HasOne("ViridiscaUi.Domain.Models.Education.Teacher", "Teacher")
-                        .WithMany("Subjects")
+                        .WithMany()
                         .HasForeignKey("TeacherUid1")
                         .HasConstraintName("fk_teacher_subjects_teachers_teacher_uid1");
 

@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using ReactiveUI;
 using ViridiscaUi.Domain.Models.Base;
+using ViridiscaUi.Domain.Models.Education.Enums;
 
 namespace ViridiscaUi.Domain.Models.Education;
 
@@ -12,7 +13,7 @@ namespace ViridiscaUi.Domain.Models.Education;
 public class Teacher : ViewModelBase
 {
     private string _employeeCode = string.Empty;
-    private Guid _userUid;
+    private Guid? _userUid;
     private Guid? _departmentUid;
     private DateTime _hireDate;
     private DateTime? _terminationDate;
@@ -43,7 +44,7 @@ public class Teacher : ViewModelBase
     /// <summary>
     /// Идентификатор пользователя
     /// </summary>
-    public Guid UserUid
+    public Guid? UserUid
     {
         get => _userUid;
         set => this.RaiseAndSetIfChanged(ref _userUid, value);

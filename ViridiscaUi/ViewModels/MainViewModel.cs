@@ -1,20 +1,18 @@
-﻿using System;
-using System.Reactive;
-using System.Reactive.Disposables;
-using System.Reactive.Linq;
-using System.Threading.Tasks;
-using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
-using ViridiscaUi.Domain.Models.Auth;
-using ViridiscaUi.Services.Interfaces;
+﻿using ViridiscaUi.Infrastructure.Navigation;
 using ViridiscaUi.ViewModels.Components;
-using ViridiscaUi.ViewModels.Auth;
-using ViridiscaUi.Infrastructure.Navigation;
-using ViridiscaUi.Infrastructure;
+using ViridiscaUi.Services.Interfaces;
 using System.Collections.ObjectModel;
+using ViridiscaUi.Domain.Models.Auth;
+using System.Reactive.Disposables;
+using ViridiscaUi.ViewModels.Auth;
+using ViridiscaUi.Infrastructure;
+using ReactiveUI.Fody.Helpers;
+using System.Threading.Tasks;
+using System.Reactive.Linq;
+using System.Reactive;
 using System.Linq;
-using ViridiscaUi.ViewModels;
-using System.Collections.Generic; 
+using ReactiveUI;
+using System;
 
 namespace ViridiscaUi.ViewModels;
 
@@ -28,7 +26,8 @@ public class MainViewModel : ViewModelBase, IScreen, IDisposable
     private readonly IStatusService _statusService;
     private readonly IUnifiedNavigationService _navigationService;
     private readonly IStatisticsService _statisticsService;
-    private readonly CompositeDisposable _disposables = new();
+
+    private readonly CompositeDisposable _disposables = [];
 
     #region Properties
 
@@ -36,47 +35,47 @@ public class MainViewModel : ViewModelBase, IScreen, IDisposable
     /// RoutingState для управления навигацией
     /// </summary>
     public RoutingState Router { get; } = new RoutingState();
-    
+
     /// <summary>
     /// ViewLocator для ReactiveUI навигации
     /// </summary>
     public IViewLocator ViewLocator { get; }
-    
+
     /// <summary>
     /// StatusBar ViewModel
     /// </summary>
     public StatusBarViewModel StatusBar { get; }
-    
+
     /// <summary>
     /// Текущий аутентифицированный пользователь
     /// </summary>
     [Reactive] public string? CurrentUser { get; private set; }
-    
+
     /// <summary>
     /// Полная информация о текущем пользователе
     /// </summary>
     [Reactive] public CurrentUserInfo? CurrentUserInfo { get; private set; }
-    
+
     /// <summary>
     /// Флаг, указывающий на то, что пользователь авторизован
     /// </summary>
     [Reactive] public bool IsLoggedIn { get; private set; }
-    
+
     /// <summary>
     /// Роль текущего пользователя
     /// </summary>
     [Reactive] public string? UserRole { get; private set; }
-    
+
     /// <summary>
     /// Инициалы пользователя для аватара
     /// </summary>
     [Reactive] public string UserInitials { get; private set; } = string.Empty;
-    
+
     /// <summary>
     /// Флаг возможности навигации назад
     /// </summary>
     [Reactive] public bool CanGoBack { get; private set; }
-    
+
     /// <summary>
     /// Пункты меню сгруппированные по секциям
     /// </summary>
@@ -86,27 +85,27 @@ public class MainViewModel : ViewModelBase, IScreen, IDisposable
     /// Общее количество студентов
     /// </summary>
     [Reactive] public int TotalStudents { get; set; } = 0;
-    
+
     /// <summary>
     /// Общее количество курсов
     /// </summary>
     [Reactive] public int TotalCourses { get; set; } = 0;
-    
+
     /// <summary>
     /// Общее количество преподавателей
     /// </summary>
     [Reactive] public int TotalTeachers { get; set; } = 0;
-    
+
     /// <summary>
     /// Общее количество заданий
     /// </summary>
     [Reactive] public int TotalAssignments { get; set; } = 0;
-    
+
     /// <summary>
     /// Количество пользователей онлайн
     /// </summary>
     [Reactive] public int OnlineUsersCount { get; set; } = 1;
-    
+
     /// <summary>
     /// Версия приложения
     /// </summary>
@@ -125,7 +124,7 @@ public class MainViewModel : ViewModelBase, IScreen, IDisposable
     /// Команда для выхода из системы
     /// </summary>
     public ReactiveCommand<Unit, Unit> LogoutCommand { get; private set; } = null!;
-    
+
     /// <summary>
     /// Команда для возврата назад
     /// </summary>
@@ -135,7 +134,7 @@ public class MainViewModel : ViewModelBase, IScreen, IDisposable
     /// Команда навигации к маршруту
     /// </summary>
     public ReactiveCommand<string, Unit> NavigateToRouteCommand { get; private set; } = null!;
-    
+
     /// <summary>
     /// Команда открытия меню пользователя
     /// </summary>
@@ -154,7 +153,7 @@ public class MainViewModel : ViewModelBase, IScreen, IDisposable
     #endregion
 
     public MainViewModel(
-        IAuthService authService, 
+        IAuthService authService,
         IUserSessionService userSessionService,
         IStatusService statusService,
         IUnifiedNavigationService navigationService,
@@ -162,7 +161,7 @@ public class MainViewModel : ViewModelBase, IScreen, IDisposable
         IViewLocator viewLocator)
     {
         StatusLogger.LogInfo("Инициализация главной модели представления", "MainViewModel");
-        
+
         _authService = authService ?? throw new ArgumentNullException(nameof(authService));
         _userSessionService = userSessionService ?? throw new ArgumentNullException(nameof(userSessionService));
         _statusService = statusService ?? throw new ArgumentNullException(nameof(statusService));
@@ -204,9 +203,9 @@ public class MainViewModel : ViewModelBase, IScreen, IDisposable
     {
         // Используем стандартизированные методы создания команд из ViewModelBase
         LogoutCommand = CreateCommand(ExecuteLogoutAsync, null, "Ошибка при выходе из системы");
-        
+
         // Команда навигации назад
-        GoBackCommand = CreateCommand(async () => 
+        GoBackCommand = CreateCommand(async () =>
         {
             await _navigationService.GoBackAsync();
         }, null, "Ошибка при навигации назад");
@@ -216,14 +215,14 @@ public class MainViewModel : ViewModelBase, IScreen, IDisposable
         {
             await _navigationService.NavigateToAsync(path);
         });
-        
+
         // Команда открытия меню пользователя
         OpenUserMenuCommand = CreateCommand(async () =>
         {
             // TODO: Реализовать открытие меню пользователя
             ShowInfo("Меню пользователя");
         }, null, "Ошибка открытия меню пользователя");
-        
+
         // Команда быстрого действия
         QuickActionCommand = CreateCommand(async () =>
         {
@@ -244,10 +243,7 @@ public class MainViewModel : ViewModelBase, IScreen, IDisposable
     {
         _userSessionService.CurrentUserObservable
             .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(user =>
-            {
-                HandleUserChanged(user);
-            })
+            .Subscribe(HandleUserChanged)
             .DisposeWith(_disposables);
     }
 
@@ -257,12 +253,12 @@ public class MainViewModel : ViewModelBase, IScreen, IDisposable
         IsLoggedIn = user != null;
         CurrentUser = user?.Email;
         UserRole = user?.Role?.Name;
-        
+
         if (user != null)
         {
             StatusLogger.LogInfo($"Пользователь авторизован: {user.Email} ({user.Role?.Name ?? "без роли"})", "MainViewModel");
         }
-        
+
         // Обновляем полную информацию о пользователе
         if (user != null)
         {
@@ -281,7 +277,7 @@ public class MainViewModel : ViewModelBase, IScreen, IDisposable
         {
             CurrentUserInfo = null;
         }
-        
+
         // Обновляем инициалы пользователя
         if (user != null)
         {
@@ -291,10 +287,10 @@ public class MainViewModel : ViewModelBase, IScreen, IDisposable
         {
             UserInitials = "U";
         }
-        
+
         // Обновляем меню
         UpdateMenuItems(user);
-        
+
         if (user != null)
         {
             HandleUserLoggedIn(user);
@@ -321,10 +317,10 @@ public class MainViewModel : ViewModelBase, IScreen, IDisposable
     {
         var userRoles = user?.Role?.Name != null ? new[] { user.Role.Name } : null;
         var menuRoutes = _navigationService.GetMenuRoutes(userRoles);
-        
+
         // Очищаем коллекцию
         GroupedMenuItems.Clear();
-        
+
         // Создаем сгруппированное меню одним LINQ-запросом
         var groupedMenuItems = menuRoutes
             .GroupBy(route => route.Group ?? "Основное")
@@ -353,7 +349,7 @@ public class MainViewModel : ViewModelBase, IScreen, IDisposable
         {
             GroupedMenuItems.Add(group);
         }
-        
+
         if (user != null)
         {
             StatusLogger.LogInfo($"Меню обновлено: {GroupedMenuItems.Count} групп, {menuRoutes.Count()} пунктов", "MainViewModel");
@@ -363,8 +359,9 @@ public class MainViewModel : ViewModelBase, IScreen, IDisposable
     private void HandleUserLoggedIn(User user)
     {
         ShowSuccess($"Добро пожаловать, {user.Email}!");
-        
+
         var currentViewModel = Router.GetCurrentViewModel();
+
         if (currentViewModel is AuthenticationViewModel)
         {
             NavigateToDefaultPage(user);
@@ -377,45 +374,34 @@ public class MainViewModel : ViewModelBase, IScreen, IDisposable
 
     private void NavigateToDefaultPage(User user)
     {
-        // Навигация к домашней странице или странице по умолчанию для роли
-        var defaultRoute = GetDefaultRouteForUser(user);
-        if (!string.IsNullOrEmpty(defaultRoute))
-        {
-            _navigationService.NavigateToAsync(defaultRoute);
-        }
-        else
-        {
-            _navigationService.NavigateToAsync("home");
-        }
-    }
-
-    private string? GetDefaultRouteForUser(User user)
-    {
-        // Определяем маршрут по умолчанию в зависимости от роли
-        return user.Role?.Name?.ToLowerInvariant() switch
+        // todo: изменить
+        var defaultRoute = user.Role?.Name?.ToLowerInvariant() switch
         {
             "student" => "student-dashboard",
-            "teacher" => "teacher-dashboard", 
+            "teacher" => "teacher-dashboard",
             "admin" => "admin-dashboard",
             "systemadmin" => "system-admin-dashboard",
             _ => "home"
         };
+ 
+        _navigationService.NavigateToAsync("home");
     }
 
     private void HandleUserLoggedOut()
     {
         ShowInfo("Вы вышли из системы");
-        
+
         var currentViewModel = Router.GetCurrentViewModel();
-        if (!(currentViewModel is AuthenticationViewModel))
+
+        if (currentViewModel is not AuthenticationViewModel)
         {
             _navigationService.NavigateAndResetAsync("auth");
         }
     }
 
+    // Начальная навигация: если пользователь не авторизован и стек пуст, переходим на авторизацию
     private void InitializeNavigation()
     {
-        // Начальная навигация: если пользователь не авторизован и стек пуст, переходим на авторизацию
         if (_userSessionService.CurrentUser == null && Router.NavigationStack.Count == 0)
         {
             _navigationService.NavigateToAsync("auth");
@@ -427,7 +413,7 @@ public class MainViewModel : ViewModelBase, IScreen, IDisposable
         await _authService.LogoutAsync();
         ShowInfo("Выход из системы выполнен");
     }
-    
+
     private async void LoadStatistics()
     {
         await LoadStatisticsAsync();
@@ -438,16 +424,16 @@ public class MainViewModel : ViewModelBase, IScreen, IDisposable
         try
         {
             IsLoadingStatistics = true;
-            
+
             // Загружаем статистику параллельно
             var systemStats = await _statisticsService.GetSystemStatisticsAsync();
-            
+
             // Обновляем свойства
             TotalStudents = systemStats.TotalStudents;
             TotalCourses = systemStats.TotalCourses;
             TotalTeachers = systemStats.TotalTeachers;
             TotalAssignments = systemStats.TotalAssignments;
-            
+
             // Симуляция онлайн пользователей (в реальном приложении это будет из SignalR или другого источника)
             OnlineUsersCount = Random.Shared.Next(1, 25);
         }
@@ -455,7 +441,7 @@ public class MainViewModel : ViewModelBase, IScreen, IDisposable
         {
             StatusLogger.LogError($"Ошибка загрузки статистики: {ex.Message}", "MainViewModel");
             ShowError("Не удалось загрузить статистику");
-            
+
             // Устанавливаем значения по умолчанию
             TotalStudents = 0;
             TotalTeachers = 0;
@@ -467,7 +453,7 @@ public class MainViewModel : ViewModelBase, IScreen, IDisposable
         {
             IsLoadingStatistics = false;
         }
-    } 
+    }
 
     #endregion
 
@@ -499,5 +485,4 @@ public class MenuGroup
     /// </summary>
     public int Order { get; set; }
 }
- 
- 
+

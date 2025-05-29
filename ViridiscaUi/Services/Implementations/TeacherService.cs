@@ -9,6 +9,7 @@ using ViridiscaUi.Domain.Models.Auth;
 using ViridiscaUi.Services.Interfaces;
 using ViridiscaUi.Infrastructure;
 using ViridiscaUi.ViewModels.Education;
+using ViridiscaUi.Domain.Models.Education.Enums;
 
 namespace ViridiscaUi.Services.Implementations;
 

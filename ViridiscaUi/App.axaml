@@ -1,6 +1,6 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:material="https://github.com/AvaloniaUtils/Material.Icons.Avalonia"
+             xmlns:material="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              x:Class="ViridiscaUi.App"
              RequestedThemeVariant="Dark">
     
@@ -69,6 +69,9 @@
     
     <Application.Styles>
         <FluentTheme />
+        
+        <!-- Material Icons Styles - ОБЯЗАТЕЛЬНО для версии 2.0+ -->
+        <material:MaterialIconStyles />
         
         <!-- Global Dark Theme Styles -->
         <Style Selector="Window">

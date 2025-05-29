@@ -11,6 +11,7 @@ using ViridiscaUi.Domain.Models.Education;
 using ViridiscaUi.Services.Interfaces;
 using ViridiscaUi.Infrastructure.Navigation;
 using ViridiscaUi.ViewModels.Bases.Navigations;
+using ViridiscaUi.Domain.Models.Education.Enums;
 
 namespace ViridiscaUi.ViewModels.Education
 {
@@ -238,7 +239,7 @@ namespace ViridiscaUi.ViewModels.Education
                 createdTeacher.Uid,
                 "Добро пожаловать!",
                 $"Добро пожаловать в систему, {createdTeacher.FirstName}! Ваш аккаунт преподавателя создан.",
-                Domain.Models.System.NotificationType.Info);
+                Domain.Models.System.Enums.NotificationType.Info);
         }
 
         private async Task EditTeacherAsync(TeacherViewModel teacherViewModel)
@@ -324,7 +325,7 @@ namespace ViridiscaUi.ViewModels.Education
                     "Administrator",
                     "Преподаватель удален",
                     $"Преподаватель '{teacherViewModel.FullName}' был удален из системы",
-                    Domain.Models.System.NotificationType.Warning);
+                    Domain.Models.System.Enums.NotificationType.Warning);
             }
             else
             {
@@ -342,6 +343,15 @@ namespace ViridiscaUi.ViewModels.Education
             {
                 SelectedTeacher = new TeacherViewModel(teacher);
                 await ViewStatisticsAsync(SelectedTeacher);
+                
+                // Показываем диалог деталей
+                var result = await _dialogService.ShowTeacherDetailsDialogAsync(teacher);
+                if (result == "edit")
+                {
+                    // Если пользователь нажал "Редактировать" в диалоге деталей
+                    await EditTeacherAsync(teacherViewModel);
+                }
+                
                 ShowInfo($"Просмотр деталей преподавателя: {teacher.FullName}");
             }
             else

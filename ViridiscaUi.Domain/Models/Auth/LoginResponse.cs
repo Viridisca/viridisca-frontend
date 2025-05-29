@@ -1,6 +1,5 @@
-using System;
-using ReactiveUI;
 using ViridiscaUi.Domain.Models.Base;
+using ReactiveUI;
 
 namespace ViridiscaUi.Domain.Models.Auth;
 
@@ -9,11 +8,14 @@ namespace ViridiscaUi.Domain.Models.Auth;
 /// </summary>
 public class LoginResponse : ViewModelBase
 {
-    private bool _success;
-    private string _token = string.Empty;
     private string _refreshToken = string.Empty;
-    private DateTime _expiresAt;
+    private string _token = string.Empty;
+
     private string _errorMessage = string.Empty;
+
+    private DateTime _expiresAt;
+    private bool _success;
+    
     private User? _user;
 
     /// <summary>
@@ -85,13 +87,13 @@ public class LoginResponse : ViewModelBase
     {
         var response = new LoginResponse
         {
-            Uid = Guid.NewGuid()
+            Uid = Guid.NewGuid(),
+            Success = true,
+            Token = token,
+            RefreshToken = refreshToken,
+            ExpiresAt = expiresAt,
+            User = user
         };
-        response.Success = true;
-        response.Token = token;
-        response.RefreshToken = refreshToken;
-        response.ExpiresAt = expiresAt;
-        response.User = user;
         return response;
     }
 
@@ -102,10 +104,10 @@ public class LoginResponse : ViewModelBase
     {
         var response = new LoginResponse
         {
-            Uid = Guid.NewGuid()
+            Uid = Guid.NewGuid(),
+            Success = false,
+            ErrorMessage = errorMessage
         };
-        response.Success = false;
-        response.ErrorMessage = errorMessage;
         return response;
     }
 } 

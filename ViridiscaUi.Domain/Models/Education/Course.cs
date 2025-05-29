@@ -1,5 +1,6 @@
 using ReactiveUI;
 using ViridiscaUi.Domain.Models.Base;
+using ViridiscaUi.Domain.Models.Education.Enums;
 
 namespace ViridiscaUi.Domain.Models.Education;
 
@@ -10,17 +11,25 @@ public class Course : ViewModelBase
 {
     private string _name = string.Empty;
     private string _code = string.Empty;
+    
     private string _description = string.Empty;
     private string _category = string.Empty;
-    private Guid? _teacherUid;
+
+    private Guid? _teacherUid; 
     private Teacher? _teacher;
+    
     private DateTime? _startDate;
     private DateTime? _endDate;
+    
     private int _credits;
+    
     private CourseStatus _status = CourseStatus.Draft;
+    
     private string _prerequisites = string.Empty;
     private string _learningOutcomes = string.Empty;
+    
     private int _maxEnrollments = 100;
+
     private Guid? _subjectUid;
 
     /// <summary>
@@ -161,17 +170,17 @@ public class Course : ViewModelBase
     /// <summary>
     /// Модули курса
     /// </summary>
-    public ICollection<Module> Modules { get; set; } = new List<Module>();
+    public ICollection<Module> Modules { get; set; } = [];
 
     /// <summary>
     /// Записи на курс
     /// </summary>
-    public ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
+    public ICollection<Enrollment> Enrollments { get; set; } = [];
 
     /// <summary>
     /// Задания курса
     /// </summary>
-    public ICollection<Assignment> Assignments { get; set; } = new List<Assignment>();
+    public ICollection<Assignment> Assignments { get; set; } = [];
 
     /// <summary>
     /// Создает новый экземпляр курса
@@ -192,65 +201,3 @@ public class Course : ViewModelBase
         _teacherUid = teacherUid;
     }
 }
-
-/// <summary>
-/// Статус курса
-/// </summary>
-public enum CourseStatus
-{
-    /// <summary>
-    /// Черновик
-    /// </summary>
-    Draft,
-    
-    /// <summary>
-    /// Активный
-    /// </summary>
-    Active,
-    
-    /// <summary>
-    /// Опубликованный
-    /// </summary>
-    Published,
-    
-    /// <summary>
-    /// Завершенный
-    /// </summary>
-    Completed,
-    
-    /// <summary>
-    /// Архивированный
-    /// </summary>
-    Archived,
-    
-    /// <summary>
-    /// Приостановленный
-    /// </summary>
-    Suspended
-}
-
-/// <summary>
-/// Уровень сложности курса
-/// </summary>
-public enum CourseDifficulty
-{
-    /// <summary>
-    /// Начальный уровень
-    /// </summary>
-    Beginner,
-    
-    /// <summary>
-    /// Средний уровень
-    /// </summary>
-    Intermediate,
-    
-    /// <summary>
-    /// Продвинутый уровень
-    /// </summary>
-    Advanced,
-    
-    /// <summary>
-    /// Экспертный уровень
-    /// </summary>
-    Expert
-} 

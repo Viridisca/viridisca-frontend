@@ -4,7 +4,9 @@ using ViridiscaUi.Domain.Models.Auth;
 using ViridiscaUi.Domain.Models.Education;
 using ViridiscaUi.Domain.Models.System;
 using System.Collections.Generic;
-using BCrypt.Net;
+using ViridiscaUi.Domain.Models.Education.Enums;
+using ViridiscaUi.Domain.Models.System.Enums;
+using System.Linq;
 
 namespace ViridiscaUi.Infrastructure;
 
@@ -154,14 +156,14 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.HasKey(e => e.Uid);
             entity.Property(e => e.AssignedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
             
-            // Навигационные свойства
+            // Навигационные свойства с явными именами внешних ключей
             entity.HasOne(ur => ur.Role)
                 .WithMany()
                 .HasForeignKey(e => e.RoleUid)
                 .OnDelete(DeleteBehavior.Cascade);
                 
             entity.HasOne<User>()
-                .WithMany()
+                .WithMany(u => u.UserRoles)
                 .HasForeignKey(e => e.UserUid)
                 .OnDelete(DeleteBehavior.Cascade);
                 
@@ -174,8 +176,18 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         modelBuilder.Entity<RolePermission>(entity =>
         {
             entity.HasKey(e => e.Uid);
-            entity.HasOne<Role>().WithMany().HasForeignKey(e => e.RoleUid);
-            entity.HasOne<Permission>().WithMany().HasForeignKey(e => e.PermissionUid);
+            
+            // Явная настройка отношений
+            entity.HasOne<Role>()
+                .WithMany()
+                .HasForeignKey(e => e.RoleUid)
+                .OnDelete(DeleteBehavior.Cascade);
+                
+            entity.HasOne<Permission>()
+                .WithMany()
+                .HasForeignKey(e => e.PermissionUid)
+                .OnDelete(DeleteBehavior.Cascade);
+                
             entity.HasIndex(e => new { e.RoleUid, e.PermissionUid }).IsUnique();
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.Property(e => e.LastModifiedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
@@ -335,11 +347,12 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(e => e.Description).HasMaxLength(500);
             entity.Property(e => e.Category).IsRequired().HasMaxLength(50);
             
-            // Связь с преподавателем
+            // Явная связь с преподавателем
             entity.HasOne<Teacher>()
                 .WithMany()
                 .HasForeignKey(c => c.TeacherUid)
-                .OnDelete(DeleteBehavior.SetNull);
+                .OnDelete(DeleteBehavior.SetNull)
+                .IsRequired(false);
         });
 
         // Module
@@ -349,7 +362,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Description).HasMaxLength(500);
             
-            // Связь с курсом
+            // Явная связь с курсом
             entity.HasOne<Course>()
                 .WithMany()
                 .HasForeignKey(m => m.CourseUid)
@@ -363,29 +376,23 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(e => e.Topic).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Description).HasMaxLength(500);
             
-            // Связь с предметом
+            // Явные связи
             entity.HasOne<Subject>()
                 .WithMany()
                 .HasForeignKey(l => l.SubjectUid)
                 .OnDelete(DeleteBehavior.Cascade);
             
-            // Связь с преподавателем
             entity.HasOne<Teacher>()
                 .WithMany()
                 .HasForeignKey(l => l.TeacherUid)
-                .OnDelete(DeleteBehavior.SetNull);
+                .OnDelete(DeleteBehavior.SetNull)
+                .IsRequired(false);
             
-            // Связь с группой
             entity.HasOne<Group>()
                 .WithMany()
                 .HasForeignKey(l => l.GroupUid)
-                .OnDelete(DeleteBehavior.SetNull);
-                
-            // Связь с оценками
-            entity.HasMany<Grade>()
-                .WithOne()
-                .HasForeignKey(g => g.LessonUid)
-                .OnDelete(DeleteBehavior.SetNull);
+                .OnDelete(DeleteBehavior.SetNull)
+                .IsRequired(false);
         });
 
         // LessonProgress
@@ -398,13 +405,12 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(e => e.CompletedAt).IsRequired(false);
             entity.Property(e => e.TimeSpent).IsRequired(false);
             
-            // Связь со студентом
+            // Явные связи
             entity.HasOne(lp => lp.Student)
                 .WithMany()
                 .HasForeignKey(lp => lp.StudentUid)
                 .OnDelete(DeleteBehavior.Cascade);
             
-            // Связь с уроком
             entity.HasOne(lp => lp.Lesson)
                 .WithMany(l => l.LessonProgress)
                 .HasForeignKey(lp => lp.LessonUid)
@@ -425,13 +431,12 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
             entity.Property(e => e.Description).HasMaxLength(1000);
             
-            // Связь с курсом
+            // Явные связи
             entity.HasOne<Course>()
                 .WithMany()
                 .HasForeignKey(a => a.CourseUid)
                 .OnDelete(DeleteBehavior.Cascade);
             
-            // Связь с уроком (опциональная)
             entity.HasOne<Lesson>()
                 .WithMany()
                 .HasForeignKey(a => a.LessonUid)
@@ -445,15 +450,16 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.HasKey(e => e.Uid);
             entity.Property(e => e.Content).HasColumnType("text");
             
-            // Связь со студентом
+            // Явные связи
             entity.HasOne<Student>()
                 .WithMany()
-                .HasForeignKey(s => s.StudentUid);
+                .HasForeignKey(s => s.StudentUid)
+                .OnDelete(DeleteBehavior.Cascade);
             
-            // Связь с заданием
             entity.HasOne<Assignment>()
                 .WithMany()
-                .HasForeignKey(s => s.AssignmentUid);
+                .HasForeignKey(s => s.AssignmentUid)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         // Enrollment
@@ -462,15 +468,16 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.HasKey(e => e.Uid);
             entity.Property(e => e.EnrollmentDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
             
-            // Связь со студентом
+            // Явные связи
             entity.HasOne<Student>()
                 .WithMany()
-                .HasForeignKey(e => e.StudentUid);
+                .HasForeignKey(e => e.StudentUid)
+                .OnDelete(DeleteBehavior.Cascade);
             
-            // Связь с курсом
             entity.HasOne<Course>()
                 .WithMany()
-                .HasForeignKey(e => e.CourseUid);
+                .HasForeignKey(e => e.CourseUid)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         // Subject
@@ -506,7 +513,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
     private void ConfigureLmsModels(ModelBuilder modelBuilder)
     {
-        // Grade
+        // Grade - исправляем множественные отношения
         modelBuilder.Entity<Grade>(entity =>
         {
             entity.HasKey(e => e.Uid);
@@ -514,7 +521,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(e => e.Description).HasMaxLength(500);
             entity.Property(e => e.IssuedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
             
-            // Связи
+            // Явные связи с правильными именами
             entity.HasOne<Student>()
                 .WithMany()
                 .HasForeignKey(g => g.StudentUid)
@@ -528,7 +535,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.HasOne<Teacher>()
                 .WithMany()
                 .HasForeignKey(g => g.TeacherUid)
-                .OnDelete(DeleteBehavior.SetNull);
+                .OnDelete(DeleteBehavior.SetNull)
+                .IsRequired(false);
                 
             entity.HasOne<Lesson>()
                 .WithMany()
@@ -536,16 +544,11 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 .OnDelete(DeleteBehavior.SetNull)
                 .IsRequired(false);
                 
-            // Связи с комментариями и ревизиями
-            entity.HasMany<GradeComment>()
-                .WithOne()
-                .HasForeignKey(gc => gc.GradeUid)
-                .OnDelete(DeleteBehavior.Cascade);
-                
-            entity.HasMany<GradeRevision>()
-                .WithOne()
-                .HasForeignKey(gr => gr.GradeUid)
-                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Assignment>()
+                .WithMany()
+                .HasForeignKey(g => g.AssignmentUid)
+                .OnDelete(DeleteBehavior.SetNull)
+                .IsRequired(false);
         });
 
         // GradeComment
@@ -554,7 +557,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.HasKey(e => e.Uid);
             entity.Property(e => e.Content).IsRequired().HasMaxLength(1000);
             
-            // Связь с оценкой
+            // Явная связь с оценкой
             entity.HasOne<Grade>()
                 .WithMany()
                 .HasForeignKey(gc => gc.GradeUid)
@@ -571,7 +574,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(e => e.PreviousDescription).HasMaxLength(500);
             entity.Property(e => e.NewDescription).HasMaxLength(500);
             
-            // Связь с оценкой
+            // Явная связь с оценкой
             entity.HasOne<Grade>()
                 .WithMany()
                 .HasForeignKey(gr => gr.GradeUid)
@@ -583,9 +586,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         {
             entity.HasKey(e => e.Uid);
             
-            // Связи
+            // Явные связи
             entity.HasOne<Student>()
-                .WithMany()
+                .WithMany(s => s.Parents)
                 .HasForeignKey(sp => sp.StudentUid)
                 .OnDelete(DeleteBehavior.Cascade);
                 
@@ -604,14 +607,14 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.HasKey(e => e.Uid);
             entity.Property(e => e.AssignedDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
             
-            // Связи
+            // Явные связи
             entity.HasOne<Teacher>()
-                .WithMany()
+                .WithMany(t => t.Subjects)
                 .HasForeignKey(ts => ts.TeacherUid)
                 .OnDelete(DeleteBehavior.Cascade);
                 
             entity.HasOne<Subject>()
-                .WithMany()
+                .WithMany(s => s.TeacherSubjects)
                 .HasForeignKey(ts => ts.SubjectUid)
                 .OnDelete(DeleteBehavior.Cascade);
                 
@@ -625,7 +628,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.HasKey(e => e.Uid);
             entity.Property(e => e.AssignedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
             
-            // Связи
+            // Явные связи
             entity.HasOne<Teacher>()
                 .WithMany()
                 .HasForeignKey(tg => tg.TeacherUid)
@@ -657,13 +660,13 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(e => e.SubjectName).IsRequired().HasMaxLength(200);
             entity.Property(e => e.GroupName).IsRequired().HasMaxLength(100);
             
-            // Связь с основным уроком
+            // Явная связь с основным уроком
             entity.HasOne<Lesson>()
                 .WithMany()
                 .HasForeignKey(ld => ld.LessonUid)
                 .OnDelete(DeleteBehavior.Cascade);
                 
-            // Индекс для быстрого поиска по уроку
+            // Индексы для быстрого поиска
             entity.HasIndex(e => e.LessonUid);
             entity.HasIndex(e => e.StartTime);
             entity.HasIndex(e => new { e.TeacherLastName, e.TeacherFirstName });
@@ -764,14 +767,14 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(e => e.Message).IsRequired().HasMaxLength(2000);
             entity.Property(e => e.SentAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
             
-            // Сериализуем Metadata в JSON для хранения в БД
+            // Сериализуем Metadata в JSON для хранения в БД с компаратором
             entity.Property(e => e.Metadata)
                 .HasConversion(
                     v => v == null ? null : System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
                     v => v == null ? null : System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(v, (System.Text.Json.JsonSerializerOptions?)null))
                 .HasColumnType("text");
             
-            // Связь с получателем
+            // Явная связь с получателем
             entity.HasOne(n => n.Recipient)
                 .WithMany()
                 .HasForeignKey(n => n.RecipientUid)
@@ -794,7 +797,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(e => e.Category).HasMaxLength(100);
             entity.Property(e => e.IsActive).HasDefaultValue(true);
             
-            // Сериализуем Parameters в JSON для хранения в БД
+            // Сериализуем Parameters в JSON для хранения в БД с компаратором
             entity.Property(e => e.Parameters)
                 .HasConversion(
                     v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
@@ -816,23 +819,23 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(e => e.PushNotifications).HasDefaultValue(true);
             entity.Property(e => e.SmsNotifications).HasDefaultValue(false);
             entity.Property(e => e.WeekendNotifications).HasDefaultValue(false);
-            entity.Property(e => e.MinimumPriority).HasConversion<int>().HasDefaultValue(ViridiscaUi.Domain.Models.System.NotificationPriority.Low);
+            entity.Property(e => e.MinimumPriority).HasConversion<int>().HasDefaultValue(NotificationPriority.Low);
             
-            // Сериализуем TypeSettings в JSON для хранения в БД
+            // Сериализуем TypeSettings в JSON для хранения в БД с компаратором
             entity.Property(e => e.TypeSettings)
                 .HasConversion(
                     v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
-                    v => System.Text.Json.JsonSerializer.Deserialize<Dictionary<ViridiscaUi.Domain.Models.System.NotificationType, bool>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new Dictionary<ViridiscaUi.Domain.Models.System.NotificationType, bool>())
+                    v => System.Text.Json.JsonSerializer.Deserialize<Dictionary<NotificationType, bool>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new Dictionary<NotificationType, bool>())
                 .HasColumnType("text");
             
-            // Сериализуем CategorySettings в JSON для хранения в БД
+            // Сериализуем CategorySettings в JSON для хранения в БД с компаратором
             entity.Property(e => e.CategorySettings)
                 .HasConversion(
                     v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
                     v => System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, bool>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new Dictionary<string, bool>())
                 .HasColumnType("text");
             
-            // Связь с пользователем
+            // Явная связь с пользователем
             entity.HasOne<User>()
                 .WithMany()
                 .HasForeignKey(ns => ns.UserUid)
@@ -1079,9 +1082,13 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 Phone = "+7 (901) 234-56-78",
                 HireDate = baseDateTime.AddYears(-5),
                 UserUid = teacherUserId,
+                DepartmentUid = itDeptId,
                 Status = TeacherStatus.Active,
                 Specialization = "Программирование",
+                AcademicDegree = "Кандидат технических наук",
+                AcademicTitle = "Доцент",
                 HourlyRate = 1500m,
+                Bio = "Опытный преподаватель программирования с 5-летним стажем",
                 CreatedAt = baseDateTime,
                 LastModifiedAt = baseDateTime
             },
@@ -1094,10 +1101,14 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 EmployeeCode = "T002",
                 Phone = "+7 (902) 345-67-89",
                 HireDate = baseDateTime.AddYears(-3),
-                UserUid = Guid.Empty,
+                UserUid = null,
+                DepartmentUid = mathDeptId,
                 Status = TeacherStatus.Active,
                 Specialization = "Математика",
+                AcademicDegree = "Доктор физико-математических наук",
+                AcademicTitle = "Профессор",
                 HourlyRate = 1400m,
+                Bio = "Профессор математики, автор более 50 научных работ",
                 CreatedAt = baseDateTime,
                 LastModifiedAt = baseDateTime
             },
@@ -1110,10 +1121,14 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 EmployeeCode = "T003",
                 Phone = "+7 (903) 456-78-90",
                 HireDate = baseDateTime.AddYears(-8),
-                UserUid = Guid.Empty,
+                UserUid = null,
+                DepartmentUid = physDeptId,
                 Status = TeacherStatus.Active,
                 Specialization = "Физика",
+                AcademicDegree = "Кандидат физико-математических наук",
+                AcademicTitle = "Старший преподаватель",
                 HourlyRate = 1600m,
+                Bio = "Специалист по теоретической физике и механике",
                 CreatedAt = baseDateTime,
                 LastModifiedAt = baseDateTime
             }
@@ -1124,27 +1139,48 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             new Group
             {
                 Uid = group1Id,
+                Code = "IT-301",
                 Name = "ИТ-301",
                 Description = "Информационные технологии, 3 курс, группа 1",
                 Year = 3,
+                StartDate = baseDateTime.AddYears(-3),
+                EndDate = null,
+                MaxStudents = 25,
+                Status = GroupStatus.Active,
+                CuratorUid = teacher1Id,
+                DepartmentUid = itDeptId,
                 CreatedAt = baseDateTime.AddYears(-3),
                 LastModifiedAt = baseDateTime
             },
             new Group
             {
                 Uid = group2Id,
+                Code = "MAT-201",
                 Name = "МАТ-201",
                 Description = "Математика, 2 курс, группа 1",
                 Year = 2,
+                StartDate = baseDateTime.AddYears(-2),
+                EndDate = null,
+                MaxStudents = 30,
+                Status = GroupStatus.Active,
+                CuratorUid = teacher2Id,
+                DepartmentUid = mathDeptId,
                 CreatedAt = baseDateTime.AddYears(-2),
                 LastModifiedAt = baseDateTime
             },
             new Group
             {
                 Uid = group3Id,
+                Code = "PHYS-401",
                 Name = "ФИЗ-401",
                 Description = "Физика, 4 курс, группа 1",
                 Year = 4,
+                StartDate = baseDateTime.AddYears(-4),
+                EndDate = null,
+                MaxStudents = 20,
+                Status = GroupStatus.Active,
+                CuratorUid = teacher3Id,
+                DepartmentUid = physDeptId,
                 CreatedAt = baseDateTime.AddYears(-4),
                 LastModifiedAt = baseDateTime
             }
@@ -1184,7 +1220,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 GroupUid = group1Id,
                 Status = StudentStatus.Active,
                 IsActive = true,
-                UserUid = Guid.Empty,
+                UserUid = null,
                 CreatedAt = baseDateTime,
                 LastModifiedAt = baseDateTime
             },
@@ -1202,7 +1238,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 GroupUid = group2Id,
                 Status = StudentStatus.Active,
                 IsActive = true,
-                UserUid = Guid.Empty,
+                UserUid = null,
                 CreatedAt = baseDateTime,
                 LastModifiedAt = baseDateTime
             },
@@ -1220,7 +1256,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 GroupUid = group2Id,
                 Status = StudentStatus.Active,
                 IsActive = true,
-                UserUid = Guid.Empty,
+                UserUid = null,
                 CreatedAt = baseDateTime,
                 LastModifiedAt = baseDateTime
             },
@@ -1238,7 +1274,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 GroupUid = group3Id,
                 Status = StudentStatus.Active,
                 IsActive = true,
-                UserUid = Guid.Empty,
+                UserUid = null,
                 CreatedAt = baseDateTime,
                 LastModifiedAt = baseDateTime
             }
@@ -1355,6 +1391,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 Description = "Выполнение базовых задач по программированию на C#",
                 Instructions = "Создать консольное приложение с базовыми операциями",
                 CourseUid = course1Id,
+                LessonUid = null,
                 DueDate = baseDateTime.AddDays(14),
                 MaxScore = 100,
                 Type = AssignmentType.LabWork,
@@ -1370,6 +1407,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 Description = "Вычисление производных функций",
                 Instructions = "Решить задачи 1-10 из учебника",
                 CourseUid = course2Id,
+                LessonUid = null,
                 DueDate = baseDateTime.AddDays(7),
                 MaxScore = 50,
                 Type = AssignmentType.Homework,
@@ -1385,6 +1423,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 Description = "Комплексное исследование механических систем",
                 Instructions = "Создать проект по моделированию физической системы",
                 CourseUid = course3Id,
+                LessonUid = null,
                 DueDate = baseDateTime.AddDays(30),
                 MaxScore = 200,
                 Type = AssignmentType.Project,
@@ -1403,6 +1442,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 StudentUid = student1Id,
                 SubjectUid = subject1Id, // Программирование
                 TeacherUid = teacher1Id,
+                LessonUid = null,
                 AssignmentUid = assignment1Id,
                 Value = 85m,
                 Type = GradeType.Homework,
@@ -1421,6 +1461,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 StudentUid = student2Id,
                 SubjectUid = subject1Id, // Программирование
                 TeacherUid = teacher1Id,
+                LessonUid = null,
                 AssignmentUid = assignment1Id,
                 Value = 92m,
                 Type = GradeType.Homework,
@@ -1439,6 +1480,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 StudentUid = student3Id,
                 SubjectUid = subject2Id, // Математика
                 TeacherUid = teacher2Id,
+                LessonUid = null,
                 AssignmentUid = assignment2Id,
                 Value = 45m,
                 Type = GradeType.Homework,
@@ -1498,5 +1540,14 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 LastModifiedAt = baseDateTime
             }
         );
+    }
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        base.OnConfiguring(optionsBuilder);
+        
+        // Отключаем предупреждения о pending model changes для упрощения разработки
+        optionsBuilder.ConfigureWarnings(warnings =>
+            warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
     }
 }

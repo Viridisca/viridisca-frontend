@@ -10,11 +10,14 @@ public class GradeRevision : ViewModelBase
 {
     private Guid _gradeUid;
     private Guid _teacherUid;
+
     private decimal _previousValue;
     private decimal _newValue;
+    
     private string _previousDescription = string.Empty;
     private string _newDescription = string.Empty;
     private string _revisionReason = string.Empty;
+    
     private DateTime _createdAt;
 
     /// <summary>

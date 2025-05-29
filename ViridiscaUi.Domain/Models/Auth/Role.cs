@@ -1,6 +1,5 @@
-using System;
-using ReactiveUI;
 using ViridiscaUi.Domain.Models.Base;
+using ReactiveUI;
 
 namespace ViridiscaUi.Domain.Models.Auth;
 
@@ -10,6 +9,7 @@ namespace ViridiscaUi.Domain.Models.Auth;
 public class Role : ViewModelBase
 {
     private RoleType _roleType;
+
     private string _name = string.Empty;
     private string _description = string.Empty;
 

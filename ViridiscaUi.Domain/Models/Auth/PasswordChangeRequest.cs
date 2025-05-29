@@ -1,7 +1,6 @@
-using System;
 using System.ComponentModel.DataAnnotations;
-using ReactiveUI;
 using ViridiscaUi.Domain.Models.Base;
+using ReactiveUI;
 
 namespace ViridiscaUi.Domain.Models.Auth;
 

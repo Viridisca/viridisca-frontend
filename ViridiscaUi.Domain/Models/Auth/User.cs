@@ -1,9 +1,7 @@
-using System;
-using System.Collections.ObjectModel;
-using System.Linq;
-using ReactiveUI;
-using ViridiscaUi.Domain.Models.Base;
 using ViridiscaUi.Domain.Models.Education;
+using System.Collections.ObjectModel;
+using ViridiscaUi.Domain.Models.Base;
+using ReactiveUI;
 
 namespace ViridiscaUi.Domain.Models.Auth;
 
@@ -14,19 +12,27 @@ public class User : ViewModelBase
 {
     private string _email = string.Empty;
     private string _username = string.Empty;
+    private string _passwordHash = string.Empty;
+
     private string _firstName = string.Empty;
     private string _lastName = string.Empty;
     private string _middleName = string.Empty;
+    
     private string _phoneNumber = string.Empty;
+    
     private string _profileImageUrl = string.Empty;
-    private string _passwordHash = string.Empty;
+    
     private DateTime _dateOfBirth;
+    private DateTime? _lastLoginAt;
+    
     private bool _isEmailConfirmed;
     private bool _isActive;
-    private DateTime? _lastLoginAt;
-    private ObservableCollection<UserRole> _userRoles = new();
+    
+    private ObservableCollection<UserRole> _userRoles = [];
+
     private Student? _studentProfile;
     private Teacher? _teacherProfile;
+
     private Guid _roleId;
     private Role? _role;
 

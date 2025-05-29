@@ -24,28 +24,33 @@ using ViridiscaUi.ViewModels.System;
 using ViridiscaUi.ViewModels.Students;
 using ViridiscaUi.Infrastructure.Navigation;
 using ViridiscaUi.Windows;
+using ViridiscaUi.Views.System;
+
 
 namespace ViridiscaUi.Services.Implementations;
 
 /// <summary>
-/// Реализация сервиса для работы с диалоговыми окнами
+/// Реализация сервиса для работы с диалогами
 /// </summary>
-public class DialogService(IServiceProvider serviceProvider) : IDialogService
+public class DialogService : IDialogService
 {
-    private readonly IServiceProvider _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+    private readonly IServiceProvider _serviceProvider;
+
+    public DialogService(IServiceProvider serviceProvider)
+    {
+        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+    }
 
     /// <summary>
     /// Получает активное окно для использования в качестве владельца диалогов
     /// </summary>
-    private Window GetOwnerWindow()
+    private Window? GetOwnerWindow()
     {
-        // Пытаемся найти главное окно через ApplicationLifetime
-        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        if (Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            return desktop.MainWindow ?? throw new InvalidOperationException("MainWindow is not available");
+            return desktop.MainWindow;
         }
-        
-        throw new InvalidOperationException("Application lifetime is not available");
+        return null;
     }
 
     /// <summary>
@@ -65,15 +70,15 @@ public class DialogService(IServiceProvider serviceProvider) : IDialogService
             {
                 dialog.Close();
             }
-            ownerWindow.Closing -= OnOwnerClosing;
+            ownerWindow?.Closing -= OnOwnerClosing;
         }
         
-        ownerWindow.Closing += OnOwnerClosing;
+        ownerWindow?.Closing += OnOwnerClosing;
         
         // Также подписываемся на закрытие диалога, чтобы очистить обработчики
         dialog.Closed += (s, e) =>
         {
-            ownerWindow.Closing -= OnOwnerClosing;
+            ownerWindow?.Closing -= OnOwnerClosing;
         };
     }
 
@@ -82,34 +87,7 @@ public class DialogService(IServiceProvider serviceProvider) : IDialogService
     /// </summary>
     public async Task ShowInfoAsync(string title, string message)
     {
-        var dialog = new Window
-        {
-            Title = title,
-            Content = new StackPanel
-            {
-                Children =
-                {
-                    new TextBlock { Text = message },
-                    new Button { Content = "OK" }
-                }
-            },
-            SizeToContent = SizeToContent.WidthAndHeight
-        };
-
-        ConfigureDialog(dialog);
-
-        var okButton = ((dialog.Content as StackPanel)?.Children[1]) as Button;
-        if (okButton != null)
-        {
-            void OnClick(object? sender, RoutedEventArgs args)
-            {
-                dialog.Close();
-                okButton.Click -= OnClick;
-            }
-            okButton.Click += OnClick;
-        }
-
-        await dialog.ShowDialog(GetOwnerWindow());
+        await ShowMessageBoxAsync(title, message, "Информация");
     }
 
     /// <summary>
@@ -117,34 +95,7 @@ public class DialogService(IServiceProvider serviceProvider) : IDialogService
     /// </summary>
     public async Task ShowErrorAsync(string title, string message)
     {
-        var dialog = new Window
-        {
-            Title = title,
-            Content = new StackPanel
-            {
-                Children =
-                {
-                    new TextBlock { Text = message, Foreground = new SolidColorBrush(Colors.Red) },
-                    new Button { Content = "OK" }
-                }
-            },
-            SizeToContent = SizeToContent.WidthAndHeight
-        };
-
-        ConfigureDialog(dialog);
-
-        var okButton = ((dialog.Content as StackPanel)?.Children[1]) as Button;
-        if (okButton != null)
-        {
-            void OnClick(object? sender, RoutedEventArgs args)
-            {
-                dialog.Close();
-                okButton.Click -= OnClick;
-            }
-            okButton.Click += OnClick;
-        }
-
-        await dialog.ShowDialog(GetOwnerWindow());
+        await ShowMessageBoxAsync(title, message, "Ошибка");
     }
 
     /// <summary>
@@ -152,34 +103,7 @@ public class DialogService(IServiceProvider serviceProvider) : IDialogService
     /// </summary>
     public async Task ShowWarningAsync(string title, string message)
     {
-        var dialog = new Window
-        {
-            Title = title,
-            Content = new StackPanel
-            {
-                Children =
-                {
-                    new TextBlock { Text = message, Foreground = new SolidColorBrush(Colors.Orange) },
-                    new Button { Content = "OK" }
-                }
-            },
-            SizeToContent = SizeToContent.WidthAndHeight
-        };
-
-        ConfigureDialog(dialog);
-
-        var okButton = ((dialog.Content as StackPanel)?.Children[1]) as Button;
-        if (okButton != null)
-        {
-            void OnClick(object? sender, RoutedEventArgs args)
-            {
-                dialog.Close();
-                okButton.Click -= OnClick;
-            }
-            okButton.Click += OnClick;
-        }
-
-        await dialog.ShowDialog(GetOwnerWindow());
+        await ShowMessageBoxAsync(title, message, "Предупреждение");
     }
 
     /// <summary>
@@ -410,33 +334,83 @@ public class DialogService(IServiceProvider serviceProvider) : IDialogService
             await window.ShowDialog(GetOwnerWindow());
             return (TResult?)(object?)await tcs.Task;
         }
+        
+        if (viewModel is DepartmentEditDialogViewModel departmentEditViewModel)
+        {
+            var dialog = new DepartmentEditDialog(departmentEditViewModel);
+            ConfigureDialog(dialog);
+            
+            var result = await dialog.ShowDialog<bool?>(GetOwnerWindow());
+            return (TResult?)(object?)(result == true ? departmentEditViewModel.Department : null);
+        }
+        
+        if (viewModel is DepartmentDetailsDialogViewModel departmentDetailsViewModel)
+        {
+            var dialog = new DepartmentDetailsDialog(departmentDetailsViewModel);
+            ConfigureDialog(dialog);
+            
+            var result = await dialog.ShowDialog<bool?>(GetOwnerWindow());
+            return (TResult?)(object?)result;
+        }
 
         throw new ArgumentException($"Unsupported view model type: {viewModel.GetType()}");
     }
 
-    public async Task<Student?> ShowStudentEditorDialogAsync(Student? student = null)
+    public async Task<Student?> ShowStudentEditDialogAsync(Student? student = null)
     {
-        var editorViewModel = new StudentEditorViewModel(
-            _serviceProvider.GetRequiredService<IStudentService>(),
-            _serviceProvider.GetRequiredService<IGroupService>(),
-            _serviceProvider.GetRequiredService<IUnifiedNavigationService>(),
-            _serviceProvider.GetRequiredService<IScreen>());
-        
-        if (student != null)
+        var mainWindow = GetOwnerWindow();
+        if (mainWindow == null) return null;
+
+        try
         {
-            editorViewModel.CurrentStudent = student;
-            editorViewModel.IsEditMode = true;
+            var studentService = _serviceProvider.GetRequiredService<IStudentService>();
+            var groupService = _serviceProvider.GetRequiredService<IGroupService>();
+            
+            var viewModel = new StudentEditorViewModel(studentService, groupService, student);
+
+            var dialog = new StudentEditDialog
+            {
+                DataContext = viewModel
+            };
+
+            var result = await dialog.ShowDialog<bool?>(mainWindow);
+            
+            if (result == true)
+            {
+                return viewModel.CurrentStudent;
+            }
+
+            return null;
         }
-        
-        return await ShowEditorDialogAsync<Student?>(editorViewModel);
+        catch (Exception ex)
+        {
+            await ShowErrorAsync("Ошибка", $"Не удалось открыть диалог редактирования студента: {ex.Message}");
+            return null;
+        }
     }
 
-    // Диалоги для групп
+    /// <summary>
+    /// Показывает диалог редактирования группы
+    /// </summary>
     public async Task<Group?> ShowGroupEditDialogAsync(Group group)
     {
-        var editorViewModel = new GroupEditorViewModel(_serviceProvider.GetRequiredService<ITeacherService>(), group);
-        var result = await ShowEditorDialogAsync<Group>(editorViewModel);
-        return result;
+        try
+        {
+            var teacherService = _serviceProvider.GetRequiredService<ITeacherService>();
+            var editorViewModel = new GroupEditorViewModel(teacherService, group);
+            
+            var dialog = new ViridiscaUi.Views.Education.GroupEditDialog(editorViewModel);
+            ConfigureDialog(dialog);
+            
+            var result = await dialog.ShowDialog<Group?>(GetOwnerWindow());
+            
+            return result;
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorAsync("Ошибка", $"Не удалось открыть диалог редактирования группы: {ex.Message}");
+            return null;
+        }
     }
     
     public async Task<Teacher?> ShowTeacherSelectionDialogAsync(IEnumerable<Teacher> teachers)
@@ -459,16 +433,26 @@ public class DialogService(IServiceProvider serviceProvider) : IDialogService
     }
     
     // Диалоги для курсов
-    public async Task<Course?> ShowCourseEditDialogAsync(Course course)
+    public async Task<Course?> ShowCourseEditDialogAsync(Course? course = null)
     {
-        var viewModel = _serviceProvider.GetService<CourseEditorViewModel>() ??
-            new CourseEditorViewModel(
-                _serviceProvider.GetRequiredService<ICourseService>(),
-                _serviceProvider.GetRequiredService<ITeacherService>(),
-                _serviceProvider.GetRequiredService<IUnifiedNavigationService>(),
-                _serviceProvider.GetRequiredService<IScreen>());
-        var result = await ShowEditorDialogAsync<Course>(viewModel);
-        return result;
+        try
+        {
+            var teacherService = _serviceProvider.GetRequiredService<ITeacherService>();
+            var courseService = _serviceProvider.GetRequiredService<ICourseService>();
+            var editorViewModel = new CourseEditorViewModel(courseService, teacherService, course);
+            
+            var dialog = new ViridiscaUi.Views.Education.CourseEditDialog(editorViewModel);
+            ConfigureDialog(dialog);
+            
+            var result = await dialog.ShowDialog<Course?>(GetOwnerWindow());
+            
+            return result;
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorAsync("Ошибка", $"Не удалось открыть диалог редактирования курса: {ex.Message}");
+            return null;
+        }
     }
     
     public async Task<object?> ShowCourseEnrollmentDialogAsync(Course course, IEnumerable<Student> allStudents)
@@ -539,59 +523,77 @@ public class DialogService(IServiceProvider serviceProvider) : IDialogService
     /// </summary>
     public async Task<bool> ShowConfirmationDialogAsync(string title, string message, string confirmText = "Да", string cancelText = "Нет")
     {
-        var tcs = new TaskCompletionSource<bool>();
+        var mainWindow = GetOwnerWindow();
+        if (mainWindow == null) return false;
+
         var dialog = new Window
         {
             Title = title,
-            Content = new StackPanel
-            {
-                Children =
-                {
-                    new TextBlock { Text = message },
-                    new StackPanel
-                    {
-                        Orientation = Orientation.Horizontal,
-                        Children =
-                        {
-                            new Button { Content = confirmText },
-                            new Button { Content = cancelText }
-                        }
-                    }
-                }
-            },
-            SizeToContent = SizeToContent.WidthAndHeight
+            Width = 400,
+            Height = 200,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            CanResize = false
         };
 
-        ConfigureDialog(dialog);
-
-        var buttonPanel = ((dialog.Content as StackPanel)?.Children[1]) as StackPanel;
-        var confirmButton = buttonPanel?.Children[0] as Button;
-        var cancelButton = buttonPanel?.Children[1] as Button;
-
-        if (confirmButton != null)
+        var stackPanel = new StackPanel
         {
-            void OnConfirmClick(object? sender, RoutedEventArgs args)
-            {
-                tcs.SetResult(true);
-                dialog.Close();
-                confirmButton.Click -= OnConfirmClick;
-            }
-            confirmButton.Click += OnConfirmClick;
-        }
+            Margin = new Avalonia.Thickness(20),
+            Spacing = 20
+        };
 
-        if (cancelButton != null)
+        var messageText = new TextBlock
         {
-            void OnCancelClick(object? sender, RoutedEventArgs args)
-            {
-                tcs.SetResult(false);
-                dialog.Close();
-                cancelButton.Click -= OnCancelClick;
-            }
-            cancelButton.Click += OnCancelClick;
-        }
+            Text = message,
+            TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+        };
 
-        await dialog.ShowDialog(GetOwnerWindow());
-        return await tcs.Task;
+        var buttonPanel = new StackPanel
+        {
+            Orientation = Avalonia.Layout.Orientation.Horizontal,
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+            Spacing = 10
+        };
+
+        var confirmButton = new Button
+        {
+            Content = confirmText,
+            MinWidth = 80,
+            IsDefault = true
+        };
+
+        var cancelButton = new Button
+        {
+            Content = cancelText,
+            MinWidth = 80,
+            IsCancel = true
+        };
+
+        bool result = false;
+
+        confirmButton.Click += (s, e) =>
+        {
+            result = true;
+            dialog.Close();
+        };
+
+        cancelButton.Click += (s, e) =>
+        {
+            result = false;
+            dialog.Close();
+        };
+
+        buttonPanel.Children.Add(confirmButton);
+        buttonPanel.Children.Add(cancelButton);
+        
+        stackPanel.Children.Add(messageText);
+        stackPanel.Children.Add(buttonPanel);
+        
+        dialog.Content = stackPanel;
+
+        await dialog.ShowDialog(mainWindow);
+        return result;
     }
 
     /// <summary>
@@ -607,42 +609,37 @@ public class DialogService(IServiceProvider serviceProvider) : IDialogService
     /// </summary>
     public async Task<string?> ShowFileOpenDialogAsync(string title, string[] filters)
     {
-        var dialog = new OpenFileDialog
+        var mainWindow = GetOwnerWindow();
+        if (mainWindow?.StorageProvider == null) return null;
+
+        var options = new FilePickerOpenOptions
         {
             Title = title,
-            AllowMultiple = false
+            AllowMultiple = false,
+            FileTypeFilter = CreateFileTypeFilters(filters)
         };
 
-        if (filters?.Length > 0)
-        {
-            var fileTypeFilters = new List<FileDialogFilter>();
-            foreach (var filter in filters)
-            {
-                var parts = filter.Split('|');
-                if (parts.Length == 2)
-                {
-                    fileTypeFilters.Add(new FileDialogFilter
-                    {
-                        Name = parts[0],
-                        Extensions = parts[1].Split(',').Select(ext => ext.Trim().TrimStart('*', '.')).ToList()
-                    });
-                }
-                else
-                {
-                    // Простой формат типа "*.xlsx"
-                    var extension = filter.TrimStart('*', '.');
-                    fileTypeFilters.Add(new FileDialogFilter
-                    {
-                        Name = $"{extension.ToUpper()} files",
-                        Extensions = new List<string> { extension }
-                    });
-                }
-            }
-            dialog.Filters = fileTypeFilters;
-        }
+        var files = await mainWindow.StorageProvider.OpenFilePickerAsync(options);
+        return files?.FirstOrDefault()?.Path.LocalPath;
+    }
 
-        var result = await dialog.ShowAsync(GetOwnerWindow());
-        return result?.FirstOrDefault();
+    /// <summary>
+    /// Показывает диалог сохранения файла
+    /// </summary>
+    public async Task<string?> ShowFileSaveDialogAsync(string title, string defaultFileName, string[] fileTypes)
+    {
+        var mainWindow = GetOwnerWindow();
+        if (mainWindow?.StorageProvider == null) return null;
+
+        var options = new FilePickerSaveOptions
+        {
+            Title = title,
+            SuggestedFileName = defaultFileName,
+            FileTypeChoices = CreateFileTypeFilters(fileTypes)
+        };
+
+        var file = await mainWindow.StorageProvider.SaveFilePickerAsync(options);
+        return file?.Path.LocalPath;
     }
 
     /// <summary>
@@ -702,16 +699,70 @@ public class DialogService(IServiceProvider serviceProvider) : IDialogService
     /// <summary>
     /// Показывает диалог редактирования преподавателя
     /// </summary>
-    public async Task<Teacher?> ShowTeacherEditDialogAsync(Teacher teacher)
+    public async Task<Teacher?> ShowTeacherEditDialogAsync(Teacher? teacher = null)
     {
-        var viewModel = _serviceProvider.GetService<TeacherEditorViewModel>() ??
-            new TeacherEditorViewModel(
-                _serviceProvider.GetRequiredService<IScreen>(),
-                _serviceProvider.GetRequiredService<ITeacherService>(),
-                _serviceProvider.GetRequiredService<IUnifiedNavigationService>(),
-                _serviceProvider.GetRequiredService<IDialogService>());
-        var result = await ShowEditorDialogAsync<Teacher>(viewModel);
-        return result;
+        try
+        {
+            var teacherService = _serviceProvider.GetRequiredService<ITeacherService>();
+            var navigationService = _serviceProvider.GetRequiredService<IUnifiedNavigationService>();
+            var screen = _serviceProvider.GetRequiredService<IScreen>();
+            
+            // Создаем ViewModel для диалога без навигации
+            var editorViewModel = new TeacherEditorViewModel(screen, teacherService, navigationService, this);
+            
+            if (teacher != null)
+            {
+                editorViewModel.PopulateForm(teacher);
+                editorViewModel.IsEditMode = true;
+                editorViewModel.FormTitle = "Редактирование преподавателя";
+            }
+            else
+            {
+                editorViewModel.IsEditMode = false;
+                editorViewModel.FormTitle = "Создание преподавателя";
+            }
+            
+            var dialog = new ViridiscaUi.Views.Education.TeacherEditDialog(editorViewModel);
+            ConfigureDialog(dialog);
+            
+            var result = await dialog.ShowDialog<Teacher?>(GetOwnerWindow());
+            
+            return result;
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorAsync("Ошибка", $"Не удалось открыть диалог редактирования преподавателя: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Показывает диалог с подробной информацией о преподавателе
+    /// </summary>
+    public async Task<string?> ShowTeacherDetailsDialogAsync(Teacher teacher)
+    {
+        try
+        {
+            var teacherService = _serviceProvider.GetRequiredService<ITeacherService>();
+            var navigationService = _serviceProvider.GetRequiredService<IUnifiedNavigationService>();
+            var screen = _serviceProvider.GetRequiredService<IScreen>();
+            
+            var editorViewModel = new TeacherEditorViewModel(screen, teacherService, navigationService, this);
+            editorViewModel.PopulateForm(teacher);
+            editorViewModel.FormTitle = "Информация о преподавателе";
+            
+            var dialog = new ViridiscaUi.Views.Education.TeacherDetailsDialog(editorViewModel);
+            ConfigureDialog(dialog);
+            
+            var result = await dialog.ShowDialog<string?>(GetOwnerWindow());
+            
+            return result;
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorAsync("Ошибка", $"Не удалось открыть диалог деталей преподавателя: {ex.Message}");
+            return null;
+        }
     }
 
     /// <summary>
@@ -1100,43 +1151,28 @@ public class DialogService(IServiceProvider serviceProvider) : IDialogService
     }
 
     /// <summary>
-    /// Показывает диалог редактирования студента
-    /// </summary>
-    public async Task<Student?> ShowStudentEditDialogAsync(Student student)
-    {
-        var editorViewModel = new StudentEditorViewModel(
-            _serviceProvider.GetRequiredService<IStudentService>(),
-            _serviceProvider.GetRequiredService<IGroupService>(),
-            _serviceProvider.GetRequiredService<IUnifiedNavigationService>(),
-            _serviceProvider.GetRequiredService<IScreen>());
-        
-        editorViewModel.CurrentStudent = student;
-        editorViewModel.IsEditMode = true;
-        
-        return await ShowEditorDialogAsync<Student>(editorViewModel);
-    }
-
-    public async Task<Student?> ShowStudentCreateDialogAsync()
-    {
-        var editorViewModel = new StudentEditorViewModel(
-            _serviceProvider.GetRequiredService<IStudentService>(),
-            _serviceProvider.GetRequiredService<IGroupService>(),
-            _serviceProvider.GetRequiredService<IUnifiedNavigationService>(),
-            _serviceProvider.GetRequiredService<IScreen>());
-        
-        return await ShowEditorDialogAsync<Student?>(editorViewModel);
-    }
-
-    /// <summary>
-    /// Показывает диалог с деталями студента
+    /// Показывает диалог с подробной информацией о студенте
     /// </summary>
     public async Task ShowStudentDetailsDialogAsync(Student student)
     {
-        await ShowInfoAsync("Информация о студенте", 
-            $"Студент: {student.FirstName} {student.LastName}\n" +
-            $"Email: {student.Email}\n" +
-            $"Статус: {student.Status.GetDisplayName()}\n" +
-            $"Группа: {student.Group?.Name ?? "Не назначена"}");
+        var mainWindow = GetOwnerWindow();
+        if (mainWindow == null) return;
+
+        try
+        {
+            var studentService = _serviceProvider.GetRequiredService<IStudentService>();
+            var groupService = _serviceProvider.GetRequiredService<IGroupService>();
+            
+            var viewModel = new StudentEditorViewModel(studentService, groupService, student);
+
+            var dialog = new StudentDetailsDialog(viewModel);
+
+            await dialog.ShowDialog(mainWindow);
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorAsync("Ошибка", $"Не удалось открыть диалог деталей студента: {ex.Message}");
+        }
     }
 
     /// <summary>
@@ -1144,15 +1180,39 @@ public class DialogService(IServiceProvider serviceProvider) : IDialogService
     /// </summary>
     public async Task<Department?> ShowDepartmentEditDialogAsync(Department department)
     {
-        var editorViewModel = new DepartmentEditorViewModel(
-            _serviceProvider.GetRequiredService<IScreen>(),
-            _serviceProvider.GetRequiredService<IUnifiedNavigationService>(),
-            _serviceProvider.GetRequiredService<IDepartmentService>(),
-            this);
+        var departmentService = _serviceProvider.GetRequiredService<IDepartmentService>();
+        var dialogViewModel = new DepartmentEditDialogViewModel(department, departmentService, isEdit: true);
         
-        editorViewModel.SetDepartment(department);
+        var dialog = new ViridiscaUi.Views.System.DepartmentEditDialog(dialogViewModel);
+        ConfigureDialog(dialog);
         
-        return await ShowEditorDialogAsync<Department?>(editorViewModel);
+        var result = await dialog.ShowDialog<bool?>(GetOwnerWindow());
+        
+        return result == true ? dialogViewModel.Department : null;
+    }
+
+    /// <summary>
+    /// Показывает диалог создания нового департамента
+    /// </summary>
+    public async Task<Department?> ShowDepartmentCreateDialogAsync()
+    {
+        var departmentService = _serviceProvider.GetRequiredService<IDepartmentService>();
+        var newDepartment = new Department
+        {
+            Uid = Guid.NewGuid(),
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            LastModifiedAt = DateTime.UtcNow
+        };
+        
+        var dialogViewModel = new DepartmentEditDialogViewModel(newDepartment, departmentService, isEdit: false);
+        
+        var dialog = new ViridiscaUi.Views.System.DepartmentEditDialog(dialogViewModel);
+        ConfigureDialog(dialog);
+        
+        var result = await dialog.ShowDialog<bool?>(GetOwnerWindow());
+        
+        return result == true ? dialogViewModel.Department : null;
     }
 
     /// <summary>
@@ -1160,12 +1220,22 @@ public class DialogService(IServiceProvider serviceProvider) : IDialogService
     /// </summary>
     public async Task ShowDepartmentDetailsDialogAsync(Department department)
     {
-        await ShowInfoAsync("Детали департамента", 
-            $"Название: {department.Name}\n" +
-            $"Код: {department.Code}\n" +
-            $"Описание: {department.Description}\n" +
-            $"Статус: {(department.IsActive ? "Активен" : "Неактивен")}\n" +
-            $"Создан: {department.CreatedAt:dd.MM.yyyy}");
+        try
+        {
+            var departmentService = _serviceProvider.GetRequiredService<IDepartmentService>();
+            var statistics = await departmentService.GetDepartmentStatisticsAsync(department.Uid);
+            
+            var dialogViewModel = new DepartmentDetailsDialogViewModel(department, statistics);
+            
+            var dialog = new ViridiscaUi.Views.System.DepartmentDetailsDialog(dialogViewModel);
+            ConfigureDialog(dialog);
+            
+            await dialog.ShowDialog(GetOwnerWindow());
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorAsync("Ошибка", $"Не удалось загрузить детали департамента: {ex.Message}");
+        }
     }
 
     /// <summary>
@@ -1173,11 +1243,26 @@ public class DialogService(IServiceProvider serviceProvider) : IDialogService
     /// </summary>
     public async Task<Subject?> ShowSubjectEditDialogAsync(Subject subject)
     {
-        var editorViewModel = new SubjectEditorViewModel(
-            _serviceProvider.GetService<IDepartmentService>(),
-            subject);
-        
-        return await ShowEditorDialogAsync<Subject>(editorViewModel);
+        try
+        {
+            var departmentService = _serviceProvider.GetRequiredService<IDepartmentService>();
+            var editorViewModel = new SubjectEditorViewModel(departmentService, subject);
+            
+            var dialog = new ViridiscaUi.Views.Education.SubjectEditDialog
+            {
+                DataContext = editorViewModel
+            };
+            ConfigureDialog(dialog);
+            
+            var result = await dialog.ShowDialog<Subject?>(GetOwnerWindow());
+            
+            return result;
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorAsync("Ошибка", $"Не удалось открыть диалог редактирования предмета: {ex.Message}");
+            return null;
+        }
     }
 
     /// <summary>
@@ -1185,13 +1270,73 @@ public class DialogService(IServiceProvider serviceProvider) : IDialogService
     /// </summary>
     public async Task ShowSubjectDetailsDialogAsync(Subject subject)
     {
-        await ShowInfoAsync("Детали предмета", 
-            $"Название: {subject.Name}\n" +
-            $"Код: {subject.Code}\n" +
-            $"Описание: {subject.Description}\n" +
-            $"Кредиты: {subject.Credits}\n" +
-            $"Занятий в неделю: {subject.LessonsPerWeek}\n" +
-            $"Статус: {(subject.IsActive ? "Активен" : "Неактивен")}");
+        try
+        {
+            var subjectViewModel = SubjectViewModel.FromSubject(subject);
+            
+            var dialog = new ViridiscaUi.Views.Education.SubjectDetailsDialog
+            {
+                DataContext = subjectViewModel
+            };
+            ConfigureDialog(dialog);
+            
+            await dialog.ShowDialog(GetOwnerWindow());
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorAsync("Ошибка", $"Не удалось загрузить детали предмета: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Показывает диалог с подробной информацией о группе
+    /// </summary>
+    public async Task<string?> ShowGroupDetailsDialogAsync(Group group)
+    {
+        try
+        {
+            var teacherService = _serviceProvider.GetRequiredService<ITeacherService>();
+            var editorViewModel = new GroupEditorViewModel(teacherService, group);
+            
+            var dialog = new ViridiscaUi.Views.Education.GroupDetailsDialog(editorViewModel);
+            ConfigureDialog(dialog);
+            
+            var result = await dialog.ShowDialog<string?>(GetOwnerWindow());
+            
+            return result;
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorAsync("Ошибка", $"Не удалось открыть диалог деталей группы: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Показывает диалог с подробной информацией о курсе
+    /// </summary>
+    public async Task<string?> ShowCourseDetailsDialogAsync(Course course)
+    {
+        try
+        {
+            var teacherService = _serviceProvider.GetRequiredService<ITeacherService>();
+            var editorViewModel = new CourseEditorViewModel(
+                _serviceProvider.GetRequiredService<ICourseService>(), 
+                teacherService, 
+                course);
+            
+            var dialog = new ViridiscaUi.Views.Education.CourseDetailsDialog(editorViewModel);
+            ConfigureDialog(dialog);
+            
+            var result = await dialog.ShowDialog<string?>(GetOwnerWindow());
+            
+            return result;
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorAsync("Ошибка", $"Не удалось открыть диалог деталей курса: {ex.Message}");
+            return null;
+        }
     }
 
     private string GetEditorTitle(ViewModelBase editorViewModel)
@@ -1206,4 +1351,106 @@ public class DialogService(IServiceProvider serviceProvider) : IDialogService
             _ => "Редактирование"
         };
     }
+
+    private async Task ShowMessageBoxAsync(string title, string message, string type)
+    {
+        var mainWindow = GetOwnerWindow();
+        if (mainWindow == null) return;
+
+        var dialog = new Window
+        {
+            Title = title,
+            Width = 400,
+            Height = 150,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            CanResize = false
+        };
+
+        var stackPanel = new StackPanel
+        {
+            Margin = new Avalonia.Thickness(20),
+            Spacing = 20
+        };
+
+        var messageText = new TextBlock
+        {
+            Text = message,
+            TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+        };
+
+        var okButton = new Button
+        {
+            Content = "OK",
+            MinWidth = 80,
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+            IsDefault = true
+        };
+
+        okButton.Click += (s, e) => dialog.Close();
+
+        stackPanel.Children.Add(messageText);
+        stackPanel.Children.Add(okButton);
+        
+        dialog.Content = stackPanel;
+
+        await dialog.ShowDialog(mainWindow);
+    }
+
+    private static List<FilePickerFileType> CreateFileTypeFilters(string[] fileTypes)
+    {
+        var filters = new List<FilePickerFileType>();
+
+        foreach (var fileType in fileTypes)
+        {
+            var filter = fileType.ToLowerInvariant() switch
+            {
+                "xlsx" or "excel" => new FilePickerFileType("Excel файлы")
+                {
+                    Patterns = new[] { "*.xlsx", "*.xls" }
+                },
+                "csv" => new FilePickerFileType("CSV файлы")
+                {
+                    Patterns = new[] { "*.csv" }
+                },
+                "pdf" => new FilePickerFileType("PDF файлы")
+                {
+                    Patterns = new[] { "*.pdf" }
+                },
+                "json" => new FilePickerFileType("JSON файлы")
+                {
+                    Patterns = new[] { "*.json" }
+                },
+                "xml" => new FilePickerFileType("XML файлы")
+                {
+                    Patterns = new[] { "*.xml" }
+                },
+                _ => new FilePickerFileType($"{fileType.ToUpperInvariant()} файлы")
+                {
+                    Patterns = new[] { $"*.{fileType.ToLowerInvariant()}" }
+                }
+            };
+
+            filters.Add(filter);
+        }
+
+        // Добавляем "Все файлы" в конце
+        filters.Add(new FilePickerFileType("Все файлы")
+        {
+            Patterns = new[] { "*.*" }
+        });
+
+        return filters;
+    }
+
+    /// <summary>
+    /// Показывает диалог редактора студента (упрощенная версия)
+    /// </summary>
+    public async Task<Student?> ShowStudentEditorDialogAsync(Student? student = null)
+    {
+        // Используем тот же диалог что и ShowStudentEditDialogAsync
+        return await ShowStudentEditDialogAsync(student);
+    }
 }
+
