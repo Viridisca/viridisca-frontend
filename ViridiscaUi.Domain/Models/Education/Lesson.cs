@@ -5,7 +5,7 @@ using ViridiscaUi.Domain.Models.Education.Enums;
 namespace ViridiscaUi.Domain.Models.Education;
 
 /// <summary>
-/// Урок в рамках модуля курса
+/// Урок в рамках экземпляра курса
 /// </summary>
 public class Lesson : ViewModelBase
 {
@@ -14,8 +14,8 @@ public class Lesson : ViewModelBase
 
     private string _content = string.Empty;
     
-    private Guid _moduleUid;
-    private Module? _module;
+    private Guid _courseInstanceUid;
+    private CourseInstance? _courseInstance;
     
     private int _orderIndex;
     private TimeSpan? _duration;
@@ -66,25 +66,25 @@ public class Lesson : ViewModelBase
     }
 
     /// <summary>
-    /// Идентификатор модуля
+    /// Идентификатор экземпляра курса
     /// </summary>
-    public Guid ModuleUid
+    public Guid CourseInstanceUid
     {
-        get => _moduleUid;
-        set => this.RaiseAndSetIfChanged(ref _moduleUid, value);
+        get => _courseInstanceUid;
+        set => this.RaiseAndSetIfChanged(ref _courseInstanceUid, value);
     }
 
     /// <summary>
-    /// Модуль, к которому принадлежит урок
+    /// Экземпляр курса, к которому принадлежит урок
     /// </summary>
-    public Module? Module
+    public CourseInstance? CourseInstance
     {
-        get => _module;
-        set => this.RaiseAndSetIfChanged(ref _module, value);
+        get => _courseInstance;
+        set => this.RaiseAndSetIfChanged(ref _courseInstance, value);
     }
 
     /// <summary>
-    /// Порядковый номер урока в модуле
+    /// Порядковый номер урока в курсе
     /// </summary>
     public int OrderIndex
     {
@@ -157,16 +157,20 @@ public class Lesson : ViewModelBase
     public Lesson()
     {
         Uid = Guid.NewGuid();
+        CreatedAt = DateTime.UtcNow;
+        LastModifiedAt = DateTime.UtcNow;
     }
 
     /// <summary>
     /// Создает новый экземпляр урока с указанными параметрами
     /// </summary>
-    public Lesson(string title, string description, Guid moduleUid)
+    public Lesson(string title, string description, Guid courseInstanceUid)
     {
         Uid = Guid.NewGuid();
+        CreatedAt = DateTime.UtcNow;
+        LastModifiedAt = DateTime.UtcNow;
         _title = title.Trim();
         _description = description;
-        _moduleUid = moduleUid;
+        _courseInstanceUid = courseInstanceUid;
     }
 }

@@ -1,32 +1,27 @@
+using System.ComponentModel;
+
 namespace ViridiscaUi.Domain.Models.Education.Enums;
 
 /// <summary>
-/// Статус зачисления
+/// Статус записи на курс
 /// </summary>
 public enum EnrollmentStatus
 {
-    /// <summary>
-    /// Активное зачисление
-    /// </summary>
-    Active,
-    
-    /// <summary>
-    /// Завершено
-    /// </summary>
-    Completed,
-    
-    /// <summary>
-    /// Отменено
-    /// </summary>
-    Cancelled,
-    
-    /// <summary>
-    /// Приостановлено
-    /// </summary>
-    Suspended,
-    
-    /// <summary>
-    /// В ожидании
-    /// </summary>
-    Pending
+    [Description("Активная")]
+    Active = 1,
+
+    [Description("Завершена")]
+    Completed = 2,
+
+    [Description("Отменена")]
+    Cancelled = 3,
+
+    [Description("Приостановлена")]
+    Suspended = 4,
+
+    [Description("Провалена")]
+    Failed = 5,
+
+    [Description("В ожидании")]
+    Pending = 6
 } 

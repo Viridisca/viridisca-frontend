@@ -17,11 +17,10 @@ public class Assignment : ViewModelBase
     
     private AssignmentType _type = AssignmentType.Homework;
      
-    private Guid? _moduleUid;
-    private Guid _courseUid;
+    private Guid _courseInstanceUid;
     private Guid? _lessonUid;
     
-    private Course? _course;
+    private CourseInstance? _courseInstance;
     private Lesson? _lesson;
     
     private string _instructions = string.Empty;
@@ -84,21 +83,12 @@ public class Assignment : ViewModelBase
     }
 
     /// <summary>
-    /// Идентификатор курса
+    /// Идентификатор экземпляра курса
     /// </summary>
-    public Guid CourseUid
+    public Guid CourseInstanceUid
     {
-        get => _courseUid;
-        set => this.RaiseAndSetIfChanged(ref _courseUid, value);
-    }
-
-    /// <summary>
-    /// Идентификатор курса (синоним для CourseUid)
-    /// </summary>
-    public Guid CourseId
-    {
-        get => _courseUid;
-        set => this.RaiseAndSetIfChanged(ref _courseUid, value);
+        get => _courseInstanceUid;
+        set => this.RaiseAndSetIfChanged(ref _courseInstanceUid, value);
     }
 
     /// <summary>
@@ -111,12 +101,12 @@ public class Assignment : ViewModelBase
     }
 
     /// <summary>
-    /// Курс, к которому принадлежит задание
+    /// Экземпляр курса, к которому принадлежит задание
     /// </summary>
-    public Course? Course
+    public CourseInstance? CourseInstance
     {
-        get => _course;
-        set => this.RaiseAndSetIfChanged(ref _course, value);
+        get => _courseInstance;
+        set => this.RaiseAndSetIfChanged(ref _courseInstance, value);
     }
 
     /// <summary>
@@ -156,24 +146,6 @@ public class Assignment : ViewModelBase
     }
 
     /// <summary>
-    /// Идентификатор модуля (опционально)
-    /// </summary>
-    public Guid? ModuleUid
-    {
-        get => _moduleUid;
-        set => this.RaiseAndSetIfChanged(ref _moduleUid, value);
-    }
-
-    /// <summary>
-    /// Идентификатор модуля (синоним для ModuleUid)
-    /// </summary>
-    public Guid? ModuleId
-    {
-        get => _moduleUid;
-        set => this.RaiseAndSetIfChanged(ref _moduleUid, value);
-    }
-
-    /// <summary>
     /// Сданные работы по заданию
     /// </summary>
     public ICollection<Submission> Submissions { get; set; } = new List<Submission>();
@@ -184,17 +156,21 @@ public class Assignment : ViewModelBase
     public Assignment()
     {
         Uid = Guid.NewGuid();
+        CreatedAt = DateTime.UtcNow;
+        LastModifiedAt = DateTime.UtcNow;
     }
 
     /// <summary>
     /// Создает новый экземпляр задания с указанными параметрами
     /// </summary>
-    public Assignment(string title, string description, Guid courseUid, AssignmentType type = AssignmentType.Homework)
+    public Assignment(string title, string description, Guid courseInstanceUid, AssignmentType type = AssignmentType.Homework)
     {
         Uid = Guid.NewGuid();
+        CreatedAt = DateTime.UtcNow;
+        LastModifiedAt = DateTime.UtcNow;
         _title = title.Trim();
         _description = description;
-        _courseUid = courseUid;
+        _courseInstanceUid = courseInstanceUid;
         _type = type;
     }
 

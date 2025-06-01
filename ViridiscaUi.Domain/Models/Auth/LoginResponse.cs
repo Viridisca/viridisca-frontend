@@ -16,7 +16,7 @@ public class LoginResponse : ViewModelBase
     private DateTime _expiresAt;
     private bool _success;
     
-    private User? _user;
+    private Person? _person;
 
     /// <summary>
     /// Флаг успешной авторизации
@@ -66,10 +66,10 @@ public class LoginResponse : ViewModelBase
     /// <summary>
     /// Информация о пользователе
     /// </summary>
-    public User? User
+    public Person? Person
     {
-        get => _user;
-        set => this.RaiseAndSetIfChanged(ref _user, value);
+        get => _person;
+        set => this.RaiseAndSetIfChanged(ref _person, value);
     }
 
     /// <summary>
@@ -83,7 +83,7 @@ public class LoginResponse : ViewModelBase
     /// <summary>
     /// Создает успешный ответ авторизации
     /// </summary>
-    public static LoginResponse CreateSuccess(string token, string refreshToken, DateTime expiresAt, User user)
+    public static LoginResponse CreateSuccess(string token, string refreshToken, DateTime expiresAt, Person person)
     {
         var response = new LoginResponse
         {
@@ -92,7 +92,7 @@ public class LoginResponse : ViewModelBase
             Token = token,
             RefreshToken = refreshToken,
             ExpiresAt = expiresAt,
-            User = user
+            Person = person
         };
         return response;
     }

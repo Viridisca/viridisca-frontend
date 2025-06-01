@@ -12,6 +12,7 @@ using ViridiscaUi.Services.Interfaces;
 using ViridiscaUi.Infrastructure.Navigation;
 using ViridiscaUi.ViewModels.Bases.Navigations;
 using ViridiscaUi.Domain.Models.Education.Enums;
+using ViridiscaUi.Domain.Models.Auth;
 
 namespace ViridiscaUi.ViewModels.Education
 {
@@ -29,7 +30,7 @@ namespace ViridiscaUi.ViewModels.Education
     public class TeachersViewModel : RoutableViewModelBase
     { 
         private readonly ITeacherService _teacherService;
-        private readonly ICourseService _courseService;
+        private readonly ICourseInstanceService _courseInstanceService;
         private readonly IGroupService _groupService;
         private readonly IDialogService _dialogService;
         private readonly IStatusService _statusService;
@@ -86,14 +87,14 @@ namespace ViridiscaUi.ViewModels.Education
         public TeachersViewModel(
             IScreen hostScreen,
             ITeacherService teacherService,
-            ICourseService courseService,
+            ICourseInstanceService courseInstanceService,
             IGroupService groupService,
             IDialogService dialogService,
             IStatusService statusService,
             INotificationService notificationService) : base(hostScreen)
         {
             _teacherService = teacherService ?? throw new ArgumentNullException(nameof(teacherService));
-            _courseService = courseService ?? throw new ArgumentNullException(nameof(courseService));
+            _courseInstanceService = courseInstanceService ?? throw new ArgumentNullException(nameof(courseInstanceService));
             _groupService = groupService ?? throw new ArgumentNullException(nameof(groupService));
             _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
             _statusService = statusService ?? throw new ArgumentNullException(nameof(statusService));
@@ -209,15 +210,22 @@ namespace ViridiscaUi.ViewModels.Education
         {
             LogInfo("Creating new teacher");
             
+            // Создаем нового преподавателя с Person
             var newTeacher = new Teacher
             {
                 Uid = Guid.NewGuid(),
-                FirstName = string.Empty,
-                LastName = string.Empty,
-                Status = TeacherStatus.Active,
-                HireDate = DateTime.Today,
-                CreatedAt = DateTime.UtcNow,
-                LastModifiedAt = DateTime.UtcNow
+                Specialization = "Новая специализация",
+                HireDate = DateTime.UtcNow,
+                Salary = 50000,
+                Person = new Person
+                {
+                    Uid = Guid.NewGuid(),
+                    FirstName = "Новый",
+                    LastName = "Преподаватель",
+                    Email = "new.teacher@example.com",
+                    CreatedAt = DateTime.UtcNow,
+                    IsActive = true
+                }
             };
 
             var dialogResult = await _dialogService.ShowTeacherEditDialogAsync(newTeacher);
@@ -285,7 +293,7 @@ namespace ViridiscaUi.ViewModels.Education
             LogInfo("Deleting teacher: {TeacherId}", teacherViewModel.Uid);
             
             // Проверяем, есть ли у преподавателя активные курсы или группы
-            var courses = await _courseService.GetCoursesByTeacherAsync(teacherViewModel.Uid);
+            var courses = await _courseInstanceService.GetCourseInstancesByTeacherAsync(teacherViewModel.Uid);
             var groups = await _groupService.GetGroupsByCuratorAsync(teacherViewModel.Uid);
             
             var hasActiveCourses = courses.Any();
@@ -384,7 +392,7 @@ namespace ViridiscaUi.ViewModels.Education
                 return;
             }
 
-            var allCourses = await _courseService.GetAllCoursesAsync();
+            var allCourses = await _courseInstanceService.GetAllCoursesAsync();
             
             var result = await _dialogService.ShowTeacherCoursesManagementDialogAsync(teacher, allCourses);
             if (result != null)

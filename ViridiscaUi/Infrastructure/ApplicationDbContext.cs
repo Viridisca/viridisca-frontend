@@ -15,44 +15,47 @@ namespace ViridiscaUi.Infrastructure;
 /// </summary>
 public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : DbContext(options)
 {
-    // Auth модели
-    public DbSet<User> Users { get; set; } = null!;
+    // ===== НОВАЯ СИСТЕМА АУТЕНТИФИКАЦИИ =====
+    public DbSet<Person> Persons { get; set; } = null!;
+    public DbSet<Account> Accounts { get; set; } = null!;
+    public DbSet<PersonRole> PersonRoles { get; set; } = null!;
     public DbSet<Role> Roles { get; set; } = null!;
     public DbSet<Permission> Permissions { get; set; } = null!;
     public DbSet<RolePermission> RolePermissions { get; set; } = null!;
-    public DbSet<UserRole> UserRoles { get; set; } = null!;
-    public DbSet<AuthTokenInfo> AuthTokens { get; set; } = null!;
 
-    // Education модели
+    // ===== АКАДЕМИЧЕСКАЯ СТРУКТУРА =====
+    public DbSet<AcademicPeriod> AcademicPeriods { get; set; } = null!;
+    public DbSet<Curriculum> Curricula { get; set; } = null!;
+    public DbSet<CurriculumSubject> CurriculumSubjects { get; set; } = null!;
+    public DbSet<CourseInstance> CourseInstances { get; set; } = null!;
+    public DbSet<ScheduleSlot> ScheduleSlots { get; set; } = null!;
+
+    // ===== ОСНОВНЫЕ ОБРАЗОВАТЕЛЬНЫЕ СУЩНОСТИ =====
     public DbSet<Student> Students { get; set; } = null!;
-    public DbSet<Group> Groups { get; set; } = null!;
     public DbSet<Teacher> Teachers { get; set; } = null!;
-    public DbSet<Course> Courses { get; set; } = null!;
-    public DbSet<Module> Modules { get; set; } = null!;
+    public DbSet<Group> Groups { get; set; } = null!;
+    public DbSet<Subject> Subjects { get; set; } = null!;
     public DbSet<Lesson> Lessons { get; set; } = null!;
-    public DbSet<LessonProgress> LessonProgress { get; set; } = null!;
     public DbSet<Assignment> Assignments { get; set; } = null!;
     public DbSet<Submission> Submissions { get; set; } = null!;
     public DbSet<Enrollment> Enrollments { get; set; } = null!;
-    public DbSet<Subject> Subjects { get; set; } = null!;
-    
-    // Системные модели LMS
-    public DbSet<Department> Departments { get; set; } = null!;
+    public DbSet<Grade> Grades { get; set; } = null!;
     public DbSet<Attendance> Attendances { get; set; } = null!;
-    public DbSet<Schedule> Schedules { get; set; } = null!;
+
+    // ===== СИСТЕМА ЭКЗАМЕНОВ =====
+    public DbSet<Exam> Exams { get; set; } = null!;
+    public DbSet<ExamResult> ExamResults { get; set; } = null!;
+
+    // ===== БИБЛИОТЕЧНАЯ СИСТЕМА =====
+    public DbSet<LibraryResource> LibraryResources { get; set; } = null!;
+    public DbSet<LibraryLoan> LibraryLoans { get; set; } = null!;
+    
+    // ===== СИСТЕМНЫЕ МОДЕЛИ =====
+    public DbSet<Department> Departments { get; set; } = null!;
     public DbSet<Notification> Notifications { get; set; } = null!;
     public DbSet<NotificationTemplate> NotificationTemplates { get; set; } = null!;
     public DbSet<NotificationSettings> NotificationSettings { get; set; } = null!;
     public DbSet<FileRecord> FileRecords { get; set; } = null!;
-    
-    // Дополнительные модели LMS
-    public DbSet<Grade> Grades { get; set; } = null!;
-    public DbSet<GradeComment> GradeComments { get; set; } = null!;
-    public DbSet<GradeRevision> GradeRevisions { get; set; } = null!;
-    public DbSet<StudentParent> StudentParents { get; set; } = null!;
-    public DbSet<TeacherSubject> TeacherSubjects { get; set; } = null!;
-    public DbSet<TeacherGroup> TeacherGroups { get; set; } = null!;
-    public DbSet<LessonDetail> LessonDetails { get; set; } = null!; 
 
     /// <summary>
     /// Метод для создания правильного BCrypt хеша пароля
@@ -66,18 +69,12 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     {
         base.OnModelCreating(modelBuilder);
 
-        // Конфигурируем все модели LMS системы
-
-        // Настройка моделей Auth
+        // Конфигурируем все модели новой LMS системы
         ConfigureAuthModels(modelBuilder);
-
-        // Настройка моделей Education
+        ConfigureAcademicModels(modelBuilder);
         ConfigureEducationModels(modelBuilder);
-        
-        // Настройка дополнительных моделей LMS
-        ConfigureLmsModels(modelBuilder);
-        
-        // Настройка системных моделей
+        ConfigureExamModels(modelBuilder);
+        ConfigureLibraryModels(modelBuilder);
         ConfigureSystemModels(modelBuilder);
 
         // Seed начальных данных
@@ -86,48 +83,73 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
     private void ConfigureAuthModels(ModelBuilder modelBuilder)
     {
-        // User
-        modelBuilder.Entity<User>(entity =>
+        // Person - базовая сущность для всех людей
+        modelBuilder.Entity<Person>(entity =>
         {
             entity.HasKey(e => e.Uid);
-            entity.Property(e => e.Username).IsRequired().HasMaxLength(50);
-            entity.Property(e => e.Email).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.PasswordHash).IsRequired();
             entity.Property(e => e.FirstName).IsRequired().HasMaxLength(100);
             entity.Property(e => e.LastName).IsRequired().HasMaxLength(100);
             entity.Property(e => e.MiddleName).HasMaxLength(100);
+            entity.Property(e => e.Email).IsRequired().HasMaxLength(100);
             entity.Property(e => e.PhoneNumber).HasMaxLength(20);
             entity.Property(e => e.ProfileImageUrl).HasMaxLength(500);
-            entity.HasIndex(e => e.Username).IsUnique();
+            entity.Property(e => e.Address).HasMaxLength(500);
+            
             entity.HasIndex(e => e.Email).IsUnique();
+            entity.HasIndex(e => e.PhoneNumber);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.Property(e => e.LastModifiedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
             
-            // Основная роль пользователя (прямая связь)
-            entity.HasOne(u => u.Role)
-                .WithMany()
-                .HasForeignKey(u => u.RoleId)
-                .OnDelete(DeleteBehavior.SetNull)
-                .IsRequired(false);
-                
-            // Дополнительные роли через UserRole (для системы множественных ролей)
-            entity.HasMany(u => u.UserRoles)
+            // Связи с ролями
+            entity.HasMany(p => p.PersonRoles)
+                .WithOne(pr => pr.Person)
+                .HasForeignKey(pr => pr.PersonUid)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Account - аутентификация
+        modelBuilder.Entity<Account>(entity =>
+        {
+            entity.HasKey(e => e.Uid);
+            entity.Property(e => e.Username).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.PasswordHash).IsRequired();
+            entity.Property(e => e.IsLocked).HasDefaultValue(false);
+            entity.Property(e => e.FailedLoginAttempts).HasDefaultValue(0);
+            
+            entity.HasIndex(e => e.Username).IsUnique();
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.LastModifiedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            
+            // Связь с Person
+            entity.HasOne(a => a.Person)
                 .WithOne()
-                .HasForeignKey(ur => ur.UserUid)
+                .HasForeignKey<Account>(a => a.PersonUid)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // PersonRole - гибкая система ролей
+        modelBuilder.Entity<PersonRole>(entity =>
+        {
+            entity.HasKey(e => e.Uid);
+            entity.Property(e => e.AssignedBy).HasMaxLength(100);
+            entity.Property(e => e.Context).HasMaxLength(200);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.AssignedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            
+            entity.HasIndex(e => new { e.PersonUid, e.RoleUid, e.Context });
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.LastModifiedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            
+            // Связи
+            entity.HasOne(pr => pr.Person)
+                .WithMany(p => p.PersonRoles)
+                .HasForeignKey(pr => pr.PersonUid)
                 .OnDelete(DeleteBehavior.Cascade);
                 
-            // Связи с профилями
-            entity.HasOne(u => u.StudentProfile)
-                .WithOne()
-                .HasForeignKey<Student>(s => s.UserUid)
-                .OnDelete(DeleteBehavior.Cascade)
-                .IsRequired(false);
-                
-            entity.HasOne(u => u.TeacherProfile)
-                .WithOne()
-                .HasForeignKey<Teacher>(t => t.UserUid)
-                .OnDelete(DeleteBehavior.Cascade)
-                .IsRequired(false);
+            entity.HasOne(pr => pr.Role)
+                .WithMany()
+                .HasForeignKey(pr => pr.RoleUid)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         // Role
@@ -135,6 +157,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         {
             entity.HasKey(e => e.Uid);
             entity.Property(e => e.Name).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Description).HasMaxLength(500);
             entity.HasIndex(e => e.Name).IsUnique();
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.Property(e => e.LastModifiedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
@@ -145,29 +168,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         {
             entity.HasKey(e => e.Uid);
             entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Description).HasMaxLength(500);
             entity.HasIndex(e => e.Name).IsUnique();
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
-            entity.Property(e => e.LastModifiedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
-        });
-
-        // UserRole
-        modelBuilder.Entity<UserRole>(entity =>
-        {
-            entity.HasKey(e => e.Uid);
-            entity.Property(e => e.AssignedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
-            
-            // Навигационные свойства с явными именами внешних ключей
-            entity.HasOne(ur => ur.Role)
-                .WithMany()
-                .HasForeignKey(e => e.RoleUid)
-                .OnDelete(DeleteBehavior.Cascade);
-                
-            entity.HasOne<User>()
-                .WithMany(u => u.UserRoles)
-                .HasForeignKey(e => e.UserUid)
-                .OnDelete(DeleteBehavior.Cascade);
-                
-            entity.HasIndex(e => new { e.UserUid, e.RoleUid }).IsUnique();
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.Property(e => e.LastModifiedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
         });
@@ -177,7 +179,6 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         {
             entity.HasKey(e => e.Uid);
             
-            // Явная настройка отношений
             entity.HasOne<Role>()
                 .WithMany()
                 .HasForeignKey(e => e.RoleUid)
@@ -192,18 +193,114 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.Property(e => e.LastModifiedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
         });
+    }
 
-        // AuthTokenInfo
-        modelBuilder.Entity<AuthTokenInfo>(entity =>
+    private void ConfigureAcademicModels(ModelBuilder modelBuilder)
+    {
+        // AcademicPeriod
+        modelBuilder.Entity<AcademicPeriod>(entity =>
         {
             entity.HasKey(e => e.Uid);
-            entity.Property(e => e.Token).IsRequired().HasMaxLength(2000);
-            entity.Property(e => e.RefreshToken).IsRequired().HasMaxLength(500);
-            entity.HasIndex(e => e.Token);
-            entity.HasIndex(e => e.RefreshToken);
-            entity.HasIndex(e => e.ExpiresAt);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Type).HasConversion<int>().IsRequired();
+            entity.Property(e => e.AcademicYear).IsRequired();
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            
+            entity.HasIndex(e => new { e.AcademicYear, e.Type });
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.Property(e => e.LastModifiedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+        });
+
+        // Curriculum
+        modelBuilder.Entity<Curriculum>(entity =>
+        {
+            entity.HasKey(e => e.Uid);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Description).HasMaxLength(1000);
+            entity.Property(e => e.TotalCredits).IsRequired();
+            entity.Property(e => e.DurationInSemesters).IsRequired();
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.LastModifiedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+        });
+
+        // CurriculumSubject
+        modelBuilder.Entity<CurriculumSubject>(entity =>
+        {
+            entity.HasKey(e => e.Uid);
+            entity.Property(e => e.Semester).IsRequired();
+            entity.Property(e => e.Credits).IsRequired();
+            entity.Property(e => e.IsRequired).HasDefaultValue(true);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            
+            entity.HasIndex(e => new { e.CurriculumUid, e.SubjectUid }).IsUnique();
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.LastModifiedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            
+            // Связи
+            entity.HasOne(cs => cs.Curriculum)
+                .WithMany(c => c.CurriculumSubjects)
+                .HasForeignKey(cs => cs.CurriculumUid)
+                .OnDelete(DeleteBehavior.Cascade);
+            
+            entity.HasOne(cs => cs.Subject)
+                .WithMany()
+                .HasForeignKey(cs => cs.SubjectUid)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // CourseInstance
+        modelBuilder.Entity<CourseInstance>(entity =>
+        {
+            entity.HasKey(e => e.Uid);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Description).HasMaxLength(1000);
+            entity.Property(e => e.MaxStudents).HasDefaultValue(30);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            
+            entity.HasIndex(e => new { e.SubjectUid, e.GroupUid, e.AcademicPeriodUid });
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.LastModifiedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            
+            // Связи
+            entity.HasOne(ci => ci.Subject)
+                .WithMany()
+                .HasForeignKey(ci => ci.SubjectUid)
+                .OnDelete(DeleteBehavior.Cascade);
+                
+            entity.HasOne(ci => ci.Group)
+                .WithMany()
+                .HasForeignKey(ci => ci.GroupUid)
+                .OnDelete(DeleteBehavior.Cascade);
+            
+            entity.HasOne(ci => ci.AcademicPeriod)
+                .WithMany(ap => ap.CourseInstances)
+                .HasForeignKey(ci => ci.AcademicPeriodUid)
+                .OnDelete(DeleteBehavior.Cascade);
+            
+            entity.HasOne(ci => ci.Teacher)
+                .WithMany()
+                .HasForeignKey(ci => ci.TeacherUid)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // ScheduleSlot
+        modelBuilder.Entity<ScheduleSlot>(entity =>
+        {
+            entity.HasKey(e => e.Uid);
+            entity.Property(e => e.Classroom).HasMaxLength(100);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            
+            entity.HasIndex(e => new { e.CourseInstanceUid, e.DayOfWeek, e.StartTime });
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.LastModifiedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            
+            // Связь с экземпляром курса
+            entity.HasOne(ss => ss.CourseInstance)
+                .WithMany(ci => ci.ScheduleSlots)
+                .HasForeignKey(ss => ss.CourseInstanceUid)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 
@@ -213,47 +310,58 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         modelBuilder.Entity<Student>(entity =>
         {
             entity.HasKey(e => e.Uid);
-            entity.Property(e => e.FirstName).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.LastName).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.MiddleName).HasMaxLength(100);
-            entity.Property(e => e.Email).HasMaxLength(100);
-            entity.Property(e => e.PhoneNumber).HasMaxLength(20);
             entity.Property(e => e.StudentCode).IsRequired().HasMaxLength(50);
-            entity.Property(e => e.EmergencyContactName).HasMaxLength(200);
-            entity.Property(e => e.EmergencyContactPhone).HasMaxLength(20);
-            entity.Property(e => e.MedicalInformation).HasMaxLength(1000);
-            entity.Property(e => e.Address).HasMaxLength(500);
-            
-            // Даты и статус
-            entity.Property(e => e.BirthDate).IsRequired();
-            entity.Property(e => e.EnrollmentDate).HasDefaultValueSql("CURRENT_DATE");
-            entity.Property(e => e.GraduationDate).IsRequired(false);
             entity.Property(e => e.Status).HasConversion<int>().IsRequired();
             entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.GPA).HasPrecision(4, 2);
             
-            // Индексы
             entity.HasIndex(e => e.StudentCode).IsUnique();
-            entity.HasIndex(e => e.Email);
             entity.HasIndex(e => e.Status);
-            entity.HasIndex(e => e.EnrollmentDate);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.LastModifiedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
             
-            // Связь с пользователем (One-to-One)
-            entity.HasOne<User>()
-                .WithOne(u => u.StudentProfile)
-                .HasForeignKey<Student>(s => s.UserUid)
+            // Связи
+            entity.HasOne(s => s.Person)
+                .WithOne()
+                .HasForeignKey<Student>(s => s.PersonUid)
                 .OnDelete(DeleteBehavior.Cascade);
             
-            // Связь с группой
             entity.HasOne(s => s.Group)
-                .WithMany(g => g.Students)
+                .WithMany()
                 .HasForeignKey(s => s.GroupUid)
                 .OnDelete(DeleteBehavior.SetNull);
                 
-            // Коллекция родителей настраивается через StudentParent
-            entity.HasMany(s => s.Parents)
+            entity.HasOne(s => s.Curriculum)
+                .WithMany(c => c.Students)
+                .HasForeignKey(s => s.CurriculumUid)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // Teacher
+        modelBuilder.Entity<Teacher>(entity =>
+        {
+            entity.HasKey(e => e.Uid);
+            entity.Property(e => e.EmployeeCode).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Qualification).HasMaxLength(200);
+            entity.Property(e => e.Specialization).HasMaxLength(300);
+            entity.Property(e => e.OfficeLocation).HasMaxLength(100);
+            entity.Property(e => e.Salary).HasPrecision(10, 2);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            
+            entity.HasIndex(e => e.EmployeeCode).IsUnique();
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.LastModifiedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            
+            // Связи
+            entity.HasOne(t => t.Person)
                 .WithOne()
-                .HasForeignKey(sp => sp.StudentUid)
+                .HasForeignKey<Teacher>(t => t.PersonUid)
                 .OnDelete(DeleteBehavior.Cascade);
+            
+            entity.HasOne(t => t.Department)
+                .WithMany()
+                .HasForeignKey(t => t.DepartmentUid)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         // Group
@@ -263,221 +371,12 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(e => e.Code).IsRequired().HasMaxLength(20);
             entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
             entity.Property(e => e.Description).HasMaxLength(1000);
-            entity.Property(e => e.Year).IsRequired();
-            entity.Property(e => e.StartDate).IsRequired();
-            entity.Property(e => e.EndDate).IsRequired(false);
-            entity.Property(e => e.MaxStudents).IsRequired();
             entity.Property(e => e.Status).HasConversion<int>().IsRequired();
             
-            // Индексы
             entity.HasIndex(e => e.Code).IsUnique();
             entity.HasIndex(e => e.Status);
-            entity.HasIndex(e => e.Year);
-            entity.HasIndex(e => e.StartDate);
-            
-            // Связь с куратором
-            entity.HasOne(g => g.Curator)
-                .WithMany()
-                .HasForeignKey(g => g.CuratorUid)
-                .OnDelete(DeleteBehavior.SetNull)
-                .IsRequired(false);
-            
-            // Связь с департаментом
-            entity.HasOne<Department>()
-                .WithMany(d => d.Groups)
-                .HasForeignKey(g => g.DepartmentUid)
-                .OnDelete(DeleteBehavior.Restrict);
-        });
-
-        // Teacher
-        modelBuilder.Entity<Teacher>(entity =>
-        {
-            entity.HasKey(e => e.Uid);
-            entity.Property(e => e.FirstName).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.LastName).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.MiddleName).HasMaxLength(100);
-            entity.Property(e => e.EmployeeCode).IsRequired().HasMaxLength(50);
-            entity.Property(e => e.AcademicDegree).HasMaxLength(200);
-            entity.Property(e => e.AcademicTitle).HasMaxLength(200);
-            entity.Property(e => e.Specialization).HasMaxLength(300);
-            entity.Property(e => e.Bio).HasMaxLength(2000);
-            entity.Property(e => e.HourlyRate).HasPrecision(10, 2);
-            
-            // Даты и статус
-            entity.Property(e => e.HireDate).IsRequired();
-            entity.Property(e => e.TerminationDate).IsRequired(false);
-            entity.Property(e => e.Status).HasConversion<int>().IsRequired();
-            
-            // Индексы
-            entity.HasIndex(e => e.EmployeeCode).IsUnique();
-            entity.HasIndex(e => e.Status);
-            entity.HasIndex(e => e.HireDate);
-            
-            // Связь с пользователем (One-to-One)
-            entity.HasOne<User>()
-                .WithOne(u => u.TeacherProfile)
-                .HasForeignKey<Teacher>(t => t.UserUid)
-                .OnDelete(DeleteBehavior.Cascade);
-            
-            // Связь с департаментом (если есть)
-            entity.HasOne<Department>()
-                .WithMany(d => d.Teachers)
-                .HasForeignKey(t => t.DepartmentUid)
-                .OnDelete(DeleteBehavior.SetNull)
-                .IsRequired(false);
-            
-            // Связи через промежуточные таблицы
-            entity.HasMany(t => t.Subjects)
-                .WithOne()
-                .HasForeignKey(ts => ts.TeacherUid)
-                .OnDelete(DeleteBehavior.Cascade);
-                
-            entity.HasMany<TeacherGroup>()
-                .WithOne()
-                .HasForeignKey(tg => tg.TeacherUid)
-                .OnDelete(DeleteBehavior.Cascade);
-        });
-
-        // Course
-        modelBuilder.Entity<Course>(entity =>
-        {
-            entity.HasKey(e => e.Uid);
-            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.Code).IsRequired().HasMaxLength(20);
-            entity.Property(e => e.Description).HasMaxLength(500);
-            entity.Property(e => e.Category).IsRequired().HasMaxLength(50);
-            
-            // Явная связь с преподавателем
-            entity.HasOne<Teacher>()
-                .WithMany()
-                .HasForeignKey(c => c.TeacherUid)
-                .OnDelete(DeleteBehavior.SetNull)
-                .IsRequired(false);
-        });
-
-        // Module
-        modelBuilder.Entity<Module>(entity =>
-        {
-            entity.HasKey(e => e.Uid);
-            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.Description).HasMaxLength(500);
-            
-            // Явная связь с курсом
-            entity.HasOne<Course>()
-                .WithMany()
-                .HasForeignKey(m => m.CourseUid)
-                .OnDelete(DeleteBehavior.Cascade);
-        });
-
-        // Lesson
-        modelBuilder.Entity<Lesson>(entity =>
-        {
-            entity.HasKey(e => e.Uid);
-            entity.Property(e => e.Topic).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.Description).HasMaxLength(500);
-            
-            // Явные связи
-            entity.HasOne<Subject>()
-                .WithMany()
-                .HasForeignKey(l => l.SubjectUid)
-                .OnDelete(DeleteBehavior.Cascade);
-            
-            entity.HasOne<Teacher>()
-                .WithMany()
-                .HasForeignKey(l => l.TeacherUid)
-                .OnDelete(DeleteBehavior.SetNull)
-                .IsRequired(false);
-            
-            entity.HasOne<Group>()
-                .WithMany()
-                .HasForeignKey(l => l.GroupUid)
-                .OnDelete(DeleteBehavior.SetNull)
-                .IsRequired(false);
-        });
-
-        // LessonProgress
-        modelBuilder.Entity<LessonProgress>(entity =>
-        {
-            entity.HasKey(e => e.Uid);
-            entity.Property(e => e.StudentUid).IsRequired();
-            entity.Property(e => e.LessonUid).IsRequired();
-            entity.Property(e => e.IsCompleted).HasDefaultValue(false);
-            entity.Property(e => e.CompletedAt).IsRequired(false);
-            entity.Property(e => e.TimeSpent).IsRequired(false);
-            
-            // Явные связи
-            entity.HasOne(lp => lp.Student)
-                .WithMany()
-                .HasForeignKey(lp => lp.StudentUid)
-                .OnDelete(DeleteBehavior.Cascade);
-            
-            entity.HasOne(lp => lp.Lesson)
-                .WithMany(l => l.LessonProgress)
-                .HasForeignKey(lp => lp.LessonUid)
-                .OnDelete(DeleteBehavior.Cascade);
-                
-            // Уникальный индекс: один студент - один урок - один прогресс
-            entity.HasIndex(e => new { e.StudentUid, e.LessonUid }).IsUnique();
-            
-            // Индексы для быстрого поиска
-            entity.HasIndex(e => e.IsCompleted);
-            entity.HasIndex(e => e.CompletedAt);
-        });
-
-        // Assignment
-        modelBuilder.Entity<Assignment>(entity =>
-        {
-            entity.HasKey(e => e.Uid);
-            entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
-            entity.Property(e => e.Description).HasMaxLength(1000);
-            
-            // Явные связи
-            entity.HasOne<Course>()
-                .WithMany()
-                .HasForeignKey(a => a.CourseUid)
-                .OnDelete(DeleteBehavior.Cascade);
-            
-            entity.HasOne<Lesson>()
-                .WithMany()
-                .HasForeignKey(a => a.LessonUid)
-                .OnDelete(DeleteBehavior.SetNull)
-                .IsRequired(false);
-        });
-
-        // Submission
-        modelBuilder.Entity<Submission>(entity =>
-        {
-            entity.HasKey(e => e.Uid);
-            entity.Property(e => e.Content).HasColumnType("text");
-            
-            // Явные связи
-            entity.HasOne<Student>()
-                .WithMany()
-                .HasForeignKey(s => s.StudentUid)
-                .OnDelete(DeleteBehavior.Cascade);
-            
-            entity.HasOne<Assignment>()
-                .WithMany()
-                .HasForeignKey(s => s.AssignmentUid)
-                .OnDelete(DeleteBehavior.Cascade);
-        });
-
-        // Enrollment
-        modelBuilder.Entity<Enrollment>(entity =>
-        {
-            entity.HasKey(e => e.Uid);
-            entity.Property(e => e.EnrollmentDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
-            
-            // Явные связи
-            entity.HasOne<Student>()
-                .WithMany()
-                .HasForeignKey(e => e.StudentUid)
-                .OnDelete(DeleteBehavior.Cascade);
-            
-            entity.HasOne<Course>()
-                .WithMany()
-                .HasForeignKey(e => e.CourseUid)
-                .OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.LastModifiedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
         });
 
         // Subject
@@ -487,189 +386,385 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(e => e.Code).IsRequired().HasMaxLength(20);
             entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
             entity.Property(e => e.Description).HasMaxLength(1000);
-            entity.Property(e => e.Credits).IsRequired();
-            entity.Property(e => e.LessonsPerWeek).IsRequired();
             entity.Property(e => e.Type).HasConversion<int>().IsRequired();
             entity.Property(e => e.IsActive).HasDefaultValue(true);
             
-            // Индексы
             entity.HasIndex(e => e.Code).IsUnique();
             entity.HasIndex(e => e.Type);
-            entity.HasIndex(e => e.IsActive);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.LastModifiedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
             
             // Связь с департаментом
             entity.HasOne<Department>()
-                .WithMany(d => d.Subjects)
+                .WithMany()
                 .HasForeignKey(s => s.DepartmentUid)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Enrollment
+        modelBuilder.Entity<Enrollment>(entity =>
+        {
+            entity.HasKey(e => e.Uid);
+            entity.Property(e => e.Status).HasConversion<int>().IsRequired();
+            entity.Property(e => e.FinalGrade).HasPrecision(5, 2);
+            entity.Property(e => e.Notes).HasMaxLength(500);
             
-            // Связи через промежуточные таблицы
-            entity.HasMany(s => s.TeacherSubjects)
-                .WithOne()
-                .HasForeignKey(ts => ts.SubjectUid)
+            entity.HasIndex(e => new { e.StudentUid, e.CourseInstanceUid }).IsUnique();
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.LastModifiedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            
+            // Связи
+            entity.HasOne(e => e.Student)
+                .WithMany(s => s.Enrollments)
+                .HasForeignKey(e => e.StudentUid)
+                .OnDelete(DeleteBehavior.Cascade);
+                
+            entity.HasOne(e => e.CourseInstance)
+                .WithMany(ci => ci.Enrollments)
+                .HasForeignKey(e => e.CourseInstanceUid)
                 .OnDelete(DeleteBehavior.Cascade);
         });
-    }
 
-    private void ConfigureLmsModels(ModelBuilder modelBuilder)
-    {
-        // Grade - исправляем множественные отношения
+        // Grade
         modelBuilder.Entity<Grade>(entity =>
         {
             entity.HasKey(e => e.Uid);
             entity.Property(e => e.Value).IsRequired().HasPrecision(5, 2);
             entity.Property(e => e.Description).HasMaxLength(500);
-            entity.Property(e => e.IssuedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.Comment).HasMaxLength(1000);
+            entity.Property(e => e.Type).HasConversion<int>().IsRequired();
+            entity.Property(e => e.IsPublished).HasDefaultValue(false);
             
-            // Явные связи с правильными именами
+            entity.HasIndex(e => e.StudentUid);
+            entity.HasIndex(e => e.IsPublished);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.LastModifiedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            
+            // Связи
             entity.HasOne<Student>()
-                .WithMany()
+                .WithMany(s => s.Grades)
                 .HasForeignKey(g => g.StudentUid)
                 .OnDelete(DeleteBehavior.Cascade);
-                
-            entity.HasOne<Subject>()
-                .WithMany()
-                .HasForeignKey(g => g.SubjectUid)
-                .OnDelete(DeleteBehavior.Cascade);
-                
-            entity.HasOne<Teacher>()
-                .WithMany()
-                .HasForeignKey(g => g.TeacherUid)
-                .OnDelete(DeleteBehavior.SetNull)
-                .IsRequired(false);
-                
-            entity.HasOne<Lesson>()
-                .WithMany()
-                .HasForeignKey(g => g.LessonUid)
-                .OnDelete(DeleteBehavior.SetNull)
-                .IsRequired(false);
-                
-            entity.HasOne<Assignment>()
-                .WithMany()
-                .HasForeignKey(g => g.AssignmentUid)
-                .OnDelete(DeleteBehavior.SetNull)
-                .IsRequired(false);
         });
 
         // GradeComment
         modelBuilder.Entity<GradeComment>(entity =>
         {
-            entity.HasKey(e => e.Uid);
-            entity.Property(e => e.Content).IsRequired().HasMaxLength(1000);
-            
-            // Явная связь с оценкой
+            entity.HasKey(gc => gc.Uid);
+            entity.Property(gc => gc.GradeUid).IsRequired();
+            entity.Property(gc => gc.AuthorUid).IsRequired();
+            entity.Property(gc => gc.Type).IsRequired();
+            entity.Property(gc => gc.Content).IsRequired().HasMaxLength(2000);
+            entity.Property(gc => gc.Status).IsRequired();
+            entity.Property(gc => gc.IsDeleted).IsRequired();
+            entity.Property(gc => gc.DeletedAt);
+
+            // Связь с Grade
             entity.HasOne<Grade>()
                 .WithMany()
                 .HasForeignKey(gc => gc.GradeUid)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Связь с Person (автор)
+            entity.HasOne<Person>()
+                .WithMany()
+                .HasForeignKey(gc => gc.AuthorUid)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Attendance
+        modelBuilder.Entity<Attendance>(entity =>
+        {
+            entity.HasKey(e => e.Uid);
+            entity.Property(e => e.Status).HasConversion<int>().IsRequired();
+            entity.Property(e => e.Notes).HasMaxLength(500);
+            
+            entity.HasIndex(e => new { e.StudentUid, e.LessonUid }).IsUnique();
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.LastModifiedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            
+            // Связи
+            entity.HasOne(a => a.Student)
+                .WithMany(s => s.Attendances)
+                .HasForeignKey(a => a.StudentUid)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Assignment
+        modelBuilder.Entity<Assignment>(entity =>
+        {
+            entity.HasKey(a => a.Uid);
+            entity.Property(a => a.Title).IsRequired().HasMaxLength(200);
+            entity.Property(a => a.Description).HasMaxLength(2000);
+            entity.Property(a => a.Instructions).HasMaxLength(5000);
+            entity.Property(a => a.MaxScore).IsRequired();
+            entity.Property(a => a.Type).IsRequired();
+            entity.Property(a => a.Difficulty).IsRequired();
+            entity.Property(a => a.Status).IsRequired();
+            entity.Property(a => a.CourseInstanceUid).IsRequired();
+            entity.Property(a => a.LessonUid);
+            entity.Property(a => a.DueDate);
+
+            // Связь с CourseInstance
+            entity.HasOne(a => a.CourseInstance)
+                .WithMany()
+                .HasForeignKey(a => a.CourseInstanceUid)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Связь с Lesson (опционально)
+            entity.HasOne(a => a.Lesson)
+                .WithMany()
+                .HasForeignKey(a => a.LessonUid)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Связь с Submissions
+            entity.HasMany(a => a.Submissions)
+                .WithOne(s => s.Assignment)
+                .HasForeignKey(s => s.AssignmentUid)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
         // GradeRevision
         modelBuilder.Entity<GradeRevision>(entity =>
         {
-            entity.HasKey(e => e.Uid);
-            entity.Property(e => e.PreviousValue).HasPrecision(5, 2);
-            entity.Property(e => e.NewValue).HasPrecision(5, 2);
-            entity.Property(e => e.RevisionReason).HasMaxLength(500);
-            entity.Property(e => e.PreviousDescription).HasMaxLength(500);
-            entity.Property(e => e.NewDescription).HasMaxLength(500);
-            
-            // Явная связь с оценкой
+            entity.HasKey(gr => gr.Uid);
+            entity.Property(gr => gr.GradeUid).IsRequired();
+            entity.Property(gr => gr.TeacherUid).IsRequired();
+            entity.Property(gr => gr.PreviousValue).IsRequired().HasColumnType("decimal(5,2)");
+            entity.Property(gr => gr.NewValue).IsRequired().HasColumnType("decimal(5,2)");
+            entity.Property(gr => gr.PreviousDescription).HasMaxLength(1000);
+            entity.Property(gr => gr.NewDescription).HasMaxLength(1000);
+            entity.Property(gr => gr.RevisionReason).IsRequired().HasMaxLength(500);
+            entity.Property(gr => gr.CreatedAt).IsRequired();
+
+            // Связь с Grade
             entity.HasOne<Grade>()
                 .WithMany()
                 .HasForeignKey(gr => gr.GradeUid)
                 .OnDelete(DeleteBehavior.Cascade);
-        });
 
-        // StudentParent
-        modelBuilder.Entity<StudentParent>(entity =>
-        {
-            entity.HasKey(e => e.Uid);
-            
-            // Явные связи
-            entity.HasOne<Student>()
-                .WithMany(s => s.Parents)
-                .HasForeignKey(sp => sp.StudentUid)
-                .OnDelete(DeleteBehavior.Cascade);
-                
-            entity.HasOne<User>()
-                .WithMany()
-                .HasForeignKey(sp => sp.ParentUserUid)
-                .OnDelete(DeleteBehavior.Cascade);
-                
-            // Уникальный индекс
-            entity.HasIndex(e => new { e.StudentUid, e.ParentUserUid }).IsUnique();
-        });
-
-        // TeacherSubject
-        modelBuilder.Entity<TeacherSubject>(entity =>
-        {
-            entity.HasKey(e => e.Uid);
-            entity.Property(e => e.AssignedDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
-            
-            // Явные связи
+            // Связь с Teacher
             entity.HasOne<Teacher>()
-                .WithMany(t => t.Subjects)
-                .HasForeignKey(ts => ts.TeacherUid)
+                .WithMany()
+                .HasForeignKey(gr => gr.TeacherUid)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Lesson
+        modelBuilder.Entity<Lesson>(entity =>
+        {
+            entity.HasKey(l => l.Uid);
+            entity.Property(l => l.Title).IsRequired().HasMaxLength(200);
+            entity.Property(l => l.Topic).HasMaxLength(200);
+            entity.Property(l => l.Description).HasMaxLength(2000);
+            entity.Property(l => l.Content).HasMaxLength(10000);
+            entity.Property(l => l.CourseInstanceUid).IsRequired();
+            entity.Property(l => l.OrderIndex).IsRequired();
+            entity.Property(l => l.Duration);
+            entity.Property(l => l.Type).IsRequired();
+            entity.Property(l => l.IsPublished).IsRequired();
+            entity.Property(l => l.SubjectUid);
+            entity.Property(l => l.TeacherUid);
+            entity.Property(l => l.GroupUid);
+
+            // Связь с CourseInstance
+            entity.HasOne(l => l.CourseInstance)
+                .WithMany()
+                .HasForeignKey(l => l.CourseInstanceUid)
                 .OnDelete(DeleteBehavior.Cascade);
-                
+
+            // Связь с Subject (опционально)
             entity.HasOne<Subject>()
-                .WithMany(s => s.TeacherSubjects)
-                .HasForeignKey(ts => ts.SubjectUid)
-                .OnDelete(DeleteBehavior.Cascade);
-                
-            // Уникальный индекс
-            entity.HasIndex(e => new { e.TeacherUid, e.SubjectUid }).IsUnique();
-        });
+                .WithMany()
+                .HasForeignKey(l => l.SubjectUid)
+                .OnDelete(DeleteBehavior.SetNull);
 
-        // TeacherGroup
-        modelBuilder.Entity<TeacherGroup>(entity =>
-        {
-            entity.HasKey(e => e.Uid);
-            entity.Property(e => e.AssignedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
-            
-            // Явные связи
+            // Связь с Teacher (опционально)
             entity.HasOne<Teacher>()
                 .WithMany()
-                .HasForeignKey(tg => tg.TeacherUid)
-                .OnDelete(DeleteBehavior.Cascade);
-                
+                .HasForeignKey(l => l.TeacherUid)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Связь с Group (опционально)
             entity.HasOne<Group>()
                 .WithMany()
-                .HasForeignKey(tg => tg.GroupUid)
+                .HasForeignKey(l => l.GroupUid)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Связь с LessonProgress
+            entity.HasMany(l => l.LessonProgress)
+                .WithOne(lp => lp.Lesson)
+                .HasForeignKey(lp => lp.LessonUid)
                 .OnDelete(DeleteBehavior.Cascade);
-                
-            entity.HasOne<Subject>()
-                .WithMany()
-                .HasForeignKey(tg => tg.SubjectUid)
-                .OnDelete(DeleteBehavior.Cascade);
-                
-            // Уникальный индекс для связки преподаватель-группа-предмет
-            entity.HasIndex(e => new { e.TeacherUid, e.GroupUid, e.SubjectUid }).IsUnique();
         });
 
-        // LessonDetail - детальная информация об уроках для отчетности
-        modelBuilder.Entity<LessonDetail>(entity =>
+        // LessonProgress
+        modelBuilder.Entity<LessonProgress>(entity =>
+        {
+            entity.HasKey(lp => lp.Uid);
+            entity.Property(lp => lp.StudentUid).IsRequired();
+            entity.Property(lp => lp.LessonUid).IsRequired();
+            entity.Property(lp => lp.IsCompleted).IsRequired();
+            entity.Property(lp => lp.CompletedAt);
+            entity.Property(lp => lp.TimeSpent);
+
+            // Связь с Student
+            entity.HasOne(lp => lp.Student)
+                .WithMany()
+                .HasForeignKey(lp => lp.StudentUid)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Связь с Lesson
+            entity.HasOne(lp => lp.Lesson)
+                .WithMany(l => l.LessonProgress)
+                .HasForeignKey(lp => lp.LessonUid)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Уникальный индекс для комбинации студент-урок
+            entity.HasIndex(lp => new { lp.StudentUid, lp.LessonUid })
+                .IsUnique();
+        });
+
+        // Submission
+        modelBuilder.Entity<Submission>(entity =>
+        {
+            entity.HasKey(s => s.Uid);
+            entity.Property(s => s.StudentUid).IsRequired();
+            entity.Property(s => s.AssignmentUid).IsRequired();
+            entity.Property(s => s.SubmissionDate).IsRequired();
+            entity.Property(s => s.Content).HasMaxLength(10000);
+            entity.Property(s => s.Score).HasColumnType("decimal(5,2)");
+            entity.Property(s => s.Feedback).HasMaxLength(2000);
+            entity.Property(s => s.Status).IsRequired();
+            entity.Property(s => s.GradedByUid);
+            entity.Property(s => s.GradedDate);
+
+            // Связь с Student
+            entity.HasOne(s => s.Student)
+                .WithMany()
+                .HasForeignKey(s => s.StudentUid)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Связь с Assignment
+            entity.HasOne(s => s.Assignment)
+                .WithMany(a => a.Submissions)
+                .HasForeignKey(s => s.AssignmentUid)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Связь с Teacher (кто поставил оценку)
+            entity.HasOne(s => s.GradedBy)
+                .WithMany()
+                .HasForeignKey(s => s.GradedByUid)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Уникальный индекс для комбинации студент-задание
+            entity.HasIndex(s => new { s.StudentUid, s.AssignmentUid })
+                .IsUnique();
+        });
+    }
+
+    private void ConfigureExamModels(ModelBuilder modelBuilder)
+    {
+        // Exam
+        modelBuilder.Entity<Exam>(entity =>
         {
             entity.HasKey(e => e.Uid);
-            entity.Property(e => e.Topic).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
             entity.Property(e => e.Description).HasMaxLength(1000);
-            entity.Property(e => e.TeacherFirstName).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.TeacherLastName).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.TeacherMiddleName).HasMaxLength(100);
-            entity.Property(e => e.SubjectName).IsRequired().HasMaxLength(200);
-            entity.Property(e => e.GroupName).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Location).HasMaxLength(100);
+            entity.Property(e => e.Type).HasConversion<int>().IsRequired();
+            entity.Property(e => e.MaxScore).HasPrecision(6, 2);
+            entity.Property(e => e.Instructions).HasMaxLength(2000);
+            entity.Property(e => e.IsPublished).HasDefaultValue(false);
             
-            // Явная связь с основным уроком
-            entity.HasOne<Lesson>()
+            entity.HasIndex(e => e.ExamDate);
+            entity.HasIndex(e => e.IsPublished);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.LastModifiedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            
+            // Связь с экземпляром курса
+            entity.HasOne(e => e.CourseInstance)
                 .WithMany()
-                .HasForeignKey(ld => ld.LessonUid)
+                .HasForeignKey(e => e.CourseInstanceUid)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ExamResult
+        modelBuilder.Entity<ExamResult>(entity =>
+        {
+            entity.HasKey(e => e.Uid);
+            entity.Property(e => e.Score).HasPrecision(6, 2);
+            entity.Property(e => e.Feedback).HasMaxLength(1000);
+            entity.Property(e => e.Notes).HasMaxLength(500);
+            entity.Property(e => e.IsAbsent).HasDefaultValue(false);
+            
+            entity.HasIndex(e => new { e.ExamUid, e.StudentUid }).IsUnique();
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.LastModifiedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            
+            // Связи
+            entity.HasOne(er => er.Exam)
+                .WithMany(e => e.Results)
+                .HasForeignKey(er => er.ExamUid)
                 .OnDelete(DeleteBehavior.Cascade);
                 
-            // Индексы для быстрого поиска
-            entity.HasIndex(e => e.LessonUid);
-            entity.HasIndex(e => e.StartTime);
-            entity.HasIndex(e => new { e.TeacherLastName, e.TeacherFirstName });
+            entity.HasOne(er => er.Student)
+                .WithMany()
+                .HasForeignKey(er => er.StudentUid)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+    }
+
+    private void ConfigureLibraryModels(ModelBuilder modelBuilder)
+    {
+        // LibraryResource
+        modelBuilder.Entity<LibraryResource>(entity =>
+        {
+            entity.HasKey(e => e.Uid);
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(300);
+            entity.Property(e => e.Author).HasMaxLength(200);
+            entity.Property(e => e.ISBN).HasMaxLength(20);
+            entity.Property(e => e.Publisher).HasMaxLength(200);
+            entity.Property(e => e.Type).HasConversion<int>().IsRequired();
+            entity.Property(e => e.Description).HasMaxLength(1000);
+            entity.Property(e => e.Location).HasMaxLength(100);
+            entity.Property(e => e.DigitalUrl).HasMaxLength(500);
+            entity.Property(e => e.Tags).HasMaxLength(500);
+            entity.Property(e => e.TotalCopies).HasDefaultValue(1);
+            entity.Property(e => e.AvailableCopies).HasDefaultValue(1);
+            entity.Property(e => e.IsDigital).HasDefaultValue(false);
+            
+            entity.HasIndex(e => e.ISBN);
+            entity.HasIndex(e => e.Type);
+            entity.HasIndex(e => e.Title);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.LastModifiedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+        });
+
+        // LibraryLoan
+        modelBuilder.Entity<LibraryLoan>(entity =>
+        {
+            entity.HasKey(e => e.Uid);
+            entity.Property(e => e.FineAmount).HasPrecision(8, 2);
+            entity.Property(e => e.Notes).HasMaxLength(500);
+            entity.Property(e => e.IsReturned).HasDefaultValue(false);
+            
+            entity.HasIndex(e => e.BorrowerUid);
+            entity.HasIndex(e => e.DueDate);
+            entity.HasIndex(e => e.IsReturned);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.LastModifiedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            
+            // Связи
+            entity.HasOne(ll => ll.Resource)
+                .WithMany(lr => lr.Loans)
+                .HasForeignKey(ll => ll.ResourceUid)
+                .OnDelete(DeleteBehavior.Cascade);
+                
+            entity.HasOne(ll => ll.Borrower)
+                .WithMany()
+                .HasForeignKey(ll => ll.BorrowerUid)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 
@@ -682,81 +777,11 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
             entity.Property(e => e.Code).IsRequired().HasMaxLength(50);
             entity.Property(e => e.Description).HasMaxLength(1000);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+                
             entity.HasIndex(e => e.Code).IsUnique();
-            
-            // Связь с заведующим кафедрой
-            entity.HasOne(d => d.HeadOfDepartment)
-                .WithMany()
-                .HasForeignKey(d => d.HeadOfDepartmentUid)
-                .OnDelete(DeleteBehavior.SetNull)
-                .IsRequired(false);
-                
-            // Связи с предметами и группами
-            entity.HasMany(d => d.Subjects)
-                .WithOne()
-                .HasForeignKey(s => s.DepartmentUid)
-                .OnDelete(DeleteBehavior.Restrict);
-                
-            entity.HasMany(d => d.Groups)
-                .WithOne()
-                .HasForeignKey(g => g.DepartmentUid)
-                .OnDelete(DeleteBehavior.Restrict);
-        });
-
-        // Attendance
-        modelBuilder.Entity<Attendance>(entity =>
-        {
-            entity.HasKey(e => e.Uid);
-            entity.Property(e => e.Notes).HasMaxLength(500);
-            entity.Property(e => e.CheckedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
-            
-            // Связи
-            entity.HasOne(a => a.Student)
-                .WithMany()
-                .HasForeignKey(a => a.StudentUid)
-                .OnDelete(DeleteBehavior.Cascade);
-                
-            entity.HasOne(a => a.Lesson)
-                .WithMany()
-                .HasForeignKey(a => a.LessonUid)
-                .OnDelete(DeleteBehavior.Cascade);
-                
-            entity.HasOne<Teacher>()
-                .WithMany()
-                .HasForeignKey(a => a.CheckedByUid)
-                .OnDelete(DeleteBehavior.Restrict);
-                
-            // Уникальный индекс: один студент - один урок - одна запись посещаемости
-            entity.HasIndex(e => new { e.StudentUid, e.LessonUid }).IsUnique();
-        });
-
-        // Schedule
-        modelBuilder.Entity<Schedule>(entity =>
-        {
-            entity.HasKey(e => e.Uid);
-            entity.Property(e => e.Classroom).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.ValidFrom).HasDefaultValueSql("CURRENT_DATE");
-            
-            // Связи
-            entity.HasOne(s => s.Group)
-                .WithMany()
-                .HasForeignKey(s => s.GroupUid)
-                .OnDelete(DeleteBehavior.Cascade);
-                
-            entity.HasOne(s => s.Subject)
-                .WithMany()
-                .HasForeignKey(s => s.SubjectUid)
-                .OnDelete(DeleteBehavior.Cascade);
-                
-            entity.HasOne(s => s.Teacher)
-                .WithMany()
-                .HasForeignKey(s => s.TeacherUid)
-                .OnDelete(DeleteBehavior.Restrict);
-                
-            // Индексы для быстрого поиска
-            entity.HasIndex(e => new { e.GroupUid, e.DayOfWeek, e.StartTime });
-            entity.HasIndex(e => new { e.TeacherUid, e.DayOfWeek, e.StartTime });
-            entity.HasIndex(e => e.ValidFrom);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.LastModifiedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
         });
 
         // Notification
@@ -765,25 +790,25 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.HasKey(e => e.Uid);
             entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
             entity.Property(e => e.Message).IsRequired().HasMaxLength(2000);
-            entity.Property(e => e.SentAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.Type).HasConversion<int>().IsRequired();
+            entity.Property(e => e.Priority).HasConversion<int>().IsRequired();
+            entity.Property(e => e.IsRead).HasDefaultValue(false);
+            entity.Property(e => e.IsImportant).HasDefaultValue(false);
+            entity.Property(e => e.Category).HasMaxLength(100);
+            entity.Property(e => e.ActionUrl).HasMaxLength(500);
             
-            // Сериализуем Metadata в JSON для хранения в БД с компаратором
+            // Сериализуем Metadata в JSON
             entity.Property(e => e.Metadata)
                 .HasConversion(
                     v => v == null ? null : System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
                     v => v == null ? null : System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(v, (System.Text.Json.JsonSerializerOptions?)null))
                 .HasColumnType("text");
             
-            // Явная связь с получателем
-            entity.HasOne(n => n.Recipient)
-                .WithMany()
-                .HasForeignKey(n => n.RecipientUid)
-                .OnDelete(DeleteBehavior.Cascade);
-                
-            // Индексы
             entity.HasIndex(e => new { e.RecipientUid, e.IsRead });
             entity.HasIndex(e => e.SentAt);
             entity.HasIndex(e => e.Type);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.LastModifiedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
         });
 
         // NotificationTemplate
@@ -794,55 +819,57 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(e => e.Description).HasMaxLength(500);
             entity.Property(e => e.TitleTemplate).IsRequired().HasMaxLength(200);
             entity.Property(e => e.MessageTemplate).IsRequired().HasMaxLength(2000);
+            entity.Property(e => e.Type).HasConversion<int>().IsRequired();
+            entity.Property(e => e.Priority).HasConversion<int>().IsRequired();
             entity.Property(e => e.Category).HasMaxLength(100);
             entity.Property(e => e.IsActive).HasDefaultValue(true);
             
-            // Сериализуем Parameters в JSON для хранения в БД с компаратором
+            // Сериализуем Parameters в JSON
             entity.Property(e => e.Parameters)
                 .HasConversion(
                     v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
                     v => System.Text.Json.JsonSerializer.Deserialize<List<string>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new List<string>())
                 .HasColumnType("text");
             
-            // Индексы
             entity.HasIndex(e => e.Name);
             entity.HasIndex(e => e.Type);
             entity.HasIndex(e => e.IsActive);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.LastModifiedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
         });
 
         // NotificationSettings
         modelBuilder.Entity<NotificationSettings>(entity =>
         {
-            entity.HasKey(e => e.Uid);
-            entity.Property(e => e.UserUid).IsRequired();
-            entity.Property(e => e.EmailNotifications).HasDefaultValue(true);
-            entity.Property(e => e.PushNotifications).HasDefaultValue(true);
-            entity.Property(e => e.SmsNotifications).HasDefaultValue(false);
-            entity.Property(e => e.WeekendNotifications).HasDefaultValue(false);
-            entity.Property(e => e.MinimumPriority).HasConversion<int>().HasDefaultValue(NotificationPriority.Low);
-            
-            // Сериализуем TypeSettings в JSON для хранения в БД с компаратором
+            entity.HasKey(ns => ns.Uid);
+            entity.Property(ns => ns.UserUid).IsRequired();
+            entity.Property(ns => ns.EmailNotifications).IsRequired();
+            entity.Property(ns => ns.PushNotifications).IsRequired();
+            entity.Property(ns => ns.SmsNotifications).IsRequired();
+            entity.Property(ns => ns.QuietHoursStart).IsRequired();
+            entity.Property(ns => ns.QuietHoursEnd).IsRequired();
+            entity.Property(ns => ns.WeekendNotifications).IsRequired();
+            entity.Property(ns => ns.MinimumPriority).IsRequired();
+
+            // Сериализуем TypeSettings в JSON
             entity.Property(e => e.TypeSettings)
                 .HasConversion(
-                    v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
-                    v => System.Text.Json.JsonSerializer.Deserialize<Dictionary<NotificationType, bool>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new Dictionary<NotificationType, bool>())
+                    v => v == null ? null : System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                    v => v == null ? new Dictionary<NotificationType, bool>() : System.Text.Json.JsonSerializer.Deserialize<Dictionary<NotificationType, bool>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new Dictionary<NotificationType, bool>())
                 .HasColumnType("text");
-            
-            // Сериализуем CategorySettings в JSON для хранения в БД с компаратором
+
+            // Сериализуем CategorySettings в JSON
             entity.Property(e => e.CategorySettings)
                 .HasConversion(
-                    v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
-                    v => System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, bool>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new Dictionary<string, bool>())
+                    v => v == null ? null : System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                    v => v == null ? new Dictionary<string, bool>() : System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, bool>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new Dictionary<string, bool>())
                 .HasColumnType("text");
-            
-            // Явная связь с пользователем
-            entity.HasOne<User>()
+
+            // Связь с Person
+            entity.HasOne<Person>()
                 .WithMany()
                 .HasForeignKey(ns => ns.UserUid)
                 .OnDelete(DeleteBehavior.Cascade);
-                
-            // Уникальный индекс: один пользователь - одни настройки
-            entity.HasIndex(e => e.UserUid).IsUnique();
         });
 
         // FileRecord
@@ -855,15 +882,13 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(e => e.ContentType).IsRequired().HasMaxLength(100);
             entity.Property(e => e.EntityType).HasMaxLength(100);
             entity.Property(e => e.Description).HasMaxLength(1000);
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
-            entity.Property(e => e.LastModifiedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.IsPublic).HasDefaultValue(false);
             
-            // Индексы для быстрого поиска
             entity.HasIndex(e => e.UploadedByUid);
             entity.HasIndex(e => new { e.EntityType, e.EntityUid });
             entity.HasIndex(e => e.ContentType);
-            entity.HasIndex(e => e.CreatedAt);
-            entity.HasIndex(e => e.IsPublic);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.LastModifiedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
         });
     }
 
@@ -873,45 +898,14 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         var adminRoleId = new Guid("11111111-1111-1111-1111-111111111111");
         var teacherRoleId = new Guid("22222222-2222-2222-2222-222222222222");
         var studentRoleId = new Guid("33333333-3333-3333-3333-333333333333");
-        var adminUserId = new Guid("44444444-4444-4444-4444-444444444444");
-        var teacherUserId = new Guid("55555555-5555-5555-5555-555555555555");
-        var studentUserId = new Guid("66666666-6666-6666-6666-666666666666");
-        var adminUserRoleId = new Guid("77777777-7777-7777-7777-777777777777");
-        var teacherUserRoleId = new Guid("88888888-8888-8888-8888-888888888888");
-        var studentUserRoleId = new Guid("99999999-9999-9999-9999-999999999999");
+        var adminPersonId = new Guid("44444444-4444-4444-4444-444444444444");
+        var teacherPersonId = new Guid("55555555-5555-5555-5555-555555555555");
+        var studentPersonId = new Guid("66666666-6666-6666-6666-666666666666");
+        var adminAccountId = new Guid("77777777-7777-7777-7777-777777777777");
+        var teacherAccountId = new Guid("88888888-8888-8888-8888-888888888888");
+        var studentAccountId = new Guid("99999999-9999-9999-9999-999999999999");
         var itDeptId = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
-        var mathDeptId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
-        var physDeptId = new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc");
         var baseDateTime = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-
-        // Предварительно объявляем все ID, которые будут использоваться в разных секциях
-        var subject1Id = new Guid("51111111-1111-1111-1111-111111111111");
-        var subject2Id = new Guid("52222222-2222-2222-2222-222222222222");
-        var subject3Id = new Guid("53333333-3333-3333-3333-333333333333");
-        var assignment1Id = new Guid("61111111-1111-1111-1111-111111111111");
-        var assignment2Id = new Guid("62222222-2222-2222-2222-222222222222");
-        var assignment3Id = new Guid("63333333-3333-3333-3333-333333333333");
-        var teacher1Id = new Guid("dddddddd-dddd-dddd-dddd-dddddddddddd");
-        var teacher2Id = new Guid("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee");
-        var teacher3Id = new Guid("ffffffff-ffff-ffff-ffff-ffffffffffff");
-        var student1Id = new Guid("11111111-1111-1111-1111-111111111110");
-        var student2Id = new Guid("22222222-2222-2222-2222-222222222220");
-        var student3Id = new Guid("33333333-3333-3333-3333-333333333330");
-        var student4Id = new Guid("44444444-4444-4444-4444-444444444440");
-        var student5Id = new Guid("55555555-5555-5555-5555-555555555550");
-        var group1Id = new Guid("11111110-1111-1111-1111-111111111111");
-        var group2Id = new Guid("22222220-2222-2222-2222-222222222222");
-        var group3Id = new Guid("33333330-3333-3333-3333-333333333333");
-        var course1Id = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1");
-        var course2Id = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1");
-        var course3Id = new Guid("cccccccc-cccc-cccc-cccc-ccccccccccc1");
-        var enrollment1Id = new Guid("71111111-1111-1111-1111-111111111111");
-        var enrollment2Id = new Guid("72222222-2222-2222-2222-222222222222");
-        var enrollment3Id = new Guid("73333333-3333-3333-3333-333333333333");
-        var enrollment4Id = new Guid("74444444-4444-4444-4444-444444444444");
-        var grade1Id = new Guid("81111111-1111-1111-1111-111111111111");
-        var grade2Id = new Guid("82222222-2222-2222-2222-222222222222");
-        var grade3Id = new Guid("83333333-3333-3333-3333-333333333333");
 
         // 1. Роли
         modelBuilder.Entity<Role>().HasData(
@@ -921,8 +915,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 Name = "SystemAdmin",
                 Description = "Системный администратор",
                 CreatedAt = baseDateTime,
-                LastModifiedAt = baseDateTime,
-                RoleType = RoleType.SystemAdmin
+                LastModifiedAt = baseDateTime
             },
             new Role
             {
@@ -930,8 +923,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 Name = "Teacher",
                 Description = "Преподаватель",
                 CreatedAt = baseDateTime,
-                LastModifiedAt = baseDateTime,
-                RoleType = RoleType.Teacher
+                LastModifiedAt = baseDateTime
             },
             new Role
             {
@@ -939,104 +931,94 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 Name = "Student",
                 Description = "Студент",
                 CreatedAt = baseDateTime,
-                LastModifiedAt = baseDateTime,
-                RoleType = RoleType.Student
+                LastModifiedAt = baseDateTime
             }
         );
 
-        // 2. Пользователи
-        modelBuilder.Entity<User>().HasData(
-            new User
+        // 2. Люди
+        modelBuilder.Entity<Person>().HasData(
+            new Person
             {
-                Uid = adminUserId,
-                Username = "admin",
-                Email = "admin@viridisca.local",
+                Uid = adminPersonId,
                 FirstName = "Админ",
                 LastName = "Системы",
-                MiddleName = "",
+                MiddleName = "Владимирович",
+                Email = "admin@viridisca.local",
                 PhoneNumber = "",
-                ProfileImageUrl = "",
-                RoleId = adminRoleId,
-                IsActive = true,
-                IsEmailConfirmed = true,
                 DateOfBirth = baseDateTime.AddYears(-35),
-                PasswordHash = HashPassword("admin123"),
+                IsActive = true,
                 CreatedAt = baseDateTime,
                 LastModifiedAt = baseDateTime
             },
-            new User
+            new Person
             {
-                Uid = teacherUserId,
-                Username = "teacher",
-                Email = "teacher@viridisca.local",
+                Uid = teacherPersonId,
                 FirstName = "Преподаватель",
                 LastName = "Тестовый",
                 MiddleName = "Иванович",
+                Email = "teacher@viridisca.local",
                 PhoneNumber = "+7 (900) 123-45-67",
-                ProfileImageUrl = "",
-                RoleId = teacherRoleId,
-                IsActive = true,
-                IsEmailConfirmed = true,
                 DateOfBirth = baseDateTime.AddYears(-40),
-                PasswordHash = HashPassword("teacher123"),
+                IsActive = true,
                 CreatedAt = baseDateTime,
                 LastModifiedAt = baseDateTime
             },
-            new User
+            new Person
             {
-                Uid = studentUserId,
-                Username = "student",
-                Email = "student@viridisca.local",
+                Uid = studentPersonId,
                 FirstName = "Студент",
                 LastName = "Тестовый",
                 MiddleName = "Петрович",
+                Email = "student@viridisca.local",
                 PhoneNumber = "+7 (900) 987-65-43",
-                ProfileImageUrl = "",
-                RoleId = studentRoleId,
-                IsActive = true,
-                IsEmailConfirmed = true,
                 DateOfBirth = baseDateTime.AddYears(-20),
+                IsActive = true,
+                CreatedAt = baseDateTime,
+                LastModifiedAt = baseDateTime
+            }
+        );
+
+        // 3. Аккаунты
+        modelBuilder.Entity<Account>().HasData(
+            new Account
+            {
+                Uid = adminAccountId,
+                PersonUid = adminPersonId,
+                Username = "admin",
+                PasswordHash = HashPassword("admin123"),
+                IsEmailConfirmed = true,
+                IsLocked = false,
+                FailedLoginAttempts = 0,
+                CreatedAt = baseDateTime,
+                LastModifiedAt = baseDateTime
+            },
+            new Account
+            {
+                Uid = teacherAccountId,
+                PersonUid = teacherPersonId,
+                Username = "teacher",
+                PasswordHash = HashPassword("teacher123"),
+                IsEmailConfirmed = true,
+                IsLocked = false,
+                FailedLoginAttempts = 0,
+                CreatedAt = baseDateTime,
+                LastModifiedAt = baseDateTime
+            },
+            new Account
+            {
+                Uid = studentAccountId,
+                PersonUid = studentPersonId,
+                Username = "student",
                 PasswordHash = HashPassword("student123"),
+                IsEmailConfirmed = true,
+                IsLocked = false,
+                FailedLoginAttempts = 0,
                 CreatedAt = baseDateTime,
                 LastModifiedAt = baseDateTime
             }
         );
 
-        // 3. Связи пользователь-роль
-        modelBuilder.Entity<UserRole>().HasData(
-            new UserRole
-            {
-                Uid = adminUserRoleId,
-                UserUid = adminUserId,
-                RoleUid = adminRoleId,
-                IsActive = true,
-                AssignedAt = baseDateTime,
-                CreatedAt = baseDateTime,
-                LastModifiedAt = baseDateTime
-            },
-            new UserRole
-            {
-                Uid = teacherUserRoleId,
-                UserUid = teacherUserId,
-                RoleUid = teacherRoleId,
-                IsActive = true,
-                AssignedAt = baseDateTime,
-                CreatedAt = baseDateTime,
-                LastModifiedAt = baseDateTime
-            },
-            new UserRole
-            {
-                Uid = studentUserRoleId,
-                UserUid = studentUserId,
-                RoleUid = studentRoleId,
-                IsActive = true,
-                AssignedAt = baseDateTime,
-                CreatedAt = baseDateTime,
-                LastModifiedAt = baseDateTime
-            }
-        );
-
-        // 4. Департаменты
+        // 4. Департамент
         modelBuilder.Entity<Department>().HasData(
             new Department
             {
@@ -1044,497 +1026,6 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 Name = "Информационные технологии",
                 Code = "IT",
                 Description = "Кафедра информационных технологий и программирования",
-                IsActive = true,
-                CreatedAt = baseDateTime,
-                LastModifiedAt = baseDateTime
-            },
-            new Department
-            {
-                Uid = mathDeptId,
-                Name = "Математический анализ",
-                Code = "MATH",
-                Description = "Кафедра высшей математики и математического анализа",
-                IsActive = true,
-                CreatedAt = baseDateTime,
-                LastModifiedAt = baseDateTime
-            },
-            new Department
-            {
-                Uid = physDeptId,
-                Name = "Физика",
-                Code = "PHYS",
-                Description = "Кафедра общей физики",
-                IsActive = true,
-                CreatedAt = baseDateTime,
-                LastModifiedAt = baseDateTime
-            }
-        );
-
-        // 5. Преподаватели
-        modelBuilder.Entity<Teacher>().HasData(
-            new Teacher
-            {
-                Uid = teacher1Id,
-                FirstName = "Иван",
-                LastName = "Петров",
-                MiddleName = "Иванович",
-                EmployeeCode = "T001",
-                Phone = "+7 (901) 234-56-78",
-                HireDate = baseDateTime.AddYears(-5),
-                UserUid = teacherUserId,
-                DepartmentUid = itDeptId,
-                Status = TeacherStatus.Active,
-                Specialization = "Программирование",
-                AcademicDegree = "Кандидат технических наук",
-                AcademicTitle = "Доцент",
-                HourlyRate = 1500m,
-                Bio = "Опытный преподаватель программирования с 5-летним стажем",
-                CreatedAt = baseDateTime,
-                LastModifiedAt = baseDateTime
-            },
-            new Teacher
-            {
-                Uid = teacher2Id,
-                FirstName = "Мария",
-                LastName = "Сидорова",
-                MiddleName = "Петровна",
-                EmployeeCode = "T002",
-                Phone = "+7 (902) 345-67-89",
-                HireDate = baseDateTime.AddYears(-3),
-                UserUid = null,
-                DepartmentUid = mathDeptId,
-                Status = TeacherStatus.Active,
-                Specialization = "Математика",
-                AcademicDegree = "Доктор физико-математических наук",
-                AcademicTitle = "Профессор",
-                HourlyRate = 1400m,
-                Bio = "Профессор математики, автор более 50 научных работ",
-                CreatedAt = baseDateTime,
-                LastModifiedAt = baseDateTime
-            },
-            new Teacher
-            {
-                Uid = teacher3Id,
-                FirstName = "Александр",
-                LastName = "Козлов",
-                MiddleName = "Николаевич",
-                EmployeeCode = "T003",
-                Phone = "+7 (903) 456-78-90",
-                HireDate = baseDateTime.AddYears(-8),
-                UserUid = null,
-                DepartmentUid = physDeptId,
-                Status = TeacherStatus.Active,
-                Specialization = "Физика",
-                AcademicDegree = "Кандидат физико-математических наук",
-                AcademicTitle = "Старший преподаватель",
-                HourlyRate = 1600m,
-                Bio = "Специалист по теоретической физике и механике",
-                CreatedAt = baseDateTime,
-                LastModifiedAt = baseDateTime
-            }
-        );
-
-        // 6. Группы
-        modelBuilder.Entity<Group>().HasData(
-            new Group
-            {
-                Uid = group1Id,
-                Code = "IT-301",
-                Name = "ИТ-301",
-                Description = "Информационные технологии, 3 курс, группа 1",
-                Year = 3,
-                StartDate = baseDateTime.AddYears(-3),
-                EndDate = null,
-                MaxStudents = 25,
-                Status = GroupStatus.Active,
-                CuratorUid = teacher1Id,
-                DepartmentUid = itDeptId,
-                CreatedAt = baseDateTime.AddYears(-3),
-                LastModifiedAt = baseDateTime
-            },
-            new Group
-            {
-                Uid = group2Id,
-                Code = "MAT-201",
-                Name = "МАТ-201",
-                Description = "Математика, 2 курс, группа 1",
-                Year = 2,
-                StartDate = baseDateTime.AddYears(-2),
-                EndDate = null,
-                MaxStudents = 30,
-                Status = GroupStatus.Active,
-                CuratorUid = teacher2Id,
-                DepartmentUid = mathDeptId,
-                CreatedAt = baseDateTime.AddYears(-2),
-                LastModifiedAt = baseDateTime
-            },
-            new Group
-            {
-                Uid = group3Id,
-                Code = "PHYS-401",
-                Name = "ФИЗ-401",
-                Description = "Физика, 4 курс, группа 1",
-                Year = 4,
-                StartDate = baseDateTime.AddYears(-4),
-                EndDate = null,
-                MaxStudents = 20,
-                Status = GroupStatus.Active,
-                CuratorUid = teacher3Id,
-                DepartmentUid = physDeptId,
-                CreatedAt = baseDateTime.AddYears(-4),
-                LastModifiedAt = baseDateTime
-            }
-        );
-
-        // 7. Студенты
-        modelBuilder.Entity<Student>().HasData(
-            new Student
-            {
-                Uid = student1Id,
-                FirstName = "Алексей",
-                LastName = "Иванов",
-                MiddleName = "Петрович",
-                Email = "alexey.ivanov@student.viridisca.local",
-                PhoneNumber = "+7 (910) 123-45-67",
-                StudentCode = "ST301001",
-                EnrollmentDate = baseDateTime.AddYears(-3),
-                BirthDate = baseDateTime.AddYears(-20),
-                GroupUid = group1Id,
-                Status = StudentStatus.Active,
-                IsActive = true,
-                UserUid = studentUserId,
-                CreatedAt = baseDateTime,
-                LastModifiedAt = baseDateTime
-            },
-            new Student
-            {
-                Uid = student2Id,
-                FirstName = "Елена",
-                LastName = "Смирнова",
-                MiddleName = "Александровна",
-                Email = "elena.smirnova@student.viridisca.local",
-                PhoneNumber = "+7 (911) 234-56-78",
-                StudentCode = "ST301002",
-                EnrollmentDate = baseDateTime.AddYears(-3),
-                BirthDate = baseDateTime.AddYears(-21),
-                GroupUid = group1Id,
-                Status = StudentStatus.Active,
-                IsActive = true,
-                UserUid = null,
-                CreatedAt = baseDateTime,
-                LastModifiedAt = baseDateTime
-            },
-            new Student
-            {
-                Uid = student3Id,
-                FirstName = "Дмитрий",
-                LastName = "Волков",
-                MiddleName = "Сергеевич",
-                Email = "dmitry.volkov@student.viridisca.local",
-                PhoneNumber = "+7 (912) 345-67-89",
-                StudentCode = "ST201001",
-                EnrollmentDate = baseDateTime.AddYears(-2),
-                BirthDate = baseDateTime.AddYears(-19),
-                GroupUid = group2Id,
-                Status = StudentStatus.Active,
-                IsActive = true,
-                UserUid = null,
-                CreatedAt = baseDateTime,
-                LastModifiedAt = baseDateTime
-            },
-            new Student
-            {
-                Uid = student4Id,
-                FirstName = "Анна",
-                LastName = "Кузнецова",
-                MiddleName = "Владимировна",
-                Email = "anna.kuznetsova@student.viridisca.local",
-                PhoneNumber = "+7 (913) 456-78-90",
-                StudentCode = "ST201002",
-                EnrollmentDate = baseDateTime.AddYears(-2),
-                BirthDate = baseDateTime.AddYears(-19),
-                GroupUid = group2Id,
-                Status = StudentStatus.Active,
-                IsActive = true,
-                UserUid = null,
-                CreatedAt = baseDateTime,
-                LastModifiedAt = baseDateTime
-            },
-            new Student
-            {
-                Uid = student5Id,
-                FirstName = "Михаил",
-                LastName = "Морозов",
-                MiddleName = "Игоревич",
-                Email = "mikhail.morozov@student.viridisca.local",
-                PhoneNumber = "+7 (914) 567-89-01",
-                StudentCode = "ST401001",
-                EnrollmentDate = baseDateTime.AddYears(-4),
-                BirthDate = baseDateTime.AddYears(-22),
-                GroupUid = group3Id,
-                Status = StudentStatus.Active,
-                IsActive = true,
-                UserUid = null,
-                CreatedAt = baseDateTime,
-                LastModifiedAt = baseDateTime
-            }
-        );
-
-        // 8. Курсы
-        modelBuilder.Entity<Course>().HasData(
-            new Course
-            {
-                Uid = course1Id,
-                Name = "Основы программирования",
-                Code = "PROG101",
-                Description = "Изучение основ программирования на языке C#",
-                Category = "Программирование",
-                TeacherUid = teacher1Id,
-                StartDate = baseDateTime.AddMonths(-2),
-                EndDate = baseDateTime.AddMonths(4),
-                Credits = 4,
-                Status = CourseStatus.Active,
-                Prerequisites = "",
-                LearningOutcomes = "Понимание основных концепций программирования, умение создавать простые программы",
-                MaxEnrollments = 50,
-                CreatedAt = baseDateTime,
-                LastModifiedAt = baseDateTime
-            },
-            new Course
-            {
-                Uid = course2Id,
-                Name = "Математический анализ",
-                Code = "MATH201",
-                Description = "Дифференциальное и интегральное исчисление",
-                Category = "Математика",
-                TeacherUid = teacher2Id,
-                StartDate = baseDateTime.AddMonths(-1),
-                EndDate = baseDateTime.AddMonths(5),
-                Credits = 5,
-                Status = CourseStatus.Active,
-                Prerequisites = "Школьная математика",
-                LearningOutcomes = "Владение методами дифференциального и интегрального исчисления",
-                MaxEnrollments = 40,
-                CreatedAt = baseDateTime,
-                LastModifiedAt = baseDateTime
-            },
-            new Course
-            {
-                Uid = course3Id,
-                Name = "Общая физика",
-                Code = "PHYS101",
-                Description = "Основы механики и термодинамики",
-                Category = "Физика",
-                TeacherUid = teacher3Id,
-                StartDate = baseDateTime.AddMonths(-3),
-                EndDate = baseDateTime.AddMonths(3),
-                Credits = 4,
-                Status = CourseStatus.Active,
-                Prerequisites = "Школьная физика и математика",
-                LearningOutcomes = "Понимание основных законов механики и термодинамики",
-                MaxEnrollments = 35,
-                CreatedAt = baseDateTime,
-                LastModifiedAt = baseDateTime
-            }
-        );
-
-        // 9. Записи на курсы
-        modelBuilder.Entity<Enrollment>().HasData(
-            new Enrollment
-            {
-                Uid = enrollment1Id,
-                StudentUid = student1Id,
-                CourseUid = course1Id,
-                EnrollmentDate = baseDateTime.AddDays(-30),
-                Status = EnrollmentStatus.Active,
-                CreatedAt = baseDateTime,
-                LastModifiedAt = baseDateTime
-            },
-            new Enrollment
-            {
-                Uid = enrollment2Id,
-                StudentUid = student2Id,
-                CourseUid = course1Id,
-                EnrollmentDate = baseDateTime.AddDays(-25),
-                Status = EnrollmentStatus.Active,
-                CreatedAt = baseDateTime,
-                LastModifiedAt = baseDateTime
-            },
-            new Enrollment
-            {
-                Uid = enrollment3Id,
-                StudentUid = student3Id,
-                CourseUid = course2Id,
-                EnrollmentDate = baseDateTime.AddDays(-20),
-                Status = EnrollmentStatus.Active,
-                CreatedAt = baseDateTime,
-                LastModifiedAt = baseDateTime
-            },
-            new Enrollment
-            {
-                Uid = enrollment4Id,
-                StudentUid = student4Id,
-                CourseUid = course2Id,
-                EnrollmentDate = baseDateTime.AddDays(-15),
-                Status = EnrollmentStatus.Active,
-                CreatedAt = baseDateTime,
-                LastModifiedAt = baseDateTime
-            }
-        );
-
-        // 10. Задания
-        modelBuilder.Entity<Assignment>().HasData(
-            new Assignment
-            {
-                Uid = assignment1Id,
-                Title = "Лабораторная работа №1 - Основы C#",
-                Description = "Выполнение базовых задач по программированию на C#",
-                Instructions = "Создать консольное приложение с базовыми операциями",
-                CourseUid = course1Id,
-                LessonUid = null,
-                DueDate = baseDateTime.AddDays(14),
-                MaxScore = 100,
-                Type = AssignmentType.LabWork,
-                Difficulty = AssignmentDifficulty.Medium,
-                Status = AssignmentStatus.Published,
-                CreatedAt = baseDateTime,
-                LastModifiedAt = baseDateTime
-            },
-            new Assignment
-            {
-                Uid = assignment2Id,
-                Title = "Домашнее задание - Производные",
-                Description = "Вычисление производных функций",
-                Instructions = "Решить задачи 1-10 из учебника",
-                CourseUid = course2Id,
-                LessonUid = null,
-                DueDate = baseDateTime.AddDays(7),
-                MaxScore = 50,
-                Type = AssignmentType.Homework,
-                Difficulty = AssignmentDifficulty.Easy,
-                Status = AssignmentStatus.Published,
-                CreatedAt = baseDateTime,
-                LastModifiedAt = baseDateTime
-            },
-            new Assignment
-            {
-                Uid = assignment3Id,
-                Title = "Проект - Механика",
-                Description = "Комплексное исследование механических систем",
-                Instructions = "Создать проект по моделированию физической системы",
-                CourseUid = course3Id,
-                LessonUid = null,
-                DueDate = baseDateTime.AddDays(30),
-                MaxScore = 200,
-                Type = AssignmentType.Project,
-                Difficulty = AssignmentDifficulty.Hard,
-                Status = AssignmentStatus.Published,
-                CreatedAt = baseDateTime,
-                LastModifiedAt = baseDateTime
-            }
-        );
-
-        // 11. Оценки
-        modelBuilder.Entity<Grade>().HasData(
-            new Grade
-            {
-                Uid = grade1Id,
-                StudentUid = student1Id,
-                SubjectUid = subject1Id, // Программирование
-                TeacherUid = teacher1Id,
-                LessonUid = null,
-                AssignmentUid = assignment1Id,
-                Value = 85m,
-                Type = GradeType.Homework,
-                Description = "Лабораторная работа по программированию",
-                Comment = "Хорошая работа! Есть небольшие замечания по стилю кода.",
-                IssuedAt = baseDateTime.AddDays(-5),
-                GradedAt = baseDateTime.AddDays(-5),
-                IsPublished = true,
-                PublishedAt = baseDateTime.AddDays(-4),
-                CreatedAt = baseDateTime,
-                LastModifiedAt = baseDateTime
-            },
-            new Grade
-            {
-                Uid = grade2Id,
-                StudentUid = student2Id,
-                SubjectUid = subject1Id, // Программирование
-                TeacherUid = teacher1Id,
-                LessonUid = null,
-                AssignmentUid = assignment1Id,
-                Value = 92m,
-                Type = GradeType.Homework,
-                Description = "Лабораторная работа по программированию",
-                Comment = "Отличная работа! Код чистый и хорошо структурированный.",
-                IssuedAt = baseDateTime.AddDays(-3),
-                GradedAt = baseDateTime.AddDays(-3),
-                IsPublished = true,
-                PublishedAt = baseDateTime.AddDays(-2),
-                CreatedAt = baseDateTime,
-                LastModifiedAt = baseDateTime
-            },
-            new Grade
-            {
-                Uid = grade3Id,
-                StudentUid = student3Id,
-                SubjectUid = subject2Id, // Математика
-                TeacherUid = teacher2Id,
-                LessonUid = null,
-                AssignmentUid = assignment2Id,
-                Value = 45m,
-                Type = GradeType.Homework,
-                Description = "Домашнее задание по производным",
-                Comment = "Все задачи решены правильно.",
-                IssuedAt = baseDateTime.AddDays(-1),
-                GradedAt = baseDateTime.AddDays(-1),
-                IsPublished = true,
-                PublishedAt = baseDateTime,
-                CreatedAt = baseDateTime,
-                LastModifiedAt = baseDateTime
-            }
-        );
-
-        // 12. Предметы
-        modelBuilder.Entity<Subject>().HasData(
-            new Subject
-            {
-                Uid = subject1Id,
-                Code = "PROG101",
-                Name = "Основы программирования",
-                Description = "Введение в программирование на языке C#",
-                Credits = 4,
-                LessonsPerWeek = 2,
-                Type = SubjectType.Required,
-                DepartmentUid = itDeptId,
-                IsActive = true,
-                CreatedAt = baseDateTime,
-                LastModifiedAt = baseDateTime
-            },
-            new Subject
-            {
-                Uid = subject2Id,
-                Code = "MATH201",
-                Name = "Математический анализ",
-                Description = "Дифференциальное и интегральное исчисление",
-                Credits = 5,
-                LessonsPerWeek = 3,
-                Type = SubjectType.Required,
-                DepartmentUid = mathDeptId,
-                IsActive = true,
-                CreatedAt = baseDateTime,
-                LastModifiedAt = baseDateTime
-            },
-            new Subject
-            {
-                Uid = subject3Id,
-                Code = "PHYS101",
-                Name = "Общая физика",
-                Description = "Основы механики и термодинамики",
-                Credits = 4,
-                LessonsPerWeek = 2,
-                Type = SubjectType.Required,
-                DepartmentUid = physDeptId,
                 IsActive = true,
                 CreatedAt = baseDateTime,
                 LastModifiedAt = baseDateTime

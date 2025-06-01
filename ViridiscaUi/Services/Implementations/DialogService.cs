@@ -21,11 +21,10 @@ using Avalonia;
 using Avalonia.Data;
 using Avalonia.Controls.Templates;
 using ViridiscaUi.ViewModels.System;
-using ViridiscaUi.ViewModels.Students;
 using ViridiscaUi.Infrastructure.Navigation;
 using ViridiscaUi.Windows;
 using ViridiscaUi.Views.System;
-
+using Microsoft.Extensions.Logging;
 
 namespace ViridiscaUi.Services.Implementations;
 
@@ -35,10 +34,12 @@ namespace ViridiscaUi.Services.Implementations;
 public class DialogService : IDialogService
 {
     private readonly IServiceProvider _serviceProvider;
+    private readonly ILogger<DialogService> _logger;
 
-    public DialogService(IServiceProvider serviceProvider)
+    public DialogService(IServiceProvider serviceProvider, ILogger<DialogService> logger)
     {
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <summary>
@@ -433,29 +434,35 @@ public class DialogService : IDialogService
     }
     
     // Диалоги для курсов
-    public async Task<Course?> ShowCourseEditDialogAsync(Course? course = null)
+    public async Task<CourseInstance?> ShowCourseEditDialogAsync(CourseInstance courseInstance)
     {
         try
         {
-            var teacherService = _serviceProvider.GetRequiredService<ITeacherService>();
-            var courseService = _serviceProvider.GetRequiredService<ICourseService>();
-            var editorViewModel = new CourseEditorViewModel(courseService, teacherService, course);
-            
-            var dialog = new ViridiscaUi.Views.Education.CourseEditDialog(editorViewModel);
-            ConfigureDialog(dialog);
-            
-            var result = await dialog.ShowDialog<Course?>(GetOwnerWindow());
-            
+            var viewModel = new CourseEditorViewModel(
+                _serviceProvider.GetRequiredService<ICourseInstanceService>(),
+                _serviceProvider.GetRequiredService<ITeacherService>(),
+                _serviceProvider.GetRequiredService<IUnifiedNavigationService>(),
+                _serviceProvider.GetRequiredService<IScreen>());
+
+            if (courseInstance != null)
+            {
+                // TODO: Load course instance data into the view model
+                // viewModel.LoadCourseInstance(courseInstance);
+            }
+
+            var dialog = new CourseEditDialog { DataContext = viewModel };
+            var result = await dialog.ShowDialog<CourseInstance?>(GetOwnerWindow());
+
             return result;
         }
         catch (Exception ex)
         {
-            await ShowErrorAsync("Ошибка", $"Не удалось открыть диалог редактирования курса: {ex.Message}");
+            _logger.LogError(ex, "Error showing course editor dialog");
             return null;
         }
     }
     
-    public async Task<object?> ShowCourseEnrollmentDialogAsync(Course course, IEnumerable<Student> allStudents)
+    public async Task<object?> ShowCourseEnrollmentDialogAsync(CourseInstance courseInstance, IEnumerable<Student> allStudents)
     {
         // TODO: Реализовать диалог записи на курс
         await Task.Delay(100);
@@ -477,7 +484,7 @@ public class DialogService : IDialogService
     // Диалоги для заданий
     public async Task<Assignment?> ShowAssignmentEditDialogAsync(Assignment assignment)
     {
-        var editorViewModel = new AssignmentEditorViewModel(_serviceProvider.GetRequiredService<ICourseService>(), assignment);
+        var editorViewModel = new AssignmentEditorViewModel(_serviceProvider.GetRequiredService<ICourseInstanceService>(), assignment);
         var result = await ShowEditorDialogAsync<Assignment>(editorViewModel);
         return result;
     }
@@ -645,7 +652,7 @@ public class DialogService : IDialogService
     /// <summary>
     /// Показывает диалог управления содержимым курса
     /// </summary>
-    public async Task<object?> ShowCourseContentManagementDialogAsync(Course course)
+    public async Task<object?> ShowCourseContentManagementDialogAsync(CourseInstance courseInstance)
     {
         // TODO: Реализовать диалог управления содержимым курса
         await Task.Delay(1);
@@ -655,7 +662,7 @@ public class DialogService : IDialogService
     /// <summary>
     /// Показывает диалог управления студентами курса
     /// </summary>
-    public async Task<object?> ShowCourseStudentsManagementDialogAsync(Course course, IEnumerable<Student> students)
+    public async Task<object?> ShowCourseStudentsManagementDialogAsync(CourseInstance courseInstance, IEnumerable<Student> allStudents)
     {
         // TODO: Реализовать диалог управления студентами курса
         await Task.Delay(1);
@@ -665,11 +672,19 @@ public class DialogService : IDialogService
     /// <summary>
     /// Показывает диалог статистики курса
     /// </summary>
-    public async Task<object?> ShowCourseStatisticsDialogAsync(string title, CourseStatistics statistics)
+    public async Task<object?> ShowCourseStatisticsDialogAsync(CourseInstanceStatistics statistics)
     {
-        // TODO: Реализовать диалог статистики курса
-        await Task.Delay(1);
-        return null;
+        try
+        {
+            // TODO: Implement course statistics dialog
+            await ShowInfoAsync("Статистика курса", $"Статистика для курса: {statistics}");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error showing course statistics dialog");
+            return null;
+        }
     }
 
     /// <summary>
@@ -689,7 +704,7 @@ public class DialogService : IDialogService
     /// <summary>
     /// Показывает диалог массового выставления оценок
     /// </summary>
-    public async Task<IEnumerable<Grade>?> ShowBulkGradingDialogAsync(IEnumerable<Course> courses, IEnumerable<Assignment> assignments)
+    public async Task<IEnumerable<Grade>?> ShowBulkGradingDialogAsync(IEnumerable<CourseInstance> courseInstances, IEnumerable<Assignment> assignments)
     {
         // TODO: Реализовать диалог массового оценивания
         await Task.Delay(100);
@@ -768,10 +783,10 @@ public class DialogService : IDialogService
     /// <summary>
     /// Показывает диалог управления курсами преподавателя
     /// </summary>
-    public async Task<object?> ShowTeacherCoursesManagementDialogAsync(Teacher teacher, IEnumerable<Course> courses)
+    public async Task<object?> ShowTeacherCoursesManagementDialogAsync(Teacher teacher, IEnumerable<CourseInstance> courseInstances)
     {
         // TODO: Реализовать диалог управления курсами преподавателя
-        await Task.Delay(1);
+        await Task.Delay(100);
         return null;
     }
 
@@ -1315,20 +1330,23 @@ public class DialogService : IDialogService
     /// <summary>
     /// Показывает диалог с подробной информацией о курсе
     /// </summary>
-    public async Task<string?> ShowCourseDetailsDialogAsync(Course course)
+    public async Task<object?> ShowCourseDetailsDialogAsync(CourseInstance courseInstance)
     {
         try
         {
             var teacherService = _serviceProvider.GetRequiredService<ITeacherService>();
+            var navigationService = _serviceProvider.GetRequiredService<IUnifiedNavigationService>();
+            var hostScreen = _serviceProvider.GetRequiredService<IScreen>();
             var editorViewModel = new CourseEditorViewModel(
-                _serviceProvider.GetRequiredService<ICourseService>(), 
+                _serviceProvider.GetRequiredService<ICourseInstanceService>(), 
                 teacherService, 
-                course);
+                navigationService,
+                hostScreen);
             
             var dialog = new ViridiscaUi.Views.Education.CourseDetailsDialog(editorViewModel);
             ConfigureDialog(dialog);
             
-            var result = await dialog.ShowDialog<string?>(GetOwnerWindow());
+            var result = await dialog.ShowDialog<object?>(GetOwnerWindow());
             
             return result;
         }
@@ -1451,6 +1469,13 @@ public class DialogService : IDialogService
     {
         // Используем тот же диалог что и ShowStudentEditDialogAsync
         return await ShowStudentEditDialogAsync(student);
+    }
+
+    public async Task<object?> ShowCourseAnalyticsDialogAsync(CourseInstance courseInstance)
+    {
+        // TODO: Реализовать диалог аналитики экземпляра курса
+        await Task.Delay(100);
+        return null;
     }
 }
 

@@ -67,6 +67,12 @@ public class CourseViewModel : ReactiveObject
     [Reactive] public bool IsExpanded { get; set; }
     [Reactive] public bool IsLoading { get; set; }
 
+    /// <summary>
+    /// Аудит данные
+    /// </summary>
+    [Reactive] public DateTime CreatedAt { get; set; }
+    [Reactive] public DateTime? LastModifiedAt { get; set; }
+
     #endregion
 
     #region Computed Properties
@@ -233,9 +239,9 @@ public class CourseViewModel : ReactiveObject
         InitializeComputedProperties();
     }
 
-    public CourseViewModel(Course course) : this()
+    public CourseViewModel(CourseInstance courseInstance) : this()
     {
-        UpdateFromCourse(course);
+        UpdateFromCourseInstance(courseInstance);
     }
 
     private void InitializeComputedProperties()
@@ -475,46 +481,45 @@ public class CourseViewModel : ReactiveObject
     #region Conversion Methods
 
     /// <summary>
-    /// Создает Course из ViewModel
+    /// Обновляет ViewModel из модели CourseInstance
     /// </summary>
-    public Course ToCourse()
+    public void UpdateFromCourseInstance(CourseInstance courseInstance)
     {
-        return new Course
+        if (courseInstance == null) return;
+
+        Uid = courseInstance.Uid;
+        Name = courseInstance.Name;
+        Code = courseInstance.Code;
+        Description = courseInstance.Description ?? string.Empty;
+        // Map other properties as needed
+        CreatedAt = courseInstance.CreatedAt;
+        LastModifiedAt = courseInstance.LastModifiedAt;
+    }
+
+    /// <summary>
+    /// Преобразует ViewModel в модель CourseInstance
+    /// </summary>
+    public CourseInstance ToCourseInstance()
+    {
+        return new CourseInstance
         {
             Uid = Uid,
             Name = Name,
             Code = Code,
             Description = Description,
-            Category = Category,
-            TeacherUid = TeacherUid,
-            StartDate = StartDate,
-            EndDate = EndDate,
-            Credits = Credits,
-            Status = Status,
-            Prerequisites = Prerequisites,
-            LearningOutcomes = LearningOutcomes,
-            MaxEnrollments = MaxEnrollments
+            CreatedAt = CreatedAt,
+            LastModifiedAt = DateTime.UtcNow
         };
     }
 
     /// <summary>
-    /// Обновляет ViewModel из Course
+    /// Создает новый экземпляр ViewModel из модели CourseInstance
     /// </summary>
-    public void UpdateFromCourse(Course course)
+    public static CourseViewModel FromCourseInstance(CourseInstance courseInstance)
     {
-        Uid = course.Uid;
-        Name = course.Name;
-        Code = course.Code;
-        Description = course.Description;
-        Category = course.Category;
-        TeacherUid = course.TeacherUid ?? Guid.Empty;
-        StartDate = course.StartDate ?? DateTime.Now;
-        EndDate = course.EndDate ?? DateTime.Now.AddMonths(3);
-        Credits = course.Credits;
-        Status = course.Status;
-        Prerequisites = course.Prerequisites;
-        LearningOutcomes = course.LearningOutcomes;
-        MaxEnrollments = course.MaxEnrollments;
+        var viewModel = new CourseViewModel();
+        viewModel.UpdateFromCourseInstance(courseInstance);
+        return viewModel;
     }
 
     /// <summary>
@@ -562,16 +567,6 @@ public class CourseViewModel : ReactiveObject
     #region Static Factory Methods
 
     /// <summary>
-    /// Создает ViewModel из Course
-    /// </summary>
-    public static CourseViewModel FromCourse(Course course)
-    {
-        var viewModel = new CourseViewModel();
-        viewModel.UpdateFromCourse(course);
-        return viewModel;
-    }
-
-    /// <summary>
     /// Создает пустую ViewModel для нового курса
     /// </summary>
     public static CourseViewModel CreateNew(Guid teacherUid, Guid? departmentUid = null)
@@ -584,9 +579,10 @@ public class CourseViewModel : ReactiveObject
             StartDate = DateTime.Now,
             EndDate = DateTime.Now.AddMonths(4),
             Status = CourseStatus.Draft,
-            Difficulty = CourseDifficulty.Beginner,
             Credits = 3,
-            MaxEnrollments = 30
+            MaxEnrollments = 30,
+            CreatedAt = DateTime.UtcNow,
+            LastModifiedAt = DateTime.UtcNow
         };
     }
 

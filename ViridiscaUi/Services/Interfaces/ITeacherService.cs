@@ -70,7 +70,7 @@ public interface ITeacherService : IGenericCrudService<Teacher>
     /// <summary>
     /// Получает курсы преподавателя
     /// </summary>
-    Task<IEnumerable<Course>> GetTeacherCoursesAsync(Guid teacherUid);
+    Task<IEnumerable<CourseInstance>> GetTeacherCoursesAsync(Guid teacherUid);
 
     /// <summary>
     /// Получает группы преподавателя

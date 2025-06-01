@@ -1,248 +1,636 @@
 ---
-description: 
-globs: 
-alwaysApply: true
+description: Стандарты кода ViridiscaUi LMS - C# соглашения, Avalonia UI паттерны, ReactiveUI стиль
+globs: [
+  "**/*.cs",
+  "**/*.axaml",
+  "**/ViewModels/**/*.cs",
+  "**/Views/**/*.cs", 
+  "**/Services/**/*.cs",
+  "**/Models/**/*.cs"
+]
+alwaysApply: false
+priority: 5
+tags: [code-style, csharp, avalonia, reactive-ui, naming]
 ---
-# Правила стиля кода ViridiscaUi
+# СТАНДАРТЫ КОДА - VIRIDISCA LMS
 
-## C# Правила
+## 🎯 ОБЩИЕ ПРИНЦИПЫ
 
-### 1. Namespace и организация файлов
+### Основные правила:
+1. **Читаемость превыше всего** - код должен быть понятен без комментариев
+2. **Консистентность** - единый стиль во всем проекте
+3. **Простота** - предпочитай простые решения сложным
+4. **Производительность** - избегай преждевременной оптимизации
+5. **Безопасность** - всегда валидируй входные данные
 
+### Философия кода:
+- **"Меньше строк - лучше"** - стремись к лаконичности
+- **"Fail fast"** - быстро обнаруживай ошибки
+- **"Single responsibility"** - один класс = одна ответственность
+- **"Don't repeat yourself"** - избегай дублирования
+
+## 📝 ИМЕНОВАНИЕ
+
+### Классы и интерфейсы:
 ```csharp
-// Правильно
-namespace ViridiscaUi.Domain.Models;
+// ✅ Правильно
+public class StudentService { }
+public class CourseInstanceViewModel { }
+public interface IAuthService { }
+public interface IStudentRepository { }
 
-public class Student
+// ❌ Неправильно
+public class studentservice { }
+public class Course_Instance_VM { }
+public interface AuthService { }
+```
+
+### Методы и свойства:
+```csharp
+// ✅ Правильно - PascalCase
+public string FirstName { get; set; }
+public async Task<Student> GetStudentAsync(Guid uid) { }
+public bool IsActive { get; set; }
+
+// ❌ Неправильно
+public string firstName { get; set; }
+public async Task<Student> getStudent(Guid uid) { }
+public bool is_active { get; set; }
+```
+
+### Поля и переменные:
+```csharp
+// ✅ Правильно - camelCase
+private readonly IStudentService _studentService;
+private string _currentUserName;
+public const int MaxRetryAttempts = 3;
+
+// ❌ Неправильно
+private readonly IStudentService StudentService;
+private string CurrentUserName;
+public const int max_retry_attempts = 3;
+```
+
+### Константы и перечисления:
+```csharp
+// ✅ Правильно
+public enum StudentStatus
 {
-    // Implementation
+    Active,
+    Inactive,
+    Graduated,
+    Suspended
 }
 
-// Неправильно
-namespace ViridiscaUi.Domain.Models
+public const string DefaultConnectionString = "...";
+public static readonly TimeSpan DefaultTimeout = TimeSpan.FromMinutes(5);
+
+// ❌ Неправильно
+public enum studentStatus { active, inactive }
+public const string default_connection_string = "...";
+```
+
+## 🏗️ СТРУКТУРА КЛАССОВ
+
+### Порядок элементов в классе:
+```csharp
+public class StudentViewModel : ViewModelBase
 {
-    public class Student
+    // 1. Константы
+    private const int MaxStudentsPerPage = 50;
+    
+    // 2. Статические поля
+    private static readonly ILogger Logger = LogManager.GetCurrentClassLogger();
+    
+    // 3. Приватные поля
+    private readonly IStudentService _studentService;
+    private readonly ObservableAsPropertyHelper<bool> _isLoading;
+    
+    // 4. Конструкторы
+    public StudentViewModel(IStudentService studentService)
     {
-        // Implementation
+        _studentService = studentService;
+        // Инициализация...
+    }
+    
+    // 5. Публичные свойства
+    [Reactive] public string SearchText { get; set; } = string.Empty;
+    [Reactive] public Student? SelectedStudent { get; set; }
+    
+    // 6. Вычисляемые свойства
+    public bool IsLoading => _isLoading.Value;
+    
+    // 7. Команды
+    public ReactiveCommand<Unit, Unit> LoadStudentsCommand { get; }
+    public ReactiveCommand<Student, Unit> DeleteStudentCommand { get; }
+    
+    // 8. Публичные методы
+    public async Task RefreshAsync() { }
+    
+    // 9. Приватные методы
+    private async Task LoadStudentsAsync() { }
+    private bool CanDeleteStudent(Student student) => student != null;
+}
+```
+
+## 🎨 AVALONIA UI СТИЛЬ
+
+### AXAML файлы:
+```xml
+<!-- ✅ Правильно - отступы 2 пробела, атрибуты на новых строках для сложных элементов -->
+<UserControl x:Class="ViridiscaUi.Views.Education.StudentsView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ViridiscaUi.ViewModels.Education"
+             x:DataType="vm:StudentsViewModel">
+  
+  <Grid RowDefinitions="Auto,*,Auto">
+    <!-- Заголовок -->
+    <Border Grid.Row="0" Classes="page-header">
+      <TextBlock Text="Управление студентами" 
+                 Classes="page-title" />
+    </Border>
+    
+    <!-- Содержимое -->
+    <ScrollViewer Grid.Row="1" Classes="page-content">
+      <StackPanel Spacing="16">
+        <!-- Поиск -->
+        <TextBox Text="{Binding SearchText}"
+                 Watermark="Поиск студентов..."
+                 Classes="search-input" />
+        
+        <!-- Список -->
+        <ItemsControl ItemsSource="{Binding Students}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <Border Classes="student-card">
+                <TextBlock Text="{Binding FullName}" />
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </ScrollViewer>
+    
+    <!-- Футер -->
+    <Border Grid.Row="2" Classes="page-footer">
+      <Button Content="Добавить студента"
+              Command="{Binding AddStudentCommand}"
+              Classes="btn-primary" />
+    </Border>
+  </Grid>
+</UserControl>
+```
+
+### Привязки данных:
+```xml
+<!-- ✅ Правильно -->
+<TextBox Text="{Binding FirstName, Mode=TwoWay}" />
+<Button Command="{Binding SaveCommand}" 
+        CommandParameter="{Binding SelectedStudent}" />
+<TextBlock Text="{Binding Student.FullName, FallbackValue='Не указано'}" />
+
+<!-- ❌ Неправильно -->
+<TextBox Text="{Binding FirstName}" />  <!-- Нет Mode=TwoWay -->
+<Button Command="{Binding SaveCommand, Mode=OneWay}" />  <!-- Лишний Mode -->
+```
+
+### Стили и классы:
+```xml
+<!-- ✅ Правильно - используй CSS-подобные классы -->
+<Button Classes="btn btn-primary btn-lg" />
+<TextBox Classes="form-input error" />
+<Border Classes="card card-hover" />
+
+<!-- ❌ Неправильно - избегай inline стилей -->
+<Button Background="Blue" Foreground="White" Padding="16,12" />
+```
+
+## ⚡ REACTIVE UI ПАТТЕРНЫ
+
+### ViewModels с ReactiveUI:
+```csharp
+public class StudentEditorViewModel : ReactiveObject
+{
+    // ✅ Правильно - используй [Reactive] для простых свойств
+    [Reactive] public string FirstName { get; set; } = string.Empty;
+    [Reactive] public string LastName { get; set; } = string.Empty;
+    [Reactive] public string Email { get; set; } = string.Empty;
+    
+    // ✅ Правильно - ObservableAsPropertyHelper для вычисляемых свойств
+    private readonly ObservableAsPropertyHelper<string> _fullName;
+    public string FullName => _fullName.Value;
+    
+    private readonly ObservableAsPropertyHelper<bool> _isValid;
+    public bool IsValid => _isValid.Value;
+    
+    public StudentEditorViewModel()
+    {
+        // Вычисляемые свойства
+        _fullName = this.WhenAnyValue(
+                x => x.FirstName, 
+                x => x.LastName,
+                (first, last) => $"{first} {last}".Trim())
+            .ToProperty(this, x => x.FullName);
+            
+        _isValid = this.WhenAnyValue(
+                x => x.FirstName,
+                x => x.LastName, 
+                x => x.Email,
+                (first, last, email) => 
+                    !string.IsNullOrWhiteSpace(first) &&
+                    !string.IsNullOrWhiteSpace(last) &&
+                    IsValidEmail(email))
+            .ToProperty(this, x => x.IsValid);
+        
+        // Команды с условиями
+        SaveCommand = ReactiveCommand.CreateFromTask(
+            SaveAsync,
+            this.WhenAnyValue(x => x.IsValid));
+            
+        CancelCommand = ReactiveCommand.Create(Cancel);
+    }
+    
+    public ReactiveCommand<Unit, Unit> SaveCommand { get; }
+    public ReactiveCommand<Unit, Unit> CancelCommand { get; }
+    
+    private async Task SaveAsync()
+    {
+        // Логика сохранения
+    }
+    
+    private void Cancel()
+    {
+        // Логика отмены
+    }
+    
+    private static bool IsValidEmail(string email)
+    {
+        return !string.IsNullOrWhiteSpace(email) && 
+               email.Contains('@') && 
+               email.Contains('.');
     }
 }
 ```
 
-### 2. Структура файлов
-- Один публичный тип на файл
-- Имя файла должно точно соответствовать имени типа
-- Используйте PascalCase для имен файлов
-- Группируйте связанные типы в соответствующих namespace
+### Команды и взаимодействие:
+```csharp
+// ✅ Правильно - асинхронные команды
+public ReactiveCommand<Unit, IEnumerable<Student>> LoadStudentsCommand { get; }
+public ReactiveCommand<Student, Unit> DeleteStudentCommand { get; }
 
-### 3. Именование
-- Используйте PascalCase для публичных членов
-- Используйте camelCase для приватных членов
-- Используйте префикс `_` для приватных полей
-- Используйте суффиксы для типов: `ViewModel`, `View`, `Service`, `Repository`
+// Инициализация в конструкторе
+LoadStudentsCommand = ReactiveCommand.CreateFromTask(LoadStudentsAsync);
 
-## Avalonia UI Правила
+DeleteStudentCommand = ReactiveCommand.CreateFromTask<Student>(
+    DeleteStudentAsync,
+    this.WhenAnyValue(x => x.SelectedStudent, student => student != null));
 
-### 1. Адаптивная верстка
+// ❌ Неправильно - синхронные команды для долгих операций
+public ReactiveCommand<Unit, Unit> LoadStudentsCommand { get; }
 
-#### 1.1 Запрещенные практики
-```xml
-<!-- НЕПРАВИЛЬНО - Фиксированные размеры -->
-<StackPanel Width="200" Height="100">
-    <TextBlock Text="Content" />
-</StackPanel>
-
-<!-- НЕПРАВИЛЬНО - Проценты -->
-<Grid ColumnDefinitions="50%, 50%">
-    <TextBlock Grid.Column="0" Text="Left" />
-    <TextBlock Grid.Column="1" Text="Right" />
-</Grid>
+LoadStudentsCommand = ReactiveCommand.Create(() => {
+    // Долгая синхронная операция - ПЛОХО!
+    var students = _studentService.GetAllStudents();
+    Students.Clear();
+    Students.AddRange(students);
+});
 ```
 
-#### 1.2 Правильные подходы
-```xml
-<!-- ПРАВИЛЬНО - Использование Grid с * -->
-<Grid RowDefinitions="Auto,*,Auto" ColumnDefinitions="*,Auto">
-    <TextBlock Grid.Row="0" Grid.Column="0" Text="Header" />
-    <ScrollViewer Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2">
-        <StackPanel>
-            <!-- Content -->
-        </StackPanel>
-    </ScrollViewer>
-    <Button Grid.Row="2" Grid.Column="1" Content="Action" />
-</Grid>
+## 🔧 СЕРВИСЫ И DEPENDENCY INJECTION
 
-<!-- ПРАВИЛЬНО - Использование DockPanel -->
-<DockPanel>
-    <Menu DockPanel.Dock="Top">
-        <!-- Menu items -->
-    </Menu>
-    <ToolBar DockPanel.Dock="Top">
-        <!-- Toolbar items -->
-    </ToolBar>
-    <StatusBar DockPanel.Dock="Bottom">
-        <!-- Status items -->
-    </StatusBar>
-    <Grid>
-        <!-- Main content -->
-    </Grid>
-</DockPanel>
+### Интерфейсы сервисов:
+```csharp
+// ✅ Правильно
+public interface IStudentService
+{
+    Task<IEnumerable<Student>> GetAllAsync();
+    Task<Student?> GetByUidAsync(Guid uid);
+    Task<Student> CreateAsync(Student student);
+    Task<Student> UpdateAsync(Student student);
+    Task DeleteAsync(Guid uid);
+    Task<bool> ExistsAsync(Guid uid);
+}
+
+// ❌ Неправильно - смешивание синхронных и асинхронных методов
+public interface IStudentService
+{
+    IEnumerable<Student> GetAll();  // Синхронный
+    Task<Student?> GetByUidAsync(Guid uid);  // Асинхронный
+    void Create(Student student);  // Void без возврата
+}
 ```
 
-### 2. Обработка текста
-
-#### 2.1 Правильный подход к тексту
-```xml
-<!-- ПРАВИЛЬНО - Адаптивный текст с переносом -->
-<TextBlock TextWrapping="Wrap" 
-           TextTrimming="None"
-           MaxWidth="{Binding RelativeSource={RelativeSource AncestorType=Control}, Path=ActualWidth}">
-    <TextBlock.Text>
-        <MultiBinding StringFormat="{}{0} - {1}">
-            <Binding Path="Title" />
-            <Binding Path="Description" />
-        </MultiBinding>
-    </TextBlock.Text>
-</TextBlock>
-
-<!-- ПРАВИЛЬНО - Адаптивный текст в списке -->
-<ItemsControl Items="{Binding Items}">
-    <ItemsControl.ItemsPanel>
-        <ItemsPanelTemplate>
-            <UniformGrid Columns="3" />
-        </ItemsPanelTemplate>
-    </ItemsControl.ItemsPanel>
-    <ItemsControl.ItemTemplate>
-        <DataTemplate>
-            <Border Margin="4" Padding="8">
-                <StackPanel>
-                    <TextBlock Text="{Binding Title}" 
-                             TextWrapping="Wrap" 
-                             TextTrimming="None" />
-                    <TextBlock Text="{Binding Description}" 
-                             TextWrapping="Wrap" 
-                             TextTrimming="None" />
-                </StackPanel>
-            </Border>
-        </DataTemplate>
-    </ItemsControl.ItemTemplate>
-</ItemsControl>
+### Реализация сервисов:
+```csharp
+public class StudentService : IStudentService
+{
+    private readonly ApplicationDbContext _context;
+    private readonly ILogger<StudentService> _logger;
+    
+    public StudentService(
+        ApplicationDbContext context,
+        ILogger<StudentService> logger)
+    {
+        _context = context ?? throw new ArgumentNullException(nameof(context));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+    
+    public async Task<IEnumerable<Student>> GetAllAsync()
+    {
+        try
+        {
+            _logger.LogInformation("Загрузка всех студентов");
+            
+            return await _context.Students
+                .Include(s => s.Group)
+                .Include(s => s.Person)
+                .Where(s => !s.IsDeleted)
+                .OrderBy(s => s.Person.LastName)
+                .ThenBy(s => s.Person.FirstName)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ошибка при загрузке студентов");
+            throw;
+        }
+    }
+    
+    public async Task<Student> CreateAsync(Student student)
+    {
+        ArgumentNullException.ThrowIfNull(student);
+        
+        // Валидация
+        if (string.IsNullOrWhiteSpace(student.StudentCode))
+            throw new ArgumentException("Код студента обязателен", nameof(student));
+            
+        // Проверка уникальности
+        var exists = await _context.Students
+            .AnyAsync(s => s.StudentCode == student.StudentCode);
+            
+        if (exists)
+            throw new InvalidOperationException($"Студент с кодом {student.StudentCode} уже существует");
+        
+        try
+        {
+            student.Uid = Guid.NewGuid();
+            student.CreatedAt = DateTime.UtcNow;
+            
+            _context.Students.Add(student);
+            await _context.SaveChangesAsync();
+            
+            _logger.LogInformation("Создан студент {StudentCode}", student.StudentCode);
+            return student;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ошибка при создании студента {StudentCode}", student.StudentCode);
+            throw;
+        }
+    }
+}
 ```
 
-### 3. Паттерны UI
+## 📊 МОДЕЛИ ДАННЫХ
 
-#### 3.1 Композиция компонентов
-```xml
-<!-- ПРАВИЛЬНО - Композиция через пользовательские контролы -->
-<StackPanel>
-    <local:HeaderView />
-    <local:ContentArea>
-        <local:DataGrid />
-    </local:ContentArea>
-    <local:StatusBar />
-</StackPanel>
+### Entity классы:
+```csharp
+// ✅ Правильно
+public class Student : IAuditable, ISoftDeletable
+{
+    public Guid Uid { get; set; }
+    public Guid PersonUid { get; set; }
+    public string StudentCode { get; set; } = string.Empty;
+    public Guid? GroupUid { get; set; }
+    public Guid? CurriculumUid { get; set; }
+    public decimal GPA { get; set; }
+    public StudentStatus Status { get; set; }
+    public DateTime EnrollmentDate { get; set; }
+    public DateTime? GraduationDate { get; set; }
+    
+    // Навигационные свойства
+    public Person Person { get; set; } = null!;
+    public Group? Group { get; set; }
+    public Curriculum? Curriculum { get; set; }
+    public ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
+    public ICollection<Grade> Grades { get; set; } = new List<Grade>();
+    
+    // Аудит
+    public DateTime CreatedAt { get; set; }
+    public DateTime? LastModifiedAt { get; set; }
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+}
+
+// ❌ Неправильно - использование int Id вместо Guid Uid
+public class Student
+{
+    public int Id { get; set; }  // Должно быть Guid Uid
+    public string Name { get; set; }  // Должно быть разделено на FirstName/LastName
+    // Отсутствуют навигационные свойства
+}
 ```
 
-#### 3.2 Использование стилей
-```xml
-<!-- ПРАВИЛЬНО - Определение стилей -->
-<Styles>
-    <Style Selector="TextBlock.header">
-        <Setter Property="FontSize" Value="16" />
-        <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="Margin" Value="0,0,0,8" />
-    </Style>
-</Styles>
+### ViewModels для форм:
+```csharp
+public class StudentFormViewModel : ReactiveObject, IValidatableObject
+{
+    [Reactive] public string FirstName { get; set; } = string.Empty;
+    [Reactive] public string LastName { get; set; } = string.Empty;
+    [Reactive] public string Email { get; set; } = string.Empty;
+    [Reactive] public string StudentCode { get; set; } = string.Empty;
+    [Reactive] public Guid? SelectedGroupUid { get; set; }
+    
+    // Коллекции для выбора
+    public ObservableCollection<Group> AvailableGroups { get; } = new();
+    
+    // Валидация
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (string.IsNullOrWhiteSpace(FirstName))
+            yield return new ValidationResult("Имя обязательно", new[] { nameof(FirstName) });
+            
+        if (string.IsNullOrWhiteSpace(LastName))
+            yield return new ValidationResult("Фамилия обязательна", new[] { nameof(LastName) });
+            
+        if (string.IsNullOrWhiteSpace(Email) || !IsValidEmail(Email))
+            yield return new ValidationResult("Некорректный email", new[] { nameof(Email) });
+            
+        if (string.IsNullOrWhiteSpace(StudentCode))
+            yield return new ValidationResult("Код студента обязателен", new[] { nameof(StudentCode) });
+    }
+    
+    private static bool IsValidEmail(string email)
+    {
+        try
+        {
+            var addr = new System.Net.Mail.MailAddress(email);
+            return addr.Address == email;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+}
 ```
 
-### 4. Масштабирование и адаптивность
+## 🚨 ОБРАБОТКА ОШИБОК
 
-#### 4.1 Изображения
-```xml
-<!-- ПРАВИЛЬНО - Адаптивные изображения -->
-<Image Stretch="Uniform" 
-       StretchDirection="DownOnly"
-       MaxWidth="{Binding RelativeSource={RelativeSource AncestorType=Control}, Path=ActualWidth}">
-    <Image.Source>
-        <Binding Path="ImageSource" />
-    </Image.Source>
-</Image>
+### Try-catch паттерны:
+```csharp
+// ✅ Правильно - специфичные исключения
+public async Task<Student> GetStudentAsync(Guid uid)
+{
+    try
+    {
+        var student = await _context.Students
+            .Include(s => s.Person)
+            .FirstOrDefaultAsync(s => s.Uid == uid);
+            
+        return student ?? throw new NotFoundException($"Студент с ID {uid} не найден");
+    }
+    catch (NotFoundException)
+    {
+        throw; // Пробрасываем бизнес-исключения
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Ошибка при получении студента {StudentUid}", uid);
+        throw new ServiceException("Ошибка при получении данных студента", ex);
+    }
+}
+
+// ❌ Неправильно - общий catch
+public async Task<Student> GetStudentAsync(Guid uid)
+{
+    try
+    {
+        // код...
+    }
+    catch (Exception ex)
+    {
+        // Поглощаем все исключения - ПЛОХО!
+        _logger.LogError(ex, "Ошибка");
+        return null; // Возвращаем null вместо исключения
+    }
+}
 ```
 
-#### 4.2 Контейнеры
-```xml
-<!-- ПРАВИЛЬНО - Адаптивные контейнеры -->
-<ScrollViewer HorizontalScrollBarVisibility="Disabled" 
-              VerticalScrollBarVisibility="Auto">
-    <StackPanel>
-        <TextBlock TextWrapping="Wrap" />
-        <ItemsControl Items="{Binding Items}">
-            <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                    <WrapPanel />
-                </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-        </ItemsControl>
-    </StackPanel>
-</ScrollViewer>
+### Валидация входных данных:
+```csharp
+// ✅ Правильно
+public async Task<Student> CreateStudentAsync(CreateStudentRequest request)
+{
+    ArgumentNullException.ThrowIfNull(request);
+    
+    if (string.IsNullOrWhiteSpace(request.FirstName))
+        throw new ArgumentException("Имя не может быть пустым", nameof(request.FirstName));
+        
+    if (string.IsNullOrWhiteSpace(request.StudentCode))
+        throw new ArgumentException("Код студента обязателен", nameof(request.StudentCode));
+        
+    if (request.GroupUid == Guid.Empty)
+        throw new ArgumentException("Группа должна быть указана", nameof(request.GroupUid));
+    
+    // Бизнес-валидация
+    var groupExists = await _context.Groups.AnyAsync(g => g.Uid == request.GroupUid);
+    if (!groupExists)
+        throw new ValidationException($"Группа с ID {request.GroupUid} не существует");
+    
+    // Создание...
+}
 ```
 
-### 5. Рекомендации по производительности
+## 📋 КОММЕНТАРИИ И ДОКУМЕНТАЦИЯ
 
-1. Используйте виртуализацию для больших списков
-2. Применяйте ленивую загрузку для тяжелых компонентов
-3. Используйте кэширование для часто используемых данных
-4. Оптимизируйте привязки данных, избегая сложных преобразований
+### XML документация:
+```csharp
+/// <summary>
+/// Сервис для управления студентами в системе LMS
+/// </summary>
+public class StudentService : IStudentService
+{
+    /// <summary>
+    /// Создает нового студента в системе
+    /// </summary>
+    /// <param name="student">Данные студента для создания</param>
+    /// <returns>Созданный студент с присвоенным Uid</returns>
+    /// <exception cref="ArgumentNullException">Если student равен null</exception>
+    /// <exception cref="ValidationException">Если данные студента некорректны</exception>
+    /// <exception cref="DuplicateException">Если студент с таким кодом уже существует</exception>
+    public async Task<Student> CreateAsync(Student student)
+    {
+        // Реализация...
+    }
+}
+```
 
-### 6. Отладка UI
+### Комментарии в коде:
+```csharp
+// ✅ Правильно - объясняй ПОЧЕМУ, а не ЧТО
+public async Task<decimal> CalculateGPAAsync(Guid studentUid)
+{
+    // Используем только финальные оценки для расчета GPA
+    // Промежуточные оценки не учитываются согласно академическим правилам
+    var finalGrades = await _context.Grades
+        .Where(g => g.StudentUid == studentUid && g.Type == GradeType.Final)
+        .ToListAsync();
+    
+    // Пропускаем курсы без оценок (студент не завершил курс)
+    var completedGrades = finalGrades.Where(g => g.Value.HasValue);
+    
+    return completedGrades.Any() 
+        ? completedGrades.Average(g => g.Value!.Value)
+        : 0m;
+}
 
-1. Используйте `Debug.WriteLine` для отслеживания изменений в привязках
-2. Применяйте временные границы для визуализации layout
-3. Используйте инструменты разработчика Avalonia для инспекции UI
+// ❌ Неправильно - очевидные комментарии
+public async Task<Student> GetStudentAsync(Guid uid)
+{
+    // Получаем студента по ID
+    var student = await _context.Students.FindAsync(uid);
+    
+    // Возвращаем студента
+    return student;
+}
+```
 
-### 7. Специфические правила
+## 🔍 ТЕСТИРОВАНИЕ
 
-1. **ViewModels**: Суффикс `ViewModel` (например, `StudentViewModel`, `CourseViewModel`)
-2. **Views**:
-   - Для страниц: Суффикс `View` (например, `StudentView`, `CourseView`)
-   - Для окон: Суффикс `Window` (например, `MainWindow`, `SettingsWindow`)
-   - Для контролов: Суффикс `Control` (например, `StudentCardControl`)
-   - Для диалогов: Суффикс `Dialog` (например, `ConfirmationDialog`)
-3. **Models**: Без суффиксов (например, `Student`, `Course`)
-4. **Services**: Суффикс `Service` (например, `StudentService`, `AuthService`)
-5. **Repositories**: Суффикс `Repository` (например, `StudentRepository`)
-6. **Factories**: Суффикс `Factory` (например, `ViewModelFactory`, `DialogFactory`)
-7. **Components**: Для FuncUI компонентов используйте суффикс `Component` или группируйте в классах с суффиксом `Components` (например, `StudentCardComponent`, `StudentComponents`)
+### Unit тесты:
+```csharp
+[Test]
+public async Task CreateAsync_ValidStudent_ReturnsStudentWithUid()
+{
+    // Arrange
+    var student = new Student
+    {
+        StudentCode = "ST001",
+        PersonUid = Guid.NewGuid(),
+        GroupUid = _existingGroupUid,
+        Status = StudentStatus.Active
+    };
+    
+    // Act
+    var result = await _studentService.CreateAsync(student);
+    
+    // Assert
+    Assert.That(result.Uid, Is.Not.EqualTo(Guid.Empty));
+    Assert.That(result.StudentCode, Is.EqualTo("ST001"));
+    Assert.That(result.CreatedAt, Is.Not.EqualTo(default(DateTime)));
+}
 
-## 8. Правила по ReactiveUI
+[Test]
+public void CreateAsync_NullStudent_ThrowsArgumentNullException()
+{
+    // Act & Assert
+    Assert.ThrowsAsync<ArgumentNullException>(
+        () => _studentService.CreateAsync(null!));
+}
+```
 
-1. Используйте `ReactiveObject` в качестве базового класса для ViewModels
-2. Используйте `IObservable<T>` для реактивных свойств
-3. Используйте `ReactiveCommand<TParam, TResult>` вместо `ICommand`
-4. Используйте `this.WhenAnyValue()` для подписки на изменения свойств
-5. Используйте `ToProperty()` для создания выходных свойств
-6. Обеспечивайте очистку подписок при уничтожении объектов
+---
 
-## 9. Правила по Avalonia
-
-1. Отделяйте логику представления от логики бизнеса
-2. Используйте привязку данных для взаимодействия View и ViewModel
-3. Избегайте использования кода в code-behind, кроме инициализации
-4. Используйте стили для консистентного внешнего вида
-5. Группируйте стили в ресурсных словарях
-6. Максимально используйте XAML для UI вместо создания UI в коде
-
-## 10. Работа с асинхронными операциями
-
-1. Используйте асинхронное программирование (`async/await`) для длительных операций
-2. Используйте `Task<T>` вместо `void` для асинхронных методов
-3. Используйте реактивные расширения для сложных асинхронных потоков
-4. Избегайте блокирующих вызовов в UI-потоке
-
-## 11. Рекомендации по коду
-
-1. Пишите небольшие, модульные и тестируемые функции
-2. Применяйте инъекцию зависимостей для слабой связанности компонентов
-3. Избегайте излишней вложенности кода (не более 3-4 уровней)
-4. Используйте nullable reference types (`string?`, `Student?`)
-5. Комментируйте сложные алгоритмы или неочевидные решения
-6. Следуйте принципу DRY (Don't Repeat Yourself) 
+**Следование этим стандартам обеспечивает высокое качество кода, его читаемость и поддерживаемость в долгосрочной перспективе.** 

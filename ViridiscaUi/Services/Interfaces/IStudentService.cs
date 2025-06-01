@@ -107,7 +107,7 @@ public interface IStudentService : IGenericCrudService<Student>
     /// <summary>
     /// Получает курсы студента
     /// </summary>
-    Task<IEnumerable<Course>> GetStudentCoursesAsync(Guid studentUid);
+    Task<IEnumerable<CourseInstance>> GetStudentCoursesAsync(Guid studentUid);
     
     /// <summary>
     /// Получает оценки студента

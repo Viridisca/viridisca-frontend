@@ -6,25 +6,35 @@ namespace ViridiscaUi.Services.Interfaces;
 /// <summary>
 /// Сервис для управления сессией пользователя (Singleton)
 /// </summary>
-public interface IUserSessionService
+public interface IPersonSessionService
 {
     /// <summary>
     /// Наблюдаемый объект, отражающий текущего пользователя
     /// </summary>
-    IObservable<User?> CurrentUserObservable { get; }
+    IObservable<Person?> CurrentPersonObservable { get; }
     
     /// <summary>
     /// Текущий пользователь
     /// </summary>
-    User? CurrentUser { get; }
+    Person? CurrentPerson { get; }
     
     /// <summary>
     /// Устанавливает текущего пользователя
     /// </summary>
-    void SetCurrentUser(User? user);
+    void SetCurrentPerson(Person? person);
     
     /// <summary>
     /// Очищает сессию пользователя
     /// </summary>
     void ClearSession();
+    
+    /// <summary>
+    /// Получает аккаунт текущего пользователя
+    /// </summary>
+    Account? CurrentAccount { get; }
+    
+    /// <summary>
+    /// Устанавливает аккаунт текущего пользователя
+    /// </summary>
+    void SetCurrentAccount(Account? account);
 } 

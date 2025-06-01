@@ -23,7 +23,7 @@ namespace ViridiscaUi.ViewModels.Education
     [Route("course-editor", DisplayName = "Редактор курсов", IconKey = "📚", Order = 302, RequiredRoles = new[] { "Admin", "Teacher" })]
     public class CourseEditorViewModel : RoutableViewModelBase
     {
-        private readonly ICourseService _courseService;
+        private readonly ICourseInstanceService _courseInstanceService;
         private readonly ITeacherService _teacherService;
         private readonly IUnifiedNavigationService _navigationService;
         private readonly SourceCache<Teacher, Guid> _teachersSource = new(t => t.Uid);
@@ -39,18 +39,18 @@ namespace ViridiscaUi.ViewModels.Education
         /// <summary>
         /// Текущий редактируемый курс
         /// </summary>
-        [Reactive] public Course? CurrentCourse { get; set; }
+        [Reactive] public CourseInstance? CurrentCourseInstance { get; set; }
 
         /// <summary>
         /// Идентификатор курса для редактирования
         /// </summary>
-        [Reactive] public Guid? CourseId { get; set; }
+        [Reactive] public Guid? CourseInstanceId { get; set; }
 
         // Поля для редактирования
         [Reactive] public string Name { get; set; } = string.Empty;
         [Reactive] public string Code { get; set; } = string.Empty;
         [Reactive] public string Description { get; set; } = string.Empty;
-        [Reactive] public string Category { get; set; } = string.Empty;
+        [Reactive] public string? Category { get; set; } = string.Empty;
         [Reactive] public Teacher? SelectedTeacher { get; set; }
         [Reactive] public DateTime StartDate { get; set; } = DateTime.Now;
         [Reactive] public DateTime EndDate { get; set; } = DateTime.Now.AddMonths(4);
@@ -98,15 +98,15 @@ namespace ViridiscaUi.ViewModels.Education
         public ReactiveCommand<Unit, Unit> EditCommand { get; set; } = null!;
         public ReactiveCommand<Unit, Unit> CloseCommand { get; set; } = null!;
 
-        public string Title => CurrentCourse == null ? "Добавить курс" : "Редактировать курс";
+        public string Title => CurrentCourseInstance == null ? "Добавить курс" : "Редактировать курс";
 
         public CourseEditorViewModel(
-            ICourseService courseService,
+            ICourseInstanceService courseInstanceService,
             ITeacherService teacherService,
             IUnifiedNavigationService navigationService,
             IScreen hostScreen) : base(hostScreen)
         {
-            _courseService = courseService ?? throw new ArgumentNullException(nameof(courseService));
+            _courseInstanceService = courseInstanceService ?? throw new ArgumentNullException(nameof(courseInstanceService));
             _teacherService = teacherService ?? throw new ArgumentNullException(nameof(teacherService));
             _navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
 
@@ -155,33 +155,27 @@ namespace ViridiscaUi.ViewModels.Education
 
         private void InitializePredefinedValues()
         {
-            // Статусы курсов
+            // Инициализируем статусы курса
             AvailableStatuses.Clear();
             foreach (var status in Enum.GetValues<CourseStatus>())
             {
                 AvailableStatuses.Add(status);
             }
 
-            // Категории курсов
+            // Инициализируем категории курсов
+            AvailableCategories.Clear();
             var categories = new[]
             {
                 "Программирование",
-                "Математика",
-                "Физика",
-                "Химия",
-                "Экономика",
-                "Менеджмент",
-                "Иностранные языки",
-                "Гуманитарные науки",
-                "Информационные технологии",
-                "Кибербезопасность",
-                "Искусственный интеллект",
                 "Веб-разработка",
                 "Базы данных",
-                "Сетевые технологии",
-                "Мобильная разработка"
+                "Системное администрирование",
+                "Дизайн",
+                "Математика",
+                "Физика",
+                "Общие дисциплины"
             };
-            AvailableCategories.Clear();
+
             foreach (var category in categories)
             {
                 AvailableCategories.Add(category);
@@ -197,9 +191,9 @@ namespace ViridiscaUi.ViewModels.Education
             
             await LoadTeachersAsync();
             
-            if (CurrentCourse != null)
+            if (CurrentCourseInstance != null)
             {
-                await LoadCourseAsync(CurrentCourse.Uid);
+                await LoadCourseInstanceAsync(CurrentCourseInstance.Uid);
             }
             else
             {
@@ -212,15 +206,15 @@ namespace ViridiscaUi.ViewModels.Education
             try
             {
                 ShowInfo("Загрузка преподавателей...");
-                var teachers = await _teacherService.GetAllTeachersAsync();
+                var activeTeachers = await _teacherService.GetAllTeachersAsync();
                 
                 AvailableTeachers.Clear();
-                foreach (var teacher in teachers.Where(t => t.Status == TeacherStatus.Active).OrderBy(t => t.LastName).ThenBy(t => t.FirstName))
+                foreach (var teacher in activeTeachers.Where(t => t.IsActive))
                 {
                     AvailableTeachers.Add(teacher);
                 }
                 
-                LogInfo("Loaded {TeacherCount} teachers", teachers.Count());
+                LogInfo("Loaded {TeacherCount} teachers", activeTeachers.Count());
             }
             catch (Exception ex)
             {
@@ -228,25 +222,25 @@ namespace ViridiscaUi.ViewModels.Education
             }
         }
 
-        private async Task LoadCourseAsync(Guid courseId)
+        private async Task LoadCourseInstanceAsync(Guid courseInstanceId)
         {
             try
             {
                 ShowInfo("Загрузка данных курса...");
                 
-                var course = await _courseService.GetCourseAsync(courseId);
-                if (course == null)
+                var courseInstance = await _courseInstanceService.GetCourseInstanceAsync(courseInstanceId);
+                if (courseInstance == null)
                 {
                     SetError("Курс не найден");
                     await _navigationService.GoBackAsync();
                     return;
                 }
 
-                CurrentCourse = course;
-                PopulateForm(course);
+                CurrentCourseInstance = courseInstance;
+                PopulateForm(courseInstance);
                 
                 ShowSuccess("Данные курса загружены");
-                LogInfo("Loaded course: {CourseName}", course.Name);
+                LogInfo("Loaded course: {CourseName}", courseInstance.Name);
             }
             catch (Exception ex)
             {
@@ -254,27 +248,27 @@ namespace ViridiscaUi.ViewModels.Education
             }
         }
 
-        private void PopulateForm(Course course)
+        private void PopulateForm(CourseInstance courseInstance)
         {
-            Name = course.Name;
-            Code = course.Code;
-            Description = course.Description ?? string.Empty;
-            Category = course.Category;
-            StartDate = course.StartDate ?? DateTime.Now;
-            EndDate = course.EndDate ?? DateTime.Now.AddMonths(4);
-            Credits = course.Credits;
-            SelectedStatus = course.Status;
-            Prerequisites = course.Prerequisites ?? string.Empty;
-            LearningOutcomes = course.LearningOutcomes ?? string.Empty;
-            MaxEnrollments = course.MaxEnrollments;
+            Name = courseInstance.Name;
+            Code = courseInstance.Code;
+            Description = courseInstance.Description ?? string.Empty;
+            Category = courseInstance.Category;
+            StartDate = courseInstance.StartDate ?? DateTime.Now;
+            EndDate = courseInstance.EndDate ?? DateTime.Now.AddMonths(4);
+            Credits = courseInstance.Credits;
+            SelectedStatus = ParseCourseStatus(courseInstance.Status);
+            Prerequisites = courseInstance.Prerequisites ?? string.Empty;
+            LearningOutcomes = courseInstance.LearningOutcomes ?? string.Empty;
+            MaxEnrollments = courseInstance.MaxEnrollments;
             
             // Выбираем преподавателя из загруженного списка
-            SelectedTeacher = AvailableTeachers.FirstOrDefault(t => t.Uid == course.TeacherUid);
+            SelectedTeacher = AvailableTeachers.FirstOrDefault(t => t.Uid == courseInstance.TeacherUid);
         }
 
         private void SetupForCreation()
         {
-            CurrentCourse = null;
+            CurrentCourseInstance = null;
             ClearForm();
             GenerateCode();
         }
@@ -284,7 +278,7 @@ namespace ViridiscaUi.ViewModels.Education
             Name = string.Empty;
             Code = string.Empty;
             Description = string.Empty;
-            Category = null;
+            Category = string.Empty;
             SelectedTeacher = null;
             StartDate = DateTime.Now;
             EndDate = DateTime.Now.AddMonths(4);
@@ -309,13 +303,13 @@ namespace ViridiscaUi.ViewModels.Education
                 IsSaving = true;
                 ClearError();
 
-                if (IsEditMode && CurrentCourse != null)
+                if (IsEditMode && CurrentCourseInstance != null)
                 {
-                    await UpdateCourseAsync();
+                    await UpdateCourseInstanceAsync();
                 }
                 else
                 {
-                    await CreateCourseAsync();
+                    await CreateCourseInstanceAsync();
                 }
 
                 ShowSuccess(IsEditMode ? "Курс обновлен" : "Курс создан");
@@ -336,13 +330,13 @@ namespace ViridiscaUi.ViewModels.Education
             }
         }
 
-        private async Task UpdateCourseAsync()
+        private async Task UpdateCourseInstanceAsync()
         {
-            if (CurrentCourse == null || SelectedTeacher == null) return;
+            if (CurrentCourseInstance == null || SelectedTeacher == null) return;
 
-            var updatedCourse = new Course
+            var updatedCourseInstance = new CourseInstance
             {
-                Uid = CurrentCourse.Uid,
+                Uid = CurrentCourseInstance.Uid,
                 Name = Name.Trim(),
                 Code = Code.Trim(),
                 Description = string.IsNullOrWhiteSpace(Description) ? null : Description.Trim(),
@@ -351,23 +345,23 @@ namespace ViridiscaUi.ViewModels.Education
                 StartDate = StartDate,
                 EndDate = EndDate,
                 Credits = Credits,
-                Status = SelectedStatus,
+                Status = SelectedStatus.ToString(),
                 Prerequisites = string.IsNullOrWhiteSpace(Prerequisites) ? null : Prerequisites.Trim(),
                 LearningOutcomes = string.IsNullOrWhiteSpace(LearningOutcomes) ? null : LearningOutcomes.Trim(),
                 MaxEnrollments = MaxEnrollments,
-                CreatedAt = CurrentCourse.CreatedAt,
+                CreatedAt = CurrentCourseInstance.CreatedAt,
                 LastModifiedAt = DateTime.UtcNow
             };
 
-            await _courseService.UpdateCourseAsync(updatedCourse);
-            LogInfo("Updated course: {CourseName}", updatedCourse.Name);
+            await _courseInstanceService.UpdateCourseInstanceAsync(updatedCourseInstance);
+            LogInfo("Updated course: {CourseName}", updatedCourseInstance.Name);
         }
 
-        private async Task CreateCourseAsync()
+        private async Task CreateCourseInstanceAsync()
         {
             if (SelectedTeacher == null) return;
 
-            var newCourse = new Course
+            var newCourseInstance = new CourseInstance
             {
                 Uid = Guid.NewGuid(),
                 Name = Name.Trim(),
@@ -378,7 +372,7 @@ namespace ViridiscaUi.ViewModels.Education
                 StartDate = StartDate,
                 EndDate = EndDate,
                 Credits = Credits,
-                Status = SelectedStatus,
+                Status = SelectedStatus.ToString(),
                 Prerequisites = string.IsNullOrWhiteSpace(Prerequisites) ? null : Prerequisites.Trim(),
                 LearningOutcomes = string.IsNullOrWhiteSpace(LearningOutcomes) ? null : LearningOutcomes.Trim(),
                 MaxEnrollments = MaxEnrollments,
@@ -386,23 +380,23 @@ namespace ViridiscaUi.ViewModels.Education
                 LastModifiedAt = DateTime.UtcNow
             };
 
-            await _courseService.AddCourseAsync(newCourse);
-            LogInfo("Created course: {CourseName}", newCourse.Name);
+            await _courseInstanceService.AddCourseInstanceAsync(newCourseInstance);
+            LogInfo("Created course: {CourseName}", newCourseInstance.Name);
         }
 
         private async Task DeleteAsync()
         {
-            if (CurrentCourse == null) return;
+            if (CurrentCourseInstance == null) return;
 
             try
             {
                 IsSaving = true;
                 
                 // Здесь можно добавить диалог подтверждения
-                await _courseService.DeleteCourseAsync(CurrentCourse.Uid);
+                await _courseInstanceService.DeleteCourseInstanceAsync(CurrentCourseInstance.Uid);
                 
                 ShowSuccess("Курс удален");
-                LogInfo("Deleted course: {CourseName}", CurrentCourse.Name);
+                LogInfo("Deleted course: {CourseName}", CurrentCourseInstance.Name);
                 
                 await _navigationService.NavigateToAsync("courses");
             }
@@ -486,7 +480,7 @@ namespace ViridiscaUi.ViewModels.Education
         }
 
         // Дополнительные свойства для диалога деталей
-        [Reactive] public ObservableCollection<Module> Modules { get; set; } = new();
+        [Reactive] public ObservableCollection<Lesson> Lessons { get; set; } = new();
         [Reactive] public ObservableCollection<Enrollment> Enrollments { get; set; } = new();
         [Reactive] public string CourseDuration { get; set; } = string.Empty;
         [Reactive] public bool HasErrors { get; set; }
@@ -494,11 +488,11 @@ namespace ViridiscaUi.ViewModels.Education
         /// <summary>
         /// Конструктор для диалогов с упрощенным набором зависимостей
         /// </summary>
-        public CourseEditorViewModel(ICourseService courseService, ITeacherService teacherService, Course? course = null)
+        public CourseEditorViewModel(ICourseInstanceService courseInstanceService, CourseInstance? courseInstance = null)
             : base(hostScreen: null!)  // Для диалогов hostScreen не нужен
         {
-            _courseService = courseService ?? throw new ArgumentNullException(nameof(courseService));
-            _teacherService = teacherService ?? throw new ArgumentNullException(nameof(teacherService));
+            _courseInstanceService = courseInstanceService ?? throw new ArgumentNullException(nameof(courseInstanceService));
+            _teacherService = null!; // Для диалогов teacherService не нужен
             _navigationService = null!; // Для диалогов навигация не нужна
 
             // Инициализация кэша преподавателей
@@ -510,13 +504,13 @@ namespace ViridiscaUi.ViewModels.Education
             InitializeCommands();
             InitializePredefinedValues();
 
-            if (course != null)
+            if (courseInstance != null)
             {
-                CurrentCourse = course;
+                CurrentCourseInstance = courseInstance;
                 IsEditMode = true;
                 FormTitle = "Редактирование курса";
-                PopulateForm(course);
-                LoadModulesAndEnrollments(course);
+                PopulateForm(courseInstance);
+                LoadModulesAndEnrollments(courseInstance);
             }
             else
             {
@@ -524,37 +518,83 @@ namespace ViridiscaUi.ViewModels.Education
             }
         }
 
-        private void LoadModulesAndEnrollments(Course course)
+        private void LoadModulesAndEnrollments(CourseInstance courseInstance)
         {
-            // Загружаем модули и записи курса
-            Modules.Clear();
-            if (course.Modules != null)
+            // Загружаем занятия и записи курса
+            Lessons.Clear();
+            if (courseInstance.Lessons != null)
             {
-                foreach (var module in course.Modules.OrderBy(m => m.OrderIndex))
+                foreach (var lesson in courseInstance.Lessons.OrderBy(l => l.OrderIndex))
                 {
-                    Modules.Add(module);
+                    Lessons.Add(lesson);
                 }
             }
 
             Enrollments.Clear();
-            if (course.Enrollments != null)
+            if (courseInstance.Enrollments != null)
             {
-                foreach (var enrollment in course.Enrollments.OrderBy(e => e.EnrollmentDate))
+                foreach (var enrollment in courseInstance.Enrollments.OrderBy(e => e.EnrollmentDate))
                 {
                     Enrollments.Add(enrollment);
                 }
             }
 
             // Вычисляем продолжительность курса
-            if (course.StartDate.HasValue && course.EndDate.HasValue)
+            if (courseInstance.StartDate.HasValue && courseInstance.EndDate.HasValue)
             {
-                var duration = course.EndDate.Value - course.StartDate.Value;
+                var duration = courseInstance.EndDate.Value - courseInstance.StartDate.Value;
                 CourseDuration = $"{duration.Days} дней ({Math.Round(duration.TotalDays / 7, 1)} недель)";
             }
             else
             {
                 CourseDuration = "Не определена";
             }
+        }
+
+        [Reactive] public CourseInstance? SelectedCourseInstance { get; set; }
+
+        private async Task<CourseInstance> CreateCourseInstanceFromInputAsync()
+        {
+            return new CourseInstance
+            {
+                Uid = SelectedCourseInstance?.Uid ?? Guid.NewGuid(),
+                // Map other properties as needed
+                CreatedAt = DateTime.UtcNow,
+                LastModifiedAt = DateTime.UtcNow
+            };
+        }
+
+        private async Task<bool> ValidateCourseInstanceAsync(CourseInstance courseInstance)
+        {
+            // TODO: Implement validation logic
+            await Task.Delay(1);
+            return true;
+        }
+
+        private CourseStatus ParseCourseStatus(string status)
+        {
+            if (string.IsNullOrWhiteSpace(status))
+                return CourseStatus.Draft;
+
+            // Попробуем прямое преобразование
+            if (Enum.TryParse<CourseStatus>(status, true, out var parsedStatus))
+            {
+                return parsedStatus;
+            }
+
+            // Попробуем сопоставить по русским названиям
+            return status.ToLowerInvariant() switch
+            {
+                "черновик" => CourseStatus.Draft,
+                "активен" or "активный" => CourseStatus.Active,
+                "опубликован" or "опубликованный" => CourseStatus.Published,
+                "завершен" or "завершенный" => CourseStatus.Completed,
+                "архив" or "архивированный" => CourseStatus.Archived,
+                "приостановлен" or "приостановленный" => CourseStatus.Suspended,
+                "запланирован" or "запланированный" => CourseStatus.Draft,
+                "неактивен" or "неактивный" => CourseStatus.Suspended,
+                _ => CourseStatus.Draft // Значение по умолчанию
+            };
         }
     }
 } 

@@ -1,8 +1,10 @@
+using Avalonia.Controls;
+using Avalonia.Interactivity;
 using Avalonia.ReactiveUI;
 using ReactiveUI;
 using System;
 using System.Reactive.Disposables;
-using ViridiscaUi.ViewModels.Students;
+using ViridiscaUi.ViewModels.Education;
 
 namespace ViridiscaUi.Views.Education;
 

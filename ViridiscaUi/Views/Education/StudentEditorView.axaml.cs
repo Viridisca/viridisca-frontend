@@ -1,5 +1,6 @@
+using ViridiscaUi.ViewModels.Education;
 using Avalonia.ReactiveUI;
-using ViridiscaUi.ViewModels.Students;
+using ReactiveUI;
 
 namespace ViridiscaUi.Views.Education;
 

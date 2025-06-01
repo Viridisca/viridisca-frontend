@@ -335,13 +335,15 @@ public class NotificationService(ApplicationDbContext dbContext) : INotification
     {
         try
         {
-            var userUids = await _dbContext.UserRoles
-                .Include(ur => ur.Role)
-                .Where(ur => ur.Role.Name == role)
-                .Select(ur => ur.UserUid)
+            // Получаем всех пользователей с указанными ролями
+            var targetPersons = await _dbContext.PersonRoles
+                .Where(pr => pr.Role.Name == role)
+                .Include(pr => pr.Person)
+                .Select(pr => pr.Person)
+                .Distinct()
                 .ToListAsync();
 
-            await SendBulkNotificationAsync(userUids, title, message, type, priority);
+            await SendBulkNotificationAsync(targetPersons.Select(p => p.Uid), title, message, type, priority);
         }
         catch (Exception ex)
         {
@@ -352,15 +354,15 @@ public class NotificationService(ApplicationDbContext dbContext) : INotification
     /// <summary>
     /// Отправляет уведомление всем студентам курса
     /// </summary>
-    public async Task SendNotificationToCourseAsync(Guid courseUid, string title, string message, NotificationType type)
+    public async Task SendNotificationToCourseAsync(Guid courseInstanceUid, string title, string message, NotificationType type)
     {
         // Получаем студентов через записи на курс (Enrollments)
-        var studentUids = await _dbContext.Enrollments
-            .Where(e => e.CourseUid == courseUid)
+        var enrolledStudents = await _dbContext.Enrollments
+            .Where(e => e.CourseInstanceUid == courseInstanceUid)
             .Select(e => e.StudentUid)
             .ToListAsync();
 
-        await SendBulkNotificationAsync(studentUids, title, message, type);
+        await SendBulkNotificationAsync(enrolledStudents, title, message, type);
     }
 
     /// <summary>
@@ -476,13 +478,13 @@ public class NotificationService(ApplicationDbContext dbContext) : INotification
         var overdueAssignments = await _dbContext.Assignments
             .Where(a => a.DueDate.HasValue && a.DueDate < DateTime.UtcNow)
             .Where(a => a.Status == AssignmentStatus.Published)
-            .Include(a => a.Course)
+            .Include(a => a.CourseInstance)
             .ToListAsync();
 
         foreach (var assignment in overdueAssignments)
         {
             await SendNotificationToCourseAsync(
-                assignment.CourseUid,
+                assignment.CourseInstanceUid,
                 "Просроченное задание",
                 $"Задание '{assignment.Title}' просрочено. Срок сдачи был: {assignment.DueDate:dd.MM.yyyy}",
                 NotificationType.Warning);
@@ -500,13 +502,13 @@ public class NotificationService(ApplicationDbContext dbContext) : INotification
         var upcomingAssignments = await _dbContext.Assignments
             .Where(a => a.DueDate.HasValue && a.DueDate >= tomorrow && a.DueDate <= dayAfterTomorrow)
             .Where(a => a.Status == AssignmentStatus.Published)
-            .Include(a => a.Course)
+            .Include(a => a.CourseInstance)
             .ToListAsync();
 
         foreach (var assignment in upcomingAssignments)
         {
             await SendNotificationToCourseAsync(
-                assignment.CourseUid,
+                assignment.CourseInstanceUid,
                 "Приближается дедлайн",
                 $"Задание '{assignment.Title}' нужно сдать до {assignment.DueDate:dd.MM.yyyy HH:mm}",
                 NotificationType.Info);

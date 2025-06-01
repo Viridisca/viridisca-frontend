@@ -9,6 +9,7 @@ using ViridiscaUi.Infrastructure;
 using ViridiscaUi.Services.Interfaces;
 using System.Linq.Expressions;
 using ViridiscaUi.Domain.Models.Education.Enums;
+using ViridiscaUi.Domain.Models.Education.DTOs;
 
 namespace ViridiscaUi.Services.Implementations;
 
@@ -33,18 +34,15 @@ public class StudentService : GenericCrudService<Student>, IStudentService
         if (string.IsNullOrWhiteSpace(searchTerm))
             return query;
 
-        var lowerSearchTerm = searchTerm.ToLower();
+        var searchTermLower = searchTerm.ToLower();
+        query = query.Where(s => 
+            s.Person.FirstName.ToLower().Contains(searchTermLower) ||
+            s.Person.LastName.ToLower().Contains(searchTermLower) ||
+            s.StudentCode.ToLower().Contains(searchTermLower) ||
+            s.Person.Email.ToLower().Contains(searchTermLower) ||
+            s.Person.PhoneNumber.ToLower().Contains(searchTermLower));
 
-        return query.Where(s => 
-            s.FirstName.ToLower().Contains(lowerSearchTerm) ||
-            s.LastName.ToLower().Contains(lowerSearchTerm) ||
-            s.MiddleName.ToLower().Contains(lowerSearchTerm) ||
-            s.Email.ToLower().Contains(lowerSearchTerm) ||
-            s.StudentCode.ToLower().Contains(lowerSearchTerm) ||
-            s.PhoneNumber.Contains(searchTerm) ||
-            (s.Group != null && s.Group.Name.ToLower().Contains(lowerSearchTerm)) ||
-            (s.Group != null && s.Group.Code.ToLower().Contains(lowerSearchTerm))
-        );
+        return query;
     }
 
     /// <summary>
@@ -53,31 +51,31 @@ public class StudentService : GenericCrudService<Student>, IStudentService
     protected override async Task ValidateEntitySpecificRulesAsync(Student entity, List<string> errors, List<string> warnings, bool isCreate)
     {
         // Проверка обязательных полей
-        if (string.IsNullOrWhiteSpace(entity.FirstName))
+        if (string.IsNullOrWhiteSpace(entity.Person.FirstName))
             errors.Add("Имя студента обязательно для заполнения");
 
-        if (string.IsNullOrWhiteSpace(entity.LastName))
+        if (string.IsNullOrWhiteSpace(entity.Person.LastName))
             errors.Add("Фамилия студента обязательна для заполнения");
 
-        if (string.IsNullOrWhiteSpace(entity.Email))
+        if (string.IsNullOrWhiteSpace(entity.Person.Email))
             errors.Add("Email студента обязателен для заполнения");
 
         if (string.IsNullOrWhiteSpace(entity.StudentCode))
             errors.Add("Код студента обязателен для заполнения");
 
         // Проверка формата email
-        if (!string.IsNullOrWhiteSpace(entity.Email) && !IsValidEmail(entity.Email))
+        if (!string.IsNullOrWhiteSpace(entity.Person.Email) && !IsValidEmail(entity.Person.Email))
             errors.Add("Некорректный формат email");
 
         // Проверка уникальности email
-        if (!string.IsNullOrWhiteSpace(entity.Email))
+        if (!string.IsNullOrWhiteSpace(entity.Person.Email))
         {
             var emailExists = await _dbSet
-                .Where(s => s.Uid != entity.Uid && s.Email.ToLower() == entity.Email.ToLower())
+                .Where(s => s.Uid != entity.Uid && s.Person.Email.ToLower() == entity.Person.Email.ToLower())
                 .AnyAsync();
 
             if (emailExists)
-                errors.Add($"Студент с email '{entity.Email}' уже существует");
+                errors.Add($"Студент с email '{entity.Person.Email}' уже существует");
         }
 
         // Проверка уникальности кода студента
@@ -92,10 +90,10 @@ public class StudentService : GenericCrudService<Student>, IStudentService
         }
 
         // Проверка даты рождения
-        if (entity.BirthDate > DateTime.Now.AddYears(-14))
+        if (entity.Person.DateOfBirth > DateTime.Now.AddYears(-14))
             warnings.Add("Возраст студента меньше 14 лет");
 
-        if (entity.BirthDate < DateTime.Now.AddYears(-100))
+        if (entity.Person.DateOfBirth < DateTime.Now.AddYears(-100))
             errors.Add("Некорректная дата рождения");
 
         // Проверка даты поступления
@@ -130,15 +128,14 @@ public class StudentService : GenericCrudService<Student>, IStudentService
             }
         }
 
-        // Проверка пользователя
-        if (entity.UserUid != Guid.Empty)
+        // Проверка связанных данных
+        if (entity.PersonUid != Guid.Empty)
         {
-            var userExists = await _dbContext.Users
-                .Where(u => u.Uid == entity.UserUid)
-                .AnyAsync();
-
+            var userExists = await _dbContext.Persons
+                .AnyAsync(u => u.Uid == entity.PersonUid);
+            
             if (!userExists)
-                errors.Add($"Пользователь с Uid {entity.UserUid} не найден");
+                errors.Add($"Пользователь с ID {entity.PersonUid} не найден");
         }
 
         await base.ValidateEntitySpecificRulesAsync(entity, errors, warnings, isCreate);
@@ -166,14 +163,13 @@ public class StudentService : GenericCrudService<Student>, IStudentService
     {
         return await GetByUidWithIncludesAsync(uid, 
             s => s.Group, 
-            s => s.User, 
-            s => s.Parents, 
+            s => s.Person, 
             s => s.Grades);
     }
 
     public async Task<IEnumerable<Student>> GetAllStudentsAsync()
     {
-        return await GetAllWithIncludesAsync(s => s.Group, s => s.User);
+        return await GetAllWithIncludesAsync(s => s.Group, s => s.Person);
     }
 
     public async Task<IEnumerable<Student>> GetStudentsAsync()
@@ -183,12 +179,12 @@ public class StudentService : GenericCrudService<Student>, IStudentService
 
     public async Task<IEnumerable<Student>> GetStudentsByGroupAsync(Guid groupUid)
     {
-        return await FindWithIncludesAsync(s => s.GroupUid == groupUid, s => s.Group, s => s.User);
+        return await FindWithIncludesAsync(s => s.GroupUid == groupUid, s => s.Group, s => s.Person);
     }
 
     public async Task<IEnumerable<Student>> GetStudentsByStatusAsync(StudentStatus status)
     {
-        return await FindWithIncludesAsync(s => s.Status == status, s => s.Group, s => s.User);
+        return await FindWithIncludesAsync(s => s.Status == status, s => s.Group, s => s.Person);
     }
 
     public async Task<Student> CreateStudentAsync(Student student)
@@ -246,9 +242,9 @@ public class StudentService : GenericCrudService<Student>, IStudentService
 
         var items = await query
             .Include(s => s.Group)
-            .Include(s => s.User)
-                .OrderBy(s => s.LastName)
-                .ThenBy(s => s.FirstName)
+            .Include(s => s.Person)
+                .OrderBy(s => s.Person.LastName)
+                .ThenBy(s => s.Person.FirstName)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
@@ -259,10 +255,32 @@ public class StudentService : GenericCrudService<Student>, IStudentService
     public async Task<bool> ExistsByEmailAsync(string email, Guid? excludeUid = null)
     {
         Expression<Func<Student, bool>> predicate = excludeUid.HasValue 
-            ? s => s.Email == email && s.Uid != excludeUid.Value
-            : s => s.Email == email;
+            ? s => s.Person.Email == email && s.Uid != excludeUid.Value
+            : s => s.Person.Email == email;
 
         return await ExistsAsync(predicate);
+    }
+
+    public async Task<Student?> GetStudentWithDetailsAsync(Guid uid)
+    {
+        try
+        {
+            return await _dbContext.Students
+                .Include(s => s.Person)
+                .Include(s => s.Group)
+                .Include(s => s.Curriculum)
+                .Include(s => s.Enrollments)
+                    .ThenInclude(e => e.CourseInstance)
+                        .ThenInclude(ci => ci.Subject)
+                .Include(s => s.Grades)
+                .Include(s => s.Attendances)
+                .FirstOrDefaultAsync(s => s.Uid == uid);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting student with details: {StudentUid}", uid);
+            return null;
+        }
     }
 
     #endregion
@@ -276,6 +294,7 @@ public class StudentService : GenericCrudService<Student>, IStudentService
             var student = await _dbContext.Students
                 .Include(s => s.Grades)
                     .ThenInclude(g => g.Assignment)
+                        .ThenInclude(a => a.CourseInstance)
                 .FirstOrDefaultAsync(s => s.Uid == studentUid);
 
             if (student == null)
@@ -392,7 +411,7 @@ public class StudentService : GenericCrudService<Student>, IStudentService
             var student = await _dbContext.Students
                 .Include(s => s.Grades)
                     .ThenInclude(g => g.Assignment)
-                        .ThenInclude(a => a.Course)
+                        .ThenInclude(a => a.CourseInstance)
                 .FirstOrDefaultAsync(s => s.Uid == studentUid);
 
             if (student == null)
@@ -402,11 +421,11 @@ public class StudentService : GenericCrudService<Student>, IStudentService
 
             var enrollments = await _dbContext.Enrollments
                 .Where(e => e.StudentUid == studentUid)
-                .Include(e => e.Course)
+                .Include(e => e.CourseInstance)
                 .ToListAsync();
 
             var assignments = await _dbContext.Assignments
-                .Where(a => enrollments.Select(e => e.CourseUid).Contains(a.CourseUid))
+                .Where(a => enrollments.Select(e => e.CourseInstanceUid).Contains(a.CourseInstanceUid))
                 .ToListAsync();
 
             var performance = new StudentPerformance
@@ -438,24 +457,34 @@ public class StudentService : GenericCrudService<Student>, IStudentService
         return await TransferStudentToGroupAsync(studentUid, groupUid);
     }
 
-    public async Task<IEnumerable<Course>> GetStudentCoursesAsync(Guid studentUid)
+    /// <summary>
+    /// Получает курсы студента
+    /// </summary>
+    public async Task<IEnumerable<CourseInstance>> GetStudentCoursesAsync(Guid studentUid)
     {
         try
         {
-            var courses = await _dbContext.Enrollments
-                .Where(e => e.StudentUid == studentUid)
-                .Include(e => e.Course)
-                    .ThenInclude(c => c!.Teacher)
-                .Select(e => e.Course)
-                .Where(c => c != null)
-                .ToListAsync();
-            
-            return courses.Where(c => c != null).Cast<Course>();
+            var student = await _dbContext.Students
+                .Include(s => s.Enrollments)
+                    .ThenInclude(e => e.CourseInstance)
+                        .ThenInclude(ci => ci.Subject)
+                .Include(s => s.Enrollments)
+                    .ThenInclude(e => e.CourseInstance)
+                        .ThenInclude(ci => ci.Teacher)
+                .FirstOrDefaultAsync(s => s.Uid == studentUid);
+
+            if (student == null)
+                return new List<CourseInstance>();
+
+            return student.Enrollments
+                .Where(e => e.CourseInstance != null)
+                .Select(e => e.CourseInstance!)
+                .ToList();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting student courses: {StudentUid}", studentUid);
-            throw;
+            return new List<CourseInstance>();
         }
     }
 
@@ -466,7 +495,7 @@ public class StudentService : GenericCrudService<Student>, IStudentService
             return await _dbContext.Grades
                 .Where(g => g.StudentUid == studentUid)
                 .Include(g => g.Assignment)
-                    .ThenInclude(a => a.Course)
+                    .ThenInclude(a => a.CourseInstance)
                 .OrderByDescending(g => g.CreatedAt)
                 .ToListAsync();
         }
@@ -483,7 +512,7 @@ public class StudentService : GenericCrudService<Student>, IStudentService
         {
             var enrolledCourses = await _dbContext.Enrollments
                 .Where(e => e.StudentUid == studentUid && !e.CompletedAt.HasValue)
-                .Select(e => e.CourseUid)
+                .Select(e => e.CourseInstanceUid)
                 .ToListAsync();
 
             var completedAssignments = await _dbContext.Grades
@@ -494,10 +523,10 @@ public class StudentService : GenericCrudService<Student>, IStudentService
                 .ToListAsync();
 
             return await _dbContext.Assignments
-                .Where(a => enrolledCourses.Contains(a.CourseUid) && 
+                .Where(a => enrolledCourses.Contains(a.CourseInstanceUid) && 
                            !completedAssignments.Contains(a.Uid) &&
                            a.DueDate >= DateTime.UtcNow)
-                .Include(a => a.Course)
+                .Include(a => a.CourseInstance)
                 .OrderBy(a => a.DueDate)
                 .ToListAsync();
         }
@@ -514,7 +543,7 @@ public class StudentService : GenericCrudService<Student>, IStudentService
         {
             var enrolledCourses = await _dbContext.Enrollments
                 .Where(e => e.StudentUid == studentUid && !e.CompletedAt.HasValue)
-                .Select(e => e.CourseUid)
+                .Select(e => e.CourseInstanceUid)
                 .ToListAsync();
 
             var completedAssignments = await _dbContext.Grades
@@ -525,16 +554,56 @@ public class StudentService : GenericCrudService<Student>, IStudentService
                 .ToListAsync();
 
             return await _dbContext.Assignments
-                .Where(a => enrolledCourses.Contains(a.CourseUid) && 
+                .Where(a => enrolledCourses.Contains(a.CourseInstanceUid) && 
                            !completedAssignments.Contains(a.Uid) &&
                            a.DueDate < DateTime.UtcNow)
-                .Include(a => a.Course)
+                .Include(a => a.CourseInstance)
                 .OrderBy(a => a.DueDate)
                 .ToListAsync();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting student overdue assignments: {StudentUid}", studentUid);
+            throw;
+        }
+    }
+
+    public async Task<StudentDetailsDto> GetStudentDetailsAsync(Guid studentUid)
+    {
+        try
+        {
+            var student = await _dbContext.Students
+                .Include(s => s.Person)
+                .FirstOrDefaultAsync(s => s.PersonUid == studentUid);
+
+            if (student?.Person == null)
+            {
+                return null;
+            }
+
+            return new StudentDetailsDto
+            {
+                Uid = student.Uid,
+                PersonUid = student.PersonUid,
+                StudentCode = student.StudentCode,
+                GPA = student.GPA,
+                Status = student.Status,
+                GroupUid = student.GroupUid,
+                CurriculumUid = student.CurriculumUid,
+                
+                // Данные из Person
+                FirstName = student.Person.FirstName,
+                LastName = student.Person.LastName,
+                MiddleName = student.Person.MiddleName,
+                Email = student.Person.Email,
+                PhoneNumber = student.Person.PhoneNumber,
+                BirthDate = student.Person.DateOfBirth,
+                Address = student.Person.Address
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting student details: {StudentUid}", studentUid);
             throw;
         }
     }

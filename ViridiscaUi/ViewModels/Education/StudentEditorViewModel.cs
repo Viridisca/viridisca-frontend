@@ -7,12 +7,14 @@ using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using ViridiscaUi.Domain.Models.Education;
 using ViridiscaUi.Domain.Models.Education.Enums;
+using ViridiscaUi.Domain.Models.Auth;
 using ViridiscaUi.Infrastructure.Navigation;
 using ViridiscaUi.Services.Interfaces;
 using ViridiscaUi.ViewModels;
 using ViridiscaUi.ViewModels.Bases.Navigations;
+using Avalonia.Controls;
 
-namespace ViridiscaUi.ViewModels.Students;
+namespace ViridiscaUi.ViewModels.Education;
 
 /// <summary>
 /// ViewModel для создания и редактирования студентов
@@ -285,7 +287,7 @@ public class StudentEditorViewModel : RoutableViewModelBase
             PopulateForm(student);
             
             ShowSuccess("Данные студента загружены");
-            LogInfo("Loaded student: {StudentName}", $"{student.LastName} {student.FirstName}");
+            LogInfo("Loaded student: {StudentName}", $"{student.Person?.LastName} {student.Person?.FirstName}");
         }
         catch (Exception ex)
         {
@@ -295,14 +297,14 @@ public class StudentEditorViewModel : RoutableViewModelBase
 
     private void PopulateForm(Student student)
     {
-        FirstName = student.FirstName;
-        LastName = student.LastName;
-        MiddleName = student.MiddleName ?? string.Empty;
-        Email = student.Email;
-        PhoneNumber = student.PhoneNumber ?? string.Empty;
+        FirstName = student.Person?.FirstName ?? string.Empty;
+        LastName = student.Person?.LastName ?? string.Empty;
+        MiddleName = student.Person?.MiddleName ?? string.Empty;
+        Email = student.Person?.Email ?? string.Empty;
+        PhoneNumber = student.Person?.PhoneNumber ?? string.Empty;
         StudentCode = student.StudentCode;
         EnrollmentDate = student.EnrollmentDate;
-        BirthDate = student.BirthDate;
+        BirthDate = student.Person?.DateOfBirth ?? DateTime.Now;
         SelectedStatus = student.Status;
         Address = student.Address ?? string.Empty;
         EmergencyContactName = student.EmergencyContactName ?? string.Empty;
@@ -383,33 +385,41 @@ public class StudentEditorViewModel : RoutableViewModelBase
     {
         if (CurrentStudent == null || SelectedGroup == null) return;
 
-        var updatedStudent = new Student
-        {
-            Uid = CurrentStudent.Uid,
-            FirstName = FirstName.Trim(),
-            LastName = LastName.Trim(),
-            MiddleName = string.IsNullOrWhiteSpace(MiddleName) ? null : MiddleName.Trim(),
-            Email = Email.Trim(),
-            PhoneNumber = string.IsNullOrWhiteSpace(PhoneNumber) ? null : PhoneNumber.Trim(),
-            StudentCode = StudentCode.Trim(),
-            EnrollmentDate = EnrollmentDate,
-            BirthDate = BirthDate,
-            GroupUid = SelectedGroup.Uid,
-            Status = SelectedStatus,
-            IsActive = SelectedStatus == StudentStatus.Active,
-            CreatedAt = CurrentStudent.CreatedAt,
-            LastModifiedAt = DateTime.UtcNow
-        };
+        // Update the existing Student object
+        CurrentStudent.StudentCode = StudentCode.Trim();
+        CurrentStudent.EnrollmentDate = EnrollmentDate;
+        CurrentStudent.GroupUid = SelectedGroup.Uid;
+        CurrentStudent.Status = SelectedStatus;
+        CurrentStudent.IsActive = SelectedStatus == StudentStatus.Active;
+        CurrentStudent.Address = Address.Trim();
+        CurrentStudent.EmergencyContactName = EmergencyContactName.Trim();
+        CurrentStudent.EmergencyContactPhone = EmergencyContactPhone.Trim();
+        CurrentStudent.MedicalInformation = MedicalInformation.Trim();
+        CurrentStudent.LastModifiedAt = DateTime.UtcNow;
 
-        await _studentService.UpdateStudentAsync(updatedStudent);
-        LogInfo("Updated student: {StudentName}", $"{updatedStudent.LastName} {updatedStudent.FirstName}");
+        // Update Person information if Person exists
+        if (CurrentStudent.Person != null)
+        {
+            CurrentStudent.Person.FirstName = FirstName.Trim();
+            CurrentStudent.Person.LastName = LastName.Trim();
+            CurrentStudent.Person.MiddleName = string.IsNullOrWhiteSpace(MiddleName) ? null : MiddleName.Trim();
+            CurrentStudent.Person.Email = Email.Trim();
+            CurrentStudent.Person.PhoneNumber = string.IsNullOrWhiteSpace(PhoneNumber) ? null : PhoneNumber.Trim();
+            CurrentStudent.Person.DateOfBirth = BirthDate;
+            CurrentStudent.Person.Address = Address.Trim();
+            CurrentStudent.Person.LastModifiedAt = DateTime.UtcNow;
+        }
+
+        await _studentService.UpdateStudentAsync(CurrentStudent);
+        LogInfo("Updated student: {StudentName}", $"{CurrentStudent.Person?.LastName} {CurrentStudent.Person?.FirstName}");
     }
 
     private async Task CreateStudentAsync()
     {
         if (SelectedGroup == null) return;
 
-        var newStudent = new Student
+        // Create Person first
+        var person = new Person
         {
             Uid = Guid.NewGuid(),
             FirstName = FirstName.Trim(),
@@ -417,18 +427,33 @@ public class StudentEditorViewModel : RoutableViewModelBase
             MiddleName = string.IsNullOrWhiteSpace(MiddleName) ? null : MiddleName.Trim(),
             Email = Email.Trim(),
             PhoneNumber = string.IsNullOrWhiteSpace(PhoneNumber) ? null : PhoneNumber.Trim(),
+            DateOfBirth = BirthDate,
+            Address = Address.Trim(),
+            CreatedAt = DateTime.UtcNow,
+            LastModifiedAt = DateTime.UtcNow
+        };
+
+        // Create Student with Person
+        var newStudent = new Student
+        {
+            Uid = Guid.NewGuid(),
+            PersonUid = person.Uid,
+            Person = person,
             StudentCode = StudentCode.Trim(),
             EnrollmentDate = EnrollmentDate,
-            BirthDate = BirthDate,
             GroupUid = SelectedGroup.Uid,
             Status = SelectedStatus,
             IsActive = SelectedStatus == StudentStatus.Active,
+            Address = Address.Trim(),
+            EmergencyContactName = EmergencyContactName.Trim(),
+            EmergencyContactPhone = EmergencyContactPhone.Trim(),
+            MedicalInformation = MedicalInformation.Trim(),
             CreatedAt = DateTime.UtcNow,
             LastModifiedAt = DateTime.UtcNow
         };
 
         await _studentService.CreateStudentAsync(newStudent);
-        LogInfo("Created student: {StudentName}", $"{newStudent.LastName} {newStudent.FirstName}");
+        LogInfo("Created student: {StudentName}", $"{newStudent.Person?.LastName} {newStudent.Person?.FirstName}");
     }
 
     private async Task DeleteAsync()
@@ -443,7 +468,7 @@ public class StudentEditorViewModel : RoutableViewModelBase
             await _studentService.DeleteStudentAsync(CurrentStudent.Uid);
             
             ShowSuccess("Студент удален");
-            LogInfo("Deleted student: {StudentName}", $"{CurrentStudent.LastName} {CurrentStudent.FirstName}");
+            LogInfo("Deleted student: {StudentName}", $"{CurrentStudent.Person?.LastName} {CurrentStudent.Person?.FirstName}");
             
             await _navigationService.NavigateToAsync("students");
         }

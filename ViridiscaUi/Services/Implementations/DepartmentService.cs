@@ -310,9 +310,9 @@ public class DepartmentService : IDepartmentService
                 GroupsCount = department.Groups.Count,
                 SubjectsCount = department.Subjects.Count,
                 StudentsCount = department.Groups.SelectMany(g => g.Students).Count(),
-                ActiveCoursesCount = await _dbContext.Courses
-                    .Where(c => c.Teacher != null && c.Teacher.DepartmentUid == departmentUid)
-                    .Where(c => c.Status == CourseStatus.Active)
+                ActiveCoursesCount = await _dbContext.CourseInstances
+                    .Where(ci => ci.Teacher != null && ci.Teacher.DepartmentUid == departmentUid)
+                    .Where(ci => ci.IsActive)
                     .CountAsync()
             };
 

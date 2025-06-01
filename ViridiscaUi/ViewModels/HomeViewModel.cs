@@ -26,8 +26,7 @@ namespace ViridiscaUi.ViewModels;
     Tags = new[] { "main", "dashboard", "overview" })]
 public class HomeViewModel : RoutableViewModelBase
 {
-    private readonly INotificationService _notificationService;
-    private readonly IUserService _userService;
+    private readonly IPersonService _personService;
 
     #region Properties
 
@@ -134,11 +133,9 @@ public class HomeViewModel : RoutableViewModelBase
     /// </summary>
     public HomeViewModel(
         IScreen hostScreen,
-        INotificationService notificationService,
-        IUserService userService) : base(hostScreen)
+        IPersonService personService) : base(hostScreen)
     {
-        _notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
-        _userService = userService ?? throw new ArgumentNullException(nameof(userService));
+        _personService = personService ?? throw new ArgumentNullException(nameof(personService));
 
         InitializeCommands();
         SetupPropertyNotifications();

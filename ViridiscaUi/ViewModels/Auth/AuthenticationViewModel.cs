@@ -22,6 +22,7 @@ public class AuthenticationViewModel : RoutableViewModelBase
     private readonly IAuthService _authService;
     private readonly IUnifiedNavigationService _navigationService;
     private readonly IRoleService _roleService;
+    private readonly IPersonSessionService _personSessionService;
 
     /// <summary>
     /// Режим регистрации (false = вход, true = регистрация)
@@ -113,12 +114,13 @@ public class AuthenticationViewModel : RoutableViewModelBase
     /// <summary>
     /// Создает новый экземпляр ViewModel для авторизации
     /// </summary>
-    public AuthenticationViewModel(IAuthService authService, IUnifiedNavigationService navigationService, IRoleService roleService, IScreen hostScreen)
+    public AuthenticationViewModel(IAuthService authService, IUnifiedNavigationService navigationService, IRoleService roleService, IPersonSessionService personSessionService, IScreen hostScreen)
         : base(hostScreen)
     {
         _authService = authService ?? throw new ArgumentNullException(nameof(authService));
         _navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
         _roleService = roleService ?? throw new ArgumentNullException(nameof(roleService));
+        _personSessionService = personSessionService ?? throw new ArgumentNullException(nameof(personSessionService));
 
         InitializeCommands();
         SetupSubscriptions();
@@ -265,20 +267,18 @@ public class AuthenticationViewModel : RoutableViewModelBase
         LogInfo("Attempting login for user: {Username}", Username);
         ShowInfo("Выполняется вход в систему...");
 
-        var result = await _authService.AuthenticateAsync(Username, Password);
-
-        if (result.Success)
+        var loginResult = await _authService.AuthenticateAsync(Username, Password);
+        if (loginResult.Success && loginResult.Person != null)
         {
-            ShowSuccess($"Добро пожаловать, {result.User?.Email}!");
-            LogInfo("Login successful for user: {UserEmail}", result.User?.Email);
-            // Навигация теперь проходит через MainViewModel при изменении CurrentUserObservable
+            _personSessionService.SetCurrentPerson(loginResult.Person);
+            ShowSuccess($"Добро пожаловать, {loginResult.Person.FirstName}!");
+            
+            // Навигация к главной странице
+            await _navigationService.NavigateAndResetAsync("home");
         }
         else
         {
-            var errorMessage = result.ErrorMessage ?? "Неверное имя пользователя или пароль";
-            SetError(errorMessage);
-            ShowWarning(errorMessage);
-            LogWarning("Login failed for user {Username}: {ErrorMessage}", Username, errorMessage);
+            ShowError(loginResult.ErrorMessage);
         }
     }
 
@@ -296,18 +296,18 @@ public class AuthenticationViewModel : RoutableViewModelBase
         LogInfo("Attempting registration for user: {Username}", Username);
         ShowInfo("Выполняется регистрация...");
 
-        var result = await _authService.RegisterAsync(Username, Email, Password, FirstName, LastName, SelectedRole.Uid);
-
-        if (result.Success)
+        var registerResult = await _authService.RegisterAsync(Username, Email, Password, FirstName, LastName, SelectedRole.Uid);
+        if (registerResult.Success && registerResult.Person != null)
         {
-            ShowSuccess("Регистрация прошла успешно! Теперь вы можете войти в систему.");
-            LogInfo("Registration successful for user: {UserEmail}", result.User?.Email);
-            IsRegistrationMode = false; // Переключаемся на режим входа
-            ClearForm();
+            _personSessionService.SetCurrentPerson(registerResult.Person);
+            ShowSuccess($"Регистрация успешна! Добро пожаловать, {registerResult.Person.FirstName}!");
+            
+            // Навигация к главной странице
+            await _navigationService.NavigateAndResetAsync("home");
         }
         else
         {
-            var errorMessage = result.ErrorMessage ?? "Ошибка при регистрации";
+            var errorMessage = registerResult.ErrorMessage ?? "Ошибка при регистрации";
             SetError(errorMessage);
             ShowWarning(errorMessage);
             LogWarning("Registration failed for user {Username}: {ErrorMessage}", Username, errorMessage);

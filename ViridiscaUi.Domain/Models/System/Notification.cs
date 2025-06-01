@@ -1,7 +1,8 @@
 using ViridiscaUi.Domain.Models.Base;
+using ViridiscaUi.Domain.Models.System.Enums;
 using ViridiscaUi.Domain.Models.Auth;
 using ReactiveUI;
-using ViridiscaUi.Domain.Models.System.Enums;
+using System.Text.Json;
 
 namespace ViridiscaUi.Domain.Models.System;
 
@@ -11,7 +12,7 @@ namespace ViridiscaUi.Domain.Models.System;
 public class Notification : ViewModelBase
 {
     private Guid _recipientUid;
-    private User? _recipient;
+    private Person? _recipient;
     
     private string _title = string.Empty;
     private string _message = string.Empty;
@@ -110,7 +111,7 @@ public class Notification : ViewModelBase
     /// <summary>
     /// Получатель уведомления
     /// </summary>
-    public User? Recipient
+    public Person? Recipient
     {
         get => _recipient;
         set => this.RaiseAndSetIfChanged(ref _recipient, value);

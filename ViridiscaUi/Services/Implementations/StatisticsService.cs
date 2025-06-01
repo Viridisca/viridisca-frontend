@@ -4,6 +4,8 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using ViridiscaUi.Domain.Models.Education.Enums;
 using ViridiscaUi.Services.Interfaces;
+using Microsoft.EntityFrameworkCore;
+using ViridiscaUi.Infrastructure;
 
 namespace ViridiscaUi.Services.Implementations;
 
@@ -14,37 +16,40 @@ public class StatisticsService : IStatisticsService
 {
     private readonly IStudentService _studentService;
     private readonly ITeacherService _teacherService;
-    private readonly ICourseService _courseService;
+    private readonly ICourseInstanceService _courseInstanceService;
     private readonly IAssignmentService _assignmentService;
     private readonly IGroupService _groupService;
     private readonly ISubjectService _subjectService;
     private readonly IDepartmentService _departmentService;
     private readonly INotificationService _notificationService;
-    private readonly IUserSessionService _userSessionService;
+    private readonly IPersonSessionService _personSessionService;
     private readonly ILogger<StatisticsService> _logger;
+    private readonly ApplicationDbContext _dbContext;
 
     public StatisticsService(
         IStudentService studentService,
         ITeacherService teacherService,
-        ICourseService courseService,
+        ICourseInstanceService courseInstanceService,
         IAssignmentService assignmentService,
         IGroupService groupService,
         ISubjectService subjectService,
         IDepartmentService departmentService,
         INotificationService notificationService,
-        IUserSessionService userSessionService,
-        ILogger<StatisticsService> logger)
+        IPersonSessionService personSessionService,
+        ILogger<StatisticsService> logger,
+        ApplicationDbContext dbContext)
     {
         _studentService = studentService ?? throw new ArgumentNullException(nameof(studentService));
         _teacherService = teacherService ?? throw new ArgumentNullException(nameof(teacherService));
-        _courseService = courseService ?? throw new ArgumentNullException(nameof(courseService));
+        _courseInstanceService = courseInstanceService ?? throw new ArgumentNullException(nameof(courseInstanceService));
         _assignmentService = assignmentService ?? throw new ArgumentNullException(nameof(assignmentService));
         _groupService = groupService ?? throw new ArgumentNullException(nameof(groupService));
         _subjectService = subjectService ?? throw new ArgumentNullException(nameof(subjectService));
         _departmentService = departmentService ?? throw new ArgumentNullException(nameof(departmentService));
         _notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
-        _userSessionService = userSessionService ?? throw new ArgumentNullException(nameof(userSessionService));
+        _personSessionService = personSessionService ?? throw new ArgumentNullException(nameof(personSessionService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
     }
 
     /// <summary>
@@ -71,24 +76,23 @@ public class StatisticsService : IStatisticsService
                 studentsTask, teachersTask, coursesTask, assignmentsTask,
                 groupsTask, subjectsTask, departmentsTask, activeCoursesTask, activeStudentsTask);
 
-            var statistics = new SystemStatistics
+            var systemStats = new SystemStatistics
             {
-                TotalStudents = await studentsTask,
-                TotalTeachers = await teachersTask,
-                TotalCourses = await coursesTask,
-                TotalAssignments = await assignmentsTask,
-                TotalGroups = await groupsTask,
-                TotalSubjects = await subjectsTask,
-                TotalDepartments = await departmentsTask,
-                ActiveCourses = await activeCoursesTask,
-                ActiveStudents = await activeStudentsTask,
-                LastUpdated = DateTime.UtcNow
+                TotalStudents = await _dbContext.Students.CountAsync(),
+                TotalTeachers = await _dbContext.Teachers.CountAsync(),
+                TotalCourses = await _dbContext.CourseInstances.CountAsync(),
+                TotalAssignments = await _dbContext.Assignments.CountAsync(),
+                TotalSubjects = await _dbContext.Subjects.CountAsync(),
+                TotalGroups = await _dbContext.Groups.CountAsync(),
+                TotalDepartments = await _dbContext.Departments.CountAsync(),
+                ActiveStudents = await _dbContext.Students.Where(s => s.IsActive).CountAsync(),
+                ActiveCourses = await _dbContext.CourseInstances.Where(ci => ci.IsActive).CountAsync()
             };
 
             _logger.LogInformation("Системная статистика успешно загружена: {Students} студентов, {Teachers} преподавателей, {Courses} курсов, {Assignments} заданий",
-                statistics.TotalStudents, statistics.TotalTeachers, statistics.TotalCourses, statistics.TotalAssignments);
+                systemStats.TotalStudents, systemStats.TotalTeachers, systemStats.TotalCourses, systemStats.TotalAssignments);
 
-            return statistics;
+            return systemStats;
         }
         catch (Exception ex)
         {
@@ -210,7 +214,7 @@ public class StatisticsService : IStatisticsService
     {
         try
         {
-            var courses = await _courseService.GetAllCoursesAsync();
+            var courses = await _courseInstanceService.GetAllCoursesAsync();
             return courses.Count();
         }
         catch (Exception ex)
@@ -280,8 +284,8 @@ public class StatisticsService : IStatisticsService
     {
         try
         {
-            var courses = await _courseService.GetAllCoursesAsync();
-            return courses.Count(c => c.Status == CourseStatus.Published || c.Status == CourseStatus.Active);
+            var courses = await _courseInstanceService.GetAllCoursesAsync();
+            return courses.Count(c => c.IsActive);
         }
         catch (Exception ex)
         {

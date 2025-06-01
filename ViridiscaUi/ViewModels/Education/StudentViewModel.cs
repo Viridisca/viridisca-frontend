@@ -15,6 +15,7 @@ using ViridiscaUi.Infrastructure.Navigation;
 using ViridiscaUi.Infrastructure;
 using System.Text.RegularExpressions;
 using ViridiscaUi.Domain.Models.Education.Enums;
+using ViridiscaUi.Domain.Models.Auth;
 
 namespace ViridiscaUi.ViewModels.Education;
 
@@ -228,7 +229,7 @@ public class StudentViewModel : ViewModelBase
     // === CONSTRUCTORS ===
     
     /// <summary>
-    /// Creates a new StudentViewModel from a Student domain model
+    /// Creates a StudentViewModel from a Student domain model
     /// </summary>
     public StudentViewModel(Student student)
     {
@@ -237,13 +238,13 @@ public class StudentViewModel : ViewModelBase
             
         Uid = student.Uid;
         StudentCode = student.StudentCode ?? string.Empty;
-        FirstName = student.FirstName ?? string.Empty;
-        LastName = student.LastName ?? string.Empty;
-        MiddleName = student.MiddleName;
-        Email = student.Email ?? string.Empty;
-        Phone = student.PhoneNumber ?? string.Empty;
-        BirthDate = student.BirthDate;
-        Address = student.Address;
+        FirstName = student.Person?.FirstName ?? string.Empty;
+        LastName = student.Person?.LastName ?? string.Empty;
+        MiddleName = student.Person?.MiddleName;
+        Email = student.Person?.Email ?? string.Empty;
+        Phone = student.Person?.PhoneNumber ?? string.Empty;
+        BirthDate = student.Person?.DateOfBirth;
+        Address = student.Person?.Address;
         Status = student.Status;
         EnrollmentDate = student.EnrollmentDate;
         GraduationDate = student.GraduationDate;
@@ -364,23 +365,39 @@ public class StudentViewModel : ViewModelBase
     /// </summary>
     public Student ToStudent()
     {
-        return new Student
+        var student = new Student
         {
             Uid = Uid,
-            FirstName = FirstName,
-            LastName = LastName,
-            MiddleName = MiddleName,
-            Email = Email,
-            PhoneNumber = Phone ?? string.Empty,
             StudentCode = StudentCode,
-            BirthDate = BirthDate ?? DateTime.Now,
-            Address = Address ?? string.Empty,
-            Status = Status,
             EnrollmentDate = EnrollmentDate ?? DateTime.Now,
             GraduationDate = GraduationDate,
+            Status = Status,
             GroupUid = GroupUid,
+            GPA = GPA ?? 0m,
+            Address = Address ?? string.Empty,
             CreatedAt = CreatedAt,
         };
+
+        // Create Person object if we have personal information
+        if (!string.IsNullOrWhiteSpace(FirstName) || !string.IsNullOrWhiteSpace(LastName) || !string.IsNullOrWhiteSpace(Email))
+        {
+            student.Person = new Person
+            {
+                Uid = Guid.NewGuid(), // New Person gets new Uid
+                FirstName = FirstName,
+                LastName = LastName,
+                MiddleName = MiddleName,
+                Email = Email,
+                PhoneNumber = Phone ?? string.Empty,
+                DateOfBirth = BirthDate ?? DateTime.MinValue,
+                Address = Address ?? string.Empty,
+                CreatedAt = DateTime.UtcNow,
+                LastModifiedAt = DateTime.UtcNow
+            };
+            student.PersonUid = student.Person.Uid;
+        }
+
+        return student;
     }
     
     /// <summary>
@@ -395,13 +412,13 @@ public class StudentViewModel : ViewModelBase
             throw new ArgumentException("Cannot update from student with different UID", nameof(student));
             
         StudentCode = student.StudentCode ?? string.Empty;
-        FirstName = student.FirstName ?? string.Empty;
-        LastName = student.LastName ?? string.Empty;
-        MiddleName = student.MiddleName;
-        Email = student.Email ?? string.Empty;
-        Phone = student.PhoneNumber ?? string.Empty;
-        BirthDate = student.BirthDate;
-        Address = student.Address;
+        FirstName = student.Person?.FirstName ?? string.Empty;
+        LastName = student.Person?.LastName ?? string.Empty;
+        MiddleName = student.Person?.MiddleName;
+        Email = student.Person?.Email ?? string.Empty;
+        Phone = student.Person?.PhoneNumber ?? string.Empty;
+        BirthDate = student.Person?.DateOfBirth;
+        Address = student.Person?.Address;
         Status = student.Status;
         EnrollmentDate = student.EnrollmentDate;
         GraduationDate = student.GraduationDate;

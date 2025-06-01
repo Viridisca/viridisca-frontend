@@ -25,7 +25,7 @@ public class GradeService : GenericCrudService<Grade>, IGradeService
     #region Переопределение базовых методов для специфичной логики
 
     /// <summary>
-    /// Применяет специфичный для оценок поиск
+    /// Применяет фильтр поиска к запросу оценок
     /// </summary>
     protected override IQueryable<Grade> ApplySearchFilter(IQueryable<Grade> query, string searchTerm)
     {
@@ -36,18 +36,18 @@ public class GradeService : GenericCrudService<Grade>, IGradeService
 
         return query.Where(g => 
             g.Comment.ToLower().Contains(lowerSearchTerm) ||
-            (g.Student != null && (
-                g.Student.FirstName.ToLower().Contains(lowerSearchTerm) ||
-                g.Student.LastName.ToLower().Contains(lowerSearchTerm) ||
+            (g.Student != null && g.Student.Person != null && (
+                g.Student.Person.FirstName.ToLower().Contains(lowerSearchTerm) ||
+                g.Student.Person.LastName.ToLower().Contains(lowerSearchTerm) ||
                 g.Student.StudentCode.ToLower().Contains(lowerSearchTerm)
             )) ||
             (g.Assignment != null && (
                 g.Assignment.Title.ToLower().Contains(lowerSearchTerm) ||
-                g.Assignment.Course.Name.ToLower().Contains(lowerSearchTerm)
+                g.Assignment.CourseInstance.Subject.Name.ToLower().Contains(lowerSearchTerm)
             )) ||
-            (g.Teacher != null && (
-                g.Teacher.FirstName.ToLower().Contains(lowerSearchTerm) ||
-                g.Teacher.LastName.ToLower().Contains(lowerSearchTerm)
+            (g.Teacher != null && g.Teacher.Person != null && (
+                g.Teacher.Person.FirstName.ToLower().Contains(lowerSearchTerm) ||
+                g.Teacher.Person.LastName.ToLower().Contains(lowerSearchTerm)
             ))
         );
     }
@@ -185,10 +185,12 @@ public class GradeService : GenericCrudService<Grade>, IGradeService
             g => g.Student, g => g.Assignment);
     }
 
-    public async Task<IEnumerable<Grade>> GetGradesByCourseAsync(Guid courseUid)
+    public async Task<IEnumerable<Grade>> GetGradesByCourseAsync(Guid courseInstanceUid)
     {
-        return await FindWithIncludesAsync(g => g.Assignment.CourseUid == courseUid, 
-            g => g.Student, g => g.Assignment, g => g.Teacher);
+        return await FindWithIncludesAsync(g => g.Assignment.CourseInstanceUid == courseInstanceUid,
+            g => g.Student,
+            g => g.Assignment,
+            g => g.Assignment.CourseInstance);
     }
 
     #endregion
@@ -205,7 +207,7 @@ public class GradeService : GenericCrudService<Grade>, IGradeService
             var grades = await _dbContext.Grades
                 .Where(g => g.StudentUid == studentUid)
                 .Include(g => g.Assignment)
-                    .ThenInclude(a => a.Course)
+                    .ThenInclude(a => a.CourseInstance)
                 .ToListAsync();
 
             if (!grades.Any())
@@ -232,7 +234,7 @@ public class GradeService : GenericCrudService<Grade>, IGradeService
                 PassingGrades = grades.Count(g => g.Value >= 60),
                 FailingGrades = grades.Count(g => g.Value < 60),
                 GradesBySubject = grades
-                    .GroupBy(g => g.Assignment.Course.Name)
+                    .GroupBy(g => g.Assignment.CourseInstance.Subject.Name)
                     .ToDictionary(
                         group => group.Key,
                         group => (double)group.Average(g => g.Value)
@@ -313,7 +315,7 @@ public class GradeService : GenericCrudService<Grade>, IGradeService
             var query = _dbContext.Grades
                 .Include(g => g.Student)
                 .Include(g => g.Assignment)
-                .ThenInclude(a => a.Course)
+                .ThenInclude(a => a.CourseInstance)
                 .Include(g => g.Teacher)
                 .AsQueryable();
 
@@ -325,7 +327,7 @@ public class GradeService : GenericCrudService<Grade>, IGradeService
 
             if (courseUid.HasValue)
             {
-                query = query.Where(g => g.Assignment != null && g.Assignment.CourseUid == courseUid.Value);
+                query = query.Where(g => g.Assignment != null && g.Assignment.CourseInstanceUid == courseUid.Value);
             }
 
             if (groupUid.HasValue)
@@ -405,7 +407,7 @@ public class GradeService : GenericCrudService<Grade>, IGradeService
         {
             return await _dbContext.Grades
                 .Include(g => g.Assignment)
-                .ThenInclude(a => a.Course)
+                .ThenInclude(a => a.CourseInstance)
                 .Include(g => g.Teacher)
                 .Where(g => g.StudentUid == studentUid)
                 .OrderByDescending(g => g.CreatedAt)
@@ -482,13 +484,13 @@ public class GradeService : GenericCrudService<Grade>, IGradeService
         {
             var query = _dbContext.Grades
                 .Include(g => g.Assignment)
-                .ThenInclude(a => a.Course)
+                .ThenInclude(a => a.CourseInstance)
                 .Include(g => g.Student)
                 .AsQueryable();
 
             if (courseUid.HasValue)
             {
-                query = query.Where(g => g.Assignment.CourseUid == courseUid.Value);
+                query = query.Where(g => g.Assignment.CourseInstanceUid == courseUid.Value);
             }
 
             if (groupUid.HasValue)
@@ -564,7 +566,7 @@ public class GradeService : GenericCrudService<Grade>, IGradeService
             return await _dbContext.Grades
                 .Include(g => g.Student)
                 .Include(g => g.Assignment)
-                .ThenInclude(a => a.Course)
+                .ThenInclude(a => a.CourseInstance)
                 .Include(g => g.Teacher)
                 .Where(g => g.CreatedAt >= fromDate)
                 .OrderByDescending(g => g.CreatedAt)
@@ -591,12 +593,12 @@ public class GradeService : GenericCrudService<Grade>, IGradeService
             
             var query = _dbContext.Grades
                 .Include(g => g.Assignment)
-                .ThenInclude(a => a.Course)
+                .ThenInclude(a => a.CourseInstance)
                 .Include(g => g.Student)
                 .AsQueryable();
 
             if (courseUid.HasValue)
-                query = query.Where(g => g.Assignment.CourseUid == courseUid.Value);
+                query = query.Where(g => g.Assignment.CourseInstanceUid == courseUid.Value);
 
             if (groupUid.HasValue)
                 query = query.Where(g => g.Student.GroupUid == groupUid.Value);
@@ -613,11 +615,11 @@ public class GradeService : GenericCrudService<Grade>, IGradeService
             var grades = await query.ToListAsync();
 
             var topStudents = grades
-                .GroupBy(g => new { g.StudentUid, g.Student?.FirstName, g.Student?.LastName })
+                .GroupBy(g => new { g.StudentUid, g.Student?.Person?.FirstName, g.Student?.Person?.LastName })
                 .Select(g => new
                 {
                     StudentUid = g.Key.StudentUid,
-                    StudentName = $"{g.Key.FirstName ?? "Unknown"} {g.Key.LastName ?? "Student"}",
+                    StudentName = $"{g.Key.FirstName} {g.Key.LastName}".Trim(),
                     AverageGrade = g.Average(x => x.Value),
                     TotalGrades = g.Count()
                 })
@@ -662,9 +664,9 @@ public class GradeService : GenericCrudService<Grade>, IGradeService
     /// <summary>
     /// Получает оценки по курсу (алиас)
     /// </summary>
-    public async Task<IEnumerable<Grade>> GetCourseGradesAsync(Guid courseUid)
+    public async Task<IEnumerable<Grade>> GetCourseGradesAsync(Guid courseInstanceUid)
     {
-        return await GetGradesByCourseAsync(courseUid);
+        return await GetGradesByCourseAsync(courseInstanceUid);
     }
 
     /// <summary>
@@ -678,21 +680,21 @@ public class GradeService : GenericCrudService<Grade>, IGradeService
     /// <summary>
     /// Получает оценки курса для студента
     /// </summary>
-    public async Task<IEnumerable<Grade>> GetCourseGradesByStudentAsync(Guid courseUid, Guid studentUid)
+    public async Task<IEnumerable<Grade>> GetCourseGradesByStudentAsync(Guid courseInstanceUid, Guid studentUid)
     {
         try
         {
             return await _dbContext.Grades
                 .Include(g => g.Assignment)
-                .ThenInclude(a => a != null ? a.Course : null)
+                .ThenInclude(a => a != null ? a.CourseInstance : null)
                 .Include(g => g.Teacher)
-                .Where(g => g.Assignment != null && g.Assignment.CourseUid == courseUid && g.StudentUid == studentUid)
+                .Where(g => g.Assignment != null && g.Assignment.CourseInstanceUid == courseInstanceUid && g.StudentUid == studentUid)
                 .OrderByDescending(g => g.CreatedAt)
                 .ToListAsync();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting course grades for student {StudentUid} in course {CourseUid}", studentUid, courseUid);
+            _logger.LogError(ex, "Error getting course grades for student {StudentUid} in course {CourseInstanceUid}", studentUid, courseInstanceUid);
             throw;
         }
     }
@@ -710,6 +712,353 @@ public class GradeService : GenericCrudService<Grade>, IGradeService
             >= 60 => "Зачет (60-69)",
             _ => "Неудовлетворительно (0-59)"
         };
+    }
+
+    /// <summary>
+    /// Получает статистику оценок студента по предметам
+    /// </summary>
+    public async Task<IEnumerable<GradeStatisticsBySubject>> GetStudentGradeStatisticsBySubjectAsync(Guid studentUid)
+    {
+        try
+        {
+            var gradesByCourse = await _dbContext.Grades
+                .Include(g => g.Assignment)
+                .ThenInclude(a => a.CourseInstance)
+                .ThenInclude(ci => ci.Subject)
+                .Where(g => g.StudentUid == studentUid)
+                .GroupBy(g => g.Assignment.CourseInstance.Subject.Name)
+                .Select(group => new
+                {
+                    CourseName = group.Key,
+                    AverageGrade = group.Average(g => (double)g.Value),
+                    GradeCount = group.Count()
+                })
+                .ToListAsync();
+
+            return gradesByCourse.Select(item => new GradeStatisticsBySubject
+            {
+                SubjectName = item.CourseName,
+                AverageGrade = item.AverageGrade,
+                TotalGrades = item.GradeCount
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting student grade statistics by subject: {StudentUid}", studentUid);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Получает статистику оценок студента по предметам
+    /// </summary>
+    public async Task<IEnumerable<GradeStatisticsBySubject>> GetStudentGradeStatisticsBySubjectAsync(Guid studentUid, Guid courseInstanceUid)
+    {
+        try
+        {
+            var grades = await _dbContext.Grades
+                .Where(g => g.StudentUid == studentUid && g.Assignment.CourseInstanceUid == courseInstanceUid)
+                .Include(g => g.Assignment)
+                    .ThenInclude(a => a.CourseInstance)
+                .ToListAsync();
+
+            if (!grades.Any())
+            {
+                return new List<GradeStatisticsBySubject>();
+            }
+
+            var statisticsBySubject = grades
+                .GroupBy(g => g.Assignment.CourseInstance.Subject.Name)
+                .Select(group => new GradeStatisticsBySubject
+                {
+                    SubjectName = group.Key,
+                    TotalGrades = group.Count(),
+                    AverageGrade = (double)group.Average(g => g.Value),
+                    HighestGrade = (double)group.Max(g => g.Value),
+                    LowestGrade = (double)group.Min(g => g.Value)
+                })
+                .ToList();
+
+            return statisticsBySubject;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting student grade statistics by subject: {StudentUid}, {CourseInstanceUid}", studentUid, courseInstanceUid);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Получает статистику оценок студента по предметам
+    /// </summary>
+    public async Task<IEnumerable<GradeStatisticsBySubject>> GetStudentGradeStatisticsBySubjectAsync(Guid studentUid, Guid courseInstanceUid, Guid groupUid)
+    {
+        try
+        {
+            var grades = await _dbContext.Grades
+                .Where(g => g.StudentUid == studentUid && g.Assignment.CourseInstanceUid == courseInstanceUid && g.Student.GroupUid == groupUid)
+                .Include(g => g.Assignment)
+                    .ThenInclude(a => a.CourseInstance)
+                .ToListAsync();
+
+            if (!grades.Any())
+            {
+                return new List<GradeStatisticsBySubject>();
+            }
+
+            var statisticsBySubject = grades
+                .GroupBy(g => g.Assignment.CourseInstance.Subject.Name)
+                .Select(group => new GradeStatisticsBySubject
+                {
+                    SubjectName = group.Key,
+                    TotalGrades = group.Count(),
+                    AverageGrade = (double)group.Average(g => g.Value),
+                    HighestGrade = (double)group.Max(g => g.Value),
+                    LowestGrade = (double)group.Min(g => g.Value)
+                })
+                .ToList();
+
+            return statisticsBySubject;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting student grade statistics by subject: {StudentUid}, {CourseInstanceUid}, {GroupUid}", studentUid, courseInstanceUid, groupUid);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Получает статистику оценок студента по предметам
+    /// </summary>
+    public async Task<IEnumerable<GradeStatisticsBySubject>> GetStudentGradeStatisticsBySubjectAsync(Guid studentUid, Guid courseInstanceUid, Guid groupUid, Guid subjectInstanceUid)
+    {
+        try
+        {
+            var grades = await _dbContext.Grades
+                .Where(g => g.StudentUid == studentUid && g.Assignment.CourseInstanceUid == courseInstanceUid && g.Student.GroupUid == groupUid && g.Assignment.CourseInstance.SubjectUid == subjectInstanceUid)
+                .Include(g => g.Assignment)
+                    .ThenInclude(a => a.CourseInstance)
+                .ToListAsync();
+
+            if (!grades.Any())
+            {
+                return new List<GradeStatisticsBySubject>();
+            }
+
+            var statisticsBySubject = grades
+                .GroupBy(g => g.Assignment.CourseInstance.Subject.Name)
+                .Select(group => new GradeStatisticsBySubject
+                {
+                    SubjectName = group.Key,
+                    TotalGrades = group.Count(),
+                    AverageGrade = (double)group.Average(g => g.Value),
+                    HighestGrade = (double)group.Max(g => g.Value),
+                    LowestGrade = (double)group.Min(g => g.Value)
+                })
+                .ToList();
+
+            return statisticsBySubject;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting student grade statistics by subject: {StudentUid}, {CourseInstanceUid}, {GroupUid}, {SubjectInstanceUid}", studentUid, courseInstanceUid, groupUid, subjectInstanceUid);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Получает статистику оценок студента по предметам
+    /// </summary>
+    public async Task<IEnumerable<GradeStatisticsBySubject>> GetStudentGradeStatisticsBySubjectAsync(Guid studentUid, Guid courseInstanceUid, Guid groupUid, Guid subjectInstanceUid, Guid assignmentUid)
+    {
+        try
+        {
+            var grades = await _dbContext.Grades
+                .Where(g => g.StudentUid == studentUid && g.AssignmentUid == assignmentUid && g.Assignment.CourseInstanceUid == courseInstanceUid && g.Student.GroupUid == groupUid && g.Assignment.CourseInstance.SubjectUid == subjectInstanceUid)
+                .Include(g => g.Assignment)
+                    .ThenInclude(a => a.CourseInstance)
+                .ToListAsync();
+
+            if (!grades.Any())
+            {
+                return new List<GradeStatisticsBySubject>();
+            }
+
+            var statisticsBySubject = grades
+                .GroupBy(g => g.Assignment.CourseInstance.Subject.Name)
+                .Select(group => new GradeStatisticsBySubject
+                {
+                    SubjectName = group.Key,
+                    TotalGrades = group.Count(),
+                    AverageGrade = (double)group.Average(g => g.Value),
+                    HighestGrade = (double)group.Max(g => g.Value),
+                    LowestGrade = (double)group.Min(g => g.Value)
+                })
+                .ToList();
+
+            return statisticsBySubject;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting student grade statistics by subject: {StudentUid}, {CourseInstanceUid}, {GroupUid}, {SubjectInstanceUid}, {AssignmentUid}", studentUid, courseInstanceUid, groupUid, subjectInstanceUid, assignmentUid);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Получает статистику оценок студента по предметам
+    /// </summary>
+    public async Task<IEnumerable<GradeStatisticsBySubject>> GetStudentGradeStatisticsBySubjectAsync(Guid studentUid, Guid courseInstanceUid, Guid groupUid, Guid subjectInstanceUid, Guid assignmentUid, Guid studentGroupUid)
+    {
+        try
+        {
+            var grades = await _dbContext.Grades
+                .Where(g => g.StudentUid == studentUid && g.AssignmentUid == assignmentUid && g.Assignment.CourseInstanceUid == courseInstanceUid && g.Student.GroupUid == groupUid && g.Assignment.CourseInstance.SubjectUid == subjectInstanceUid && g.Student.GroupUid == studentGroupUid)
+                .Include(g => g.Assignment)
+                    .ThenInclude(a => a.CourseInstance)
+                .ToListAsync();
+
+            if (!grades.Any())
+            {
+                return new List<GradeStatisticsBySubject>();
+            }
+
+            var statisticsBySubject = grades
+                .GroupBy(g => g.Assignment.CourseInstance.Subject.Name)
+                .Select(group => new GradeStatisticsBySubject
+                {
+                    SubjectName = group.Key,
+                    TotalGrades = group.Count(),
+                    AverageGrade = (double)group.Average(g => g.Value),
+                    HighestGrade = (double)group.Max(g => g.Value),
+                    LowestGrade = (double)group.Min(g => g.Value)
+                })
+                .ToList();
+
+            return statisticsBySubject;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting student grade statistics by subject: {StudentUid}, {CourseInstanceUid}, {GroupUid}, {SubjectInstanceUid}, {AssignmentUid}, {StudentGroupUid}", studentUid, courseInstanceUid, groupUid, subjectInstanceUid, assignmentUid, studentGroupUid);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Получает статистику оценок студента по предметам
+    /// </summary>
+    public async Task<IEnumerable<GradeStatisticsBySubject>> GetStudentGradeStatisticsBySubjectAsync(Guid studentUid, Guid courseInstanceUid, Guid groupUid, Guid subjectInstanceUid, Guid assignmentUid, Guid studentGroupUid, Guid studentSubjectInstanceUid)
+    {
+        try
+        {
+            var grades = await _dbContext.Grades
+                .Where(g => g.StudentUid == studentUid && g.AssignmentUid == assignmentUid && g.Assignment.CourseInstanceUid == courseInstanceUid && g.Student.GroupUid == groupUid && g.Assignment.CourseInstance.SubjectUid == subjectInstanceUid && g.Student.GroupUid == studentGroupUid && g.Assignment.CourseInstance.SubjectUid == studentSubjectInstanceUid)
+                .Include(g => g.Assignment)
+                    .ThenInclude(a => a.CourseInstance)
+                .ToListAsync();
+
+            if (!grades.Any())
+            {
+                return new List<GradeStatisticsBySubject>();
+            }
+
+            var statisticsBySubject = grades
+                .GroupBy(g => g.Assignment.CourseInstance.Subject.Name)
+                .Select(group => new GradeStatisticsBySubject
+                {
+                    SubjectName = group.Key,
+                    TotalGrades = group.Count(),
+                    AverageGrade = (double)group.Average(g => g.Value),
+                    HighestGrade = (double)group.Max(g => g.Value),
+                    LowestGrade = (double)group.Min(g => g.Value)
+                })
+                .ToList();
+
+            return statisticsBySubject;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting student grade statistics by subject: {StudentUid}, {CourseInstanceUid}, {GroupUid}, {SubjectInstanceUid}, {AssignmentUid}, {StudentGroupUid}, {StudentSubjectInstanceUid}", studentUid, courseInstanceUid, groupUid, subjectInstanceUid, assignmentUid, studentGroupUid, studentSubjectInstanceUid);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Получает статистику оценок студента по предметам
+    /// </summary>
+    public async Task<IEnumerable<GradeStatisticsBySubject>> GetStudentGradeStatisticsBySubjectAsync(Guid studentUid, Guid courseInstanceUid, Guid groupUid, Guid subjectInstanceUid, Guid assignmentUid, Guid studentGroupUid, Guid studentSubjectInstanceUid, Guid studentGroupSubjectInstanceUid)
+    {
+        try
+        {
+            var grades = await _dbContext.Grades
+                .Where(g => g.StudentUid == studentUid && g.AssignmentUid == assignmentUid && g.Assignment.CourseInstanceUid == courseInstanceUid && g.Student.GroupUid == groupUid && g.Assignment.CourseInstance.SubjectUid == subjectInstanceUid && g.Student.GroupUid == studentGroupUid && g.Assignment.CourseInstance.SubjectUid == studentSubjectInstanceUid && g.Student.GroupUid == studentGroupSubjectInstanceUid)
+                .Include(g => g.Assignment)
+                    .ThenInclude(a => a.CourseInstance)
+                .ToListAsync();
+
+            if (!grades.Any())
+            {
+                return new List<GradeStatisticsBySubject>();
+            }
+
+            var statisticsBySubject = grades
+                .GroupBy(g => g.Assignment.CourseInstance.Subject.Name)
+                .Select(group => new GradeStatisticsBySubject
+                {
+                    SubjectName = group.Key,
+                    TotalGrades = group.Count(),
+                    AverageGrade = (double)group.Average(g => g.Value),
+                    HighestGrade = (double)group.Max(g => g.Value),
+                    LowestGrade = (double)group.Min(g => g.Value)
+                })
+                .ToList();
+
+            return statisticsBySubject;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting student grade statistics by subject: {StudentUid}, {CourseInstanceUid}, {GroupUid}, {SubjectInstanceUid}, {AssignmentUid}, {StudentGroupUid}, {StudentSubjectInstanceUid}, {StudentGroupSubjectInstanceUid}", studentUid, courseInstanceUid, groupUid, subjectInstanceUid, assignmentUid, studentGroupUid, studentSubjectInstanceUid, studentGroupSubjectInstanceUid);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Получает статистику оценок студента по предметам
+    /// </summary>
+    public async Task<IEnumerable<GradeStatisticsBySubject>> GetStudentGradeStatisticsBySubjectAsync(Guid studentUid, Guid courseInstanceUid, Guid groupUid, Guid subjectInstanceUid, Guid assignmentUid, Guid studentGroupUid, Guid studentSubjectInstanceUid, Guid studentGroupSubjectInstanceUid, Guid studentGroupAssignmentUid)
+    {
+        try
+        {
+            var grades = await _dbContext.Grades
+                .Where(g => g.StudentUid == studentUid && g.AssignmentUid == assignmentUid && g.Assignment.CourseInstanceUid == courseInstanceUid && g.Student.GroupUid == groupUid && g.Assignment.CourseInstance.SubjectUid == subjectInstanceUid && g.Student.GroupUid == groupUid && g.Assignment.CourseInstance.SubjectUid == studentSubjectInstanceUid && g.Student.GroupUid == studentGroupSubjectInstanceUid && g.Assignment.CourseInstanceUid == assignmentUid)
+                .Include(g => g.Assignment)
+                    .ThenInclude(a => a.CourseInstance)
+                .ToListAsync();
+
+            if (!grades.Any())
+            {
+                return new List<GradeStatisticsBySubject>();
+            }
+
+            var statisticsBySubject = grades
+                .GroupBy(g => g.Assignment.CourseInstance.Subject.Name)
+                .Select(group => new GradeStatisticsBySubject
+                {
+                    SubjectName = group.Key,
+                    TotalGrades = group.Count(),
+                    AverageGrade = (double)group.Average(g => g.Value),
+                    HighestGrade = (double)group.Max(g => g.Value),
+                    LowestGrade = (double)group.Min(g => g.Value)
+                })
+                .ToList();
+
+            return statisticsBySubject;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting student grade statistics by subject: {StudentUid}, {CourseInstanceUid}, {GroupUid}, {SubjectInstanceUid}, {AssignmentUid}, {StudentGroupUid}, {StudentSubjectInstanceUid}, {StudentGroupSubjectInstanceUid}, {StudentGroupAssignmentUid}", studentUid, courseInstanceUid, groupUid, subjectInstanceUid, assignmentUid, studentGroupUid, studentSubjectInstanceUid, studentGroupSubjectInstanceUid, studentGroupAssignmentUid);
+            throw;
+        }
     }
 
     #endregion
@@ -754,4 +1103,16 @@ public class BulkGradeResult
     public int FailedGrades { get; set; }
     public List<Guid> CreatedGradeUids { get; set; } = new();
     public List<string> Errors { get; set; } = new();
+}
+
+/// <summary>
+/// Статистика оценок по предметам
+/// </summary>
+public class GradeStatisticsBySubject
+{
+    public string SubjectName { get; set; } = string.Empty;
+    public int TotalGrades { get; set; }
+    public double AverageGrade { get; set; }
+    public double HighestGrade { get; set; }
+    public double LowestGrade { get; set; }
 }

@@ -2,14 +2,12 @@ using Avalonia.Controls;
 using ReactiveUI;
 using ViridiscaUi.ViewModels;
 using ViridiscaUi.ViewModels.Auth;
-using ViridiscaUi.Views.Auth;
-using ViridiscaUi.Windows;
 using ViridiscaUi.ViewModels.Education;
-using ViridiscaUi.ViewModels.Students;
-using ViridiscaUi.Views.Education;
-using ViridiscaUi.Views.Common;
 using ViridiscaUi.ViewModels.System;
-using ViridiscaUi.Views.System;
+using ViridiscaUi.Views.Auth;
+using ViridiscaUi.Views.Common;
+using ViridiscaUi.Views.Education;
+using ViridiscaUi.Windows;
 using ViridiscaUi.Views.Common.System;
 
 namespace ViridiscaUi.Infrastructure;
@@ -58,8 +56,11 @@ public class ReactiveViewLocator : IViewLocator
             AssignmentEditorViewModel => new AssignmentEditorView(),
 
             // System ViewModels
-            NotificationCenterViewModel => new NotificationCenterView(),
-            DepartmentsViewModel => new DepartmentsView(),
+            // NotificationCenterViewModel => new NotificationCenterView(), // TODO: Create NotificationCenterView
+            // DepartmentsViewModel => new DepartmentsView(), // TODO: Create DepartmentsView
+            
+            // Notification ViewModels
+            // NotificationCenterViewModel => new NotificationCenterView(), // TODO: Create NotificationCenterView
 
             // Fallback - создаем простой UserControl с TextBlock
             _ => new FallbackView { DataContext = viewModel }

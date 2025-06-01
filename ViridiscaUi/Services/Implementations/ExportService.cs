@@ -46,7 +46,7 @@ public class ExportService : IExportService
             
             foreach (var student in students)
             {
-                var line = $"{student.StudentCode},{student.LastName},{student.FirstName},{student.MiddleName},{student.Email},{student.PhoneNumber},{student.BirthDate:yyyy-MM-dd},{student.Group?.Name ?? ""},{student.StatusDisplayName},{student.EnrollmentDate:yyyy-MM-dd}";
+                var line = $"{student.StudentCode},{student.Person?.LastName ?? ""},{student.Person?.FirstName ?? ""},{student.Person?.MiddleName ?? ""},{student.Person?.Email ?? ""},{student.Person?.PhoneNumber ?? ""},{student.Person?.DateOfBirth:yyyy-MM-dd},{student.Group?.Name ?? ""},{student.Status},{student.EnrollmentDate:yyyy-MM-dd}";
                 lines.Add(line);
             }
             
@@ -79,23 +79,24 @@ public class ExportService : IExportService
     public async Task<string?> ExportStudentDetailAsync(Student student, bool includeGrades = true, bool includeCourses = true, string? fileName = null)
     {
         await Task.Delay(1);
-        fileName ??= $"Student_{student.LastName}_{student.FirstName}";
+        fileName ??= $"Student_{student.Person?.LastName ?? "Unknown"}_{student.Person?.FirstName ?? "Student"}";
         var filePath = Path.Combine(Path.GetTempPath(), $"{fileName}_{DateTime.Now:yyyyMMdd_HHmmss}.pdf");
         
         try
         {
+            var fullName = $"{student.Person?.LastName ?? ""} {student.Person?.FirstName ?? ""} {student.Person?.MiddleName ?? ""}".Trim();
             var content = $@"
 Подробная информация о студенте
 ================================
 
 Основная информация:
-- ФИО: {student.FullName}
+- ФИО: {fullName}
 - Студенческий билет: {student.StudentCode}
-- Email: {student.Email}
-- Телефон: {student.PhoneNumber}
-- Дата рождения: {student.BirthDate:dd.MM.yyyy}
+- Email: {student.Person?.Email ?? "Не указан"}
+- Телефон: {student.Person?.PhoneNumber ?? "Не указан"}
+- Дата рождения: {student.Person?.DateOfBirth:dd.MM.yyyy}
 - Группа: {student.Group?.Name ?? "Не назначена"}
-- Статус: {student.StatusDisplayName}
+- Статус: {student.Status}
 - Дата поступления: {student.EnrollmentDate:dd.MM.yyyy}
 
 {(includeGrades ? "Включены оценки: Да" : "Включены оценки: Нет")}
@@ -192,11 +193,11 @@ public class ExportService : IExportService
         return Path.Combine(Path.GetTempPath(), $"{title}_{DateTime.Now:yyyyMMdd_HHmmss}.pdf");
     }
 
-    public async Task<string?> ExportCoursesToExcelAsync(IEnumerable<Course> courses, string title)
+    public async Task<string?> ExportCoursesToExcelAsync(IEnumerable<CourseInstance> courseInstances, string title)
     {
-        // TODO: Реализовать экспорт курсов в Excel
-        await Task.Delay(1);
-        return Path.Combine(Path.GetTempPath(), $"{title}_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx");
+        // TODO: Реализовать экспорт экземпляров курсов в Excel
+        await Task.Delay(100);
+        return $"Exported {courseInstances.Count()} course instances to Excel";
     }
 
     public async Task<string?> ExportTeachersToExcelAsync(IEnumerable<Teacher> teachers, string title)
@@ -211,5 +212,40 @@ public class ExportService : IExportService
         // TODO: Реализовать экспорт заданий в Excel
         await Task.Delay(1);
         return Path.Combine(Path.GetTempPath(), $"{title}_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx");
+    }
+
+    public async Task<string> ExportCoursesToCsvAsync(IEnumerable<CourseInstance> courseInstances)
+    {
+        // TODO: Реализовать экспорт курсов в CSV
+        await Task.Delay(1);
+        var filePath = Path.Combine(Path.GetTempPath(), $"Courses_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
+        
+        try
+        {
+            var lines = new List<string>
+            {
+                "Название предмета,Группа,Преподаватель,Академический период"
+            };
+            
+            foreach (var courseInstance in courseInstances)
+            {
+                var line = $"{courseInstance.Subject?.Name ?? "Не указан"},{courseInstance.Group?.Name ?? "Не назначена"},{courseInstance.Teacher?.Person?.FullName ?? "Не назначен"},{courseInstance.AcademicPeriod?.Name ?? "Не указан"}";
+                lines.Add(line);
+            }
+            
+            await File.WriteAllLinesAsync(filePath, lines);
+            return filePath;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async Task<IEnumerable<Grade>?> ShowBulkGradingDialogAsync(IEnumerable<CourseInstance> courseInstances, IEnumerable<Assignment> assignments)
+    {
+        // TODO: Реализовать диалог массового оценивания
+        await Task.Delay(100);
+        return new List<Grade>();
     }
 }

@@ -117,11 +117,11 @@ public interface IDialogService
     Task<object?> ShowGroupStudentsManagementDialogAsync(Group group, IEnumerable<Student> allStudents);
     
     // Диалоги для курсов
-    Task<Course?> ShowCourseEditDialogAsync(Course course);
-    Task<object?> ShowCourseEnrollmentDialogAsync(Course course, IEnumerable<Student> allStudents);
-    Task<object?> ShowCourseContentManagementDialogAsync(Course course);
-    Task<object?> ShowCourseStudentsManagementDialogAsync(Course course, IEnumerable<Student> allStudents);
-    Task<object?> ShowCourseStatisticsDialogAsync(string courseName, CourseStatistics statistics);
+    Task<CourseInstance?> ShowCourseEditDialogAsync(CourseInstance courseInstance);
+    Task<object?> ShowCourseEnrollmentDialogAsync(CourseInstance courseInstance, IEnumerable<Student> allStudents);
+    Task<object?> ShowCourseContentManagementDialogAsync(CourseInstance courseInstance);
+    Task<object?> ShowCourseStudentsManagementDialogAsync(CourseInstance courseInstance, IEnumerable<Student> allStudents);
+    Task<object?> ShowCourseStatisticsDialogAsync(CourseInstanceStatistics statistics);
     Task<Group?> ShowGroupSelectionDialogAsync(IEnumerable<Group> groups);
     
     // Диалоги для заданий
@@ -131,12 +131,12 @@ public interface IDialogService
     
     // Диалоги для оценок
     Task<Grade?> ShowGradeEditDialogAsync(Grade grade, IEnumerable<Student> students, IEnumerable<Assignment> assignments);
-    Task<IEnumerable<Grade>?> ShowBulkGradingDialogAsync(IEnumerable<Course> courses, IEnumerable<Assignment> assignments);
+    Task<IEnumerable<Grade>?> ShowBulkGradingDialogAsync(IEnumerable<CourseInstance> courseInstances, IEnumerable<Assignment> assignments);
     
     // Диалоги для преподавателей
     Task<Teacher?> ShowTeacherEditDialogAsync(Teacher? teacher = null);
     Task<string?> ShowTeacherDetailsDialogAsync(Teacher teacher);
-    Task<object?> ShowTeacherCoursesManagementDialogAsync(Teacher teacher, IEnumerable<Course> allCourses);
+    Task<object?> ShowTeacherCoursesManagementDialogAsync(Teacher teacher, IEnumerable<CourseInstance> allCourses);
     Task<object?> ShowTeacherGroupsManagementDialogAsync(Teacher teacher, IEnumerable<Group> allGroups);
     Task<object?> ShowTeacherStatisticsDialogAsync(string teacherName, object statistics);
     
@@ -144,6 +144,11 @@ public interface IDialogService
     Task<NotificationTemplate?> ShowNotificationTemplateEditDialogAsync(NotificationTemplate template);
     Task<Dictionary<string, object>?> ShowTemplateParametersDialogAsync(NotificationTemplate template);
     Task<ReminderData?> ShowCreateReminderDialogAsync();
+
+    /// <summary>
+    /// Показывает диалог деталей экземпляра курса
+    /// </summary>
+    Task<object?> ShowCourseDetailsDialogAsync(CourseInstance courseInstance);
 }
 
 /// <summary>

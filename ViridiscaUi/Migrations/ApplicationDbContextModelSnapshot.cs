@@ -22,7 +22,7 @@ namespace ViridiscaUi.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("ViridiscaUi.Domain.Models.Auth.AuthTokenInfo", b =>
+            modelBuilder.Entity("ViridiscaUi.Domain.Models.Auth.Account", b =>
                 {
                     b.Property<Guid>("Uid")
                         .ValueGeneratedOnAdd()
@@ -35,13 +35,33 @@ namespace ViridiscaUi.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("expires_at");
+                    b.Property<int>("FailedLoginAttempts")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("failed_login_attempts");
 
-                    b.Property<bool>("IsValid")
+                    b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
-                        .HasColumnName("is_valid");
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsEmailConfirmed")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_email_confirmed");
+
+                    b.Property<bool>("IsLocked")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_locked");
+
+                    b.Property<DateTime?>("LastFailedLoginAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_failed_login_at");
+
+                    b.Property<DateTime?>("LastLoginAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_login_at");
 
                     b.Property<DateTime?>("LastModifiedAt")
                         .ValueGeneratedOnAdd()
@@ -49,31 +69,78 @@ namespace ViridiscaUi.Migrations
                         .HasColumnName("last_modified_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-                    b.Property<string>("RefreshToken")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("refresh_token");
+                    b.Property<DateTime?>("LockedUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("locked_until");
 
-                    b.Property<string>("Token")
+                    b.Property<string>("PasswordHash")
                         .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)")
-                        .HasColumnName("token");
+                        .HasColumnType("text")
+                        .HasColumnName("password_hash");
+
+                    b.Property<Guid>("PersonUid")
+                        .HasColumnType("uuid")
+                        .HasColumnName("person_uid");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("username");
 
                     b.HasKey("Uid")
-                        .HasName("pk_auth_tokens");
+                        .HasName("pk_accounts");
 
-                    b.HasIndex("ExpiresAt")
-                        .HasDatabaseName("ix_auth_tokens_expires_at");
+                    b.HasIndex("PersonUid")
+                        .IsUnique()
+                        .HasDatabaseName("ix_accounts_person_uid");
 
-                    b.HasIndex("RefreshToken")
-                        .HasDatabaseName("ix_auth_tokens_refresh_token");
+                    b.HasIndex("Username")
+                        .IsUnique()
+                        .HasDatabaseName("ix_accounts_username");
 
-                    b.HasIndex("Token")
-                        .HasDatabaseName("ix_auth_tokens_token");
+                    b.ToTable("accounts", (string)null);
 
-                    b.ToTable("auth_tokens", (string)null);
+                    b.HasData(
+                        new
+                        {
+                            Uid = new Guid("77777777-7777-7777-7777-777777777777"),
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FailedLoginAttempts = 0,
+                            IsActive = true,
+                            IsEmailConfirmed = true,
+                            IsLocked = false,
+                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            PasswordHash = "$2a$11$GjZru83/8zIBf7TRU5keb.J1s/puDucqcVdPVqvXG02gMcw3F.qZm",
+                            PersonUid = new Guid("44444444-4444-4444-4444-444444444444"),
+                            Username = "admin"
+                        },
+                        new
+                        {
+                            Uid = new Guid("88888888-8888-8888-8888-888888888888"),
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FailedLoginAttempts = 0,
+                            IsActive = true,
+                            IsEmailConfirmed = true,
+                            IsLocked = false,
+                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            PasswordHash = "$2a$11$ybAXNdR88fN3iscBh5CZDeO1YKI4JrHeLANB49AYIY/atCD9XWvWm",
+                            PersonUid = new Guid("55555555-5555-5555-5555-555555555555"),
+                            Username = "teacher"
+                        },
+                        new
+                        {
+                            Uid = new Guid("99999999-9999-9999-9999-999999999999"),
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FailedLoginAttempts = 0,
+                            IsActive = true,
+                            IsEmailConfirmed = true,
+                            IsLocked = false,
+                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            PasswordHash = "$2a$11$goaePviZrvAmpoMYoiodQuuXeQu/50rgF6omjV3xqee8lA9AihvRK",
+                            PersonUid = new Guid("66666666-6666-6666-6666-666666666666"),
+                            Username = "student"
+                        });
                 });
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Auth.Permission", b =>
@@ -91,7 +158,8 @@ namespace ViridiscaUi.Migrations
 
                     b.Property<string>("Description")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("description");
 
                     b.Property<DateTime>("LastModifiedAt")
@@ -116,6 +184,202 @@ namespace ViridiscaUi.Migrations
                     b.ToTable("permissions", (string)null);
                 });
 
+            modelBuilder.Entity("ViridiscaUi.Domain.Models.Auth.Person", b =>
+                {
+                    b.Property<Guid>("Uid")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("uid");
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("address");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<DateTime>("DateOfBirth")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date_of_birth");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("email");
+
+                    b.Property<string>("FirstName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("first_name");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<DateTime?>("LastModifiedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("LastName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("last_name");
+
+                    b.Property<string>("MiddleName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("middle_name");
+
+                    b.Property<string>("PhoneNumber")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("phone_number");
+
+                    b.Property<string>("ProfileImageUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("profile_image_url");
+
+                    b.HasKey("Uid")
+                        .HasName("pk_persons");
+
+                    b.HasIndex("Email")
+                        .IsUnique()
+                        .HasDatabaseName("ix_persons_email");
+
+                    b.HasIndex("PhoneNumber")
+                        .HasDatabaseName("ix_persons_phone_number");
+
+                    b.ToTable("persons", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Uid = new Guid("44444444-4444-4444-4444-444444444444"),
+                            Address = "",
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DateOfBirth = new DateTime(1989, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Email = "admin@viridisca.local",
+                            FirstName = "Админ",
+                            IsActive = true,
+                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            LastName = "Системы",
+                            MiddleName = "Владимирович",
+                            PhoneNumber = "",
+                            ProfileImageUrl = ""
+                        },
+                        new
+                        {
+                            Uid = new Guid("55555555-5555-5555-5555-555555555555"),
+                            Address = "",
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DateOfBirth = new DateTime(1984, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Email = "teacher@viridisca.local",
+                            FirstName = "Преподаватель",
+                            IsActive = true,
+                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            LastName = "Тестовый",
+                            MiddleName = "Иванович",
+                            PhoneNumber = "+7 (900) 123-45-67",
+                            ProfileImageUrl = ""
+                        },
+                        new
+                        {
+                            Uid = new Guid("66666666-6666-6666-6666-666666666666"),
+                            Address = "",
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DateOfBirth = new DateTime(2004, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Email = "student@viridisca.local",
+                            FirstName = "Студент",
+                            IsActive = true,
+                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            LastName = "Тестовый",
+                            MiddleName = "Петрович",
+                            PhoneNumber = "+7 (900) 987-65-43",
+                            ProfileImageUrl = ""
+                        });
+                });
+
+            modelBuilder.Entity("ViridiscaUi.Domain.Models.Auth.PersonRole", b =>
+                {
+                    b.Property<Guid>("Uid")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("uid");
+
+                    b.Property<DateTime>("AssignedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("assigned_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("AssignedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("assigned_by");
+
+                    b.Property<string>("Context")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("context");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<DateTime?>("LastModifiedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<Guid>("PersonUid")
+                        .HasColumnType("uuid")
+                        .HasColumnName("person_uid");
+
+                    b.Property<Guid>("RoleUid")
+                        .HasColumnType("uuid")
+                        .HasColumnName("role_uid");
+
+                    b.HasKey("Uid")
+                        .HasName("pk_person_roles");
+
+                    b.HasIndex("RoleUid")
+                        .HasDatabaseName("ix_person_roles_role_uid");
+
+                    b.HasIndex("PersonUid", "RoleUid", "Context")
+                        .HasDatabaseName("ix_person_roles_person_uid_role_uid_context");
+
+                    b.ToTable("person_roles", (string)null);
+                });
+
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Auth.Role", b =>
                 {
                     b.Property<Guid>("Uid")
@@ -131,7 +395,8 @@ namespace ViridiscaUi.Migrations
 
                     b.Property<string>("Description")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("description");
 
                     b.Property<DateTime?>("LastModifiedAt")
@@ -167,7 +432,7 @@ namespace ViridiscaUi.Migrations
                             Description = "Системный администратор",
                             LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Name = "SystemAdmin",
-                            RoleType = 1
+                            RoleType = 0
                         },
                         new
                         {
@@ -176,7 +441,7 @@ namespace ViridiscaUi.Migrations
                             Description = "Преподаватель",
                             LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Name = "Teacher",
-                            RoleType = 4
+                            RoleType = 0
                         },
                         new
                         {
@@ -185,7 +450,7 @@ namespace ViridiscaUi.Migrations
                             Description = "Студент",
                             LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Name = "Student",
-                            RoleType = 6
+                            RoleType = 0
                         });
                 });
 
@@ -251,177 +516,21 @@ namespace ViridiscaUi.Migrations
                     b.ToTable("role_permissions", (string)null);
                 });
 
-            modelBuilder.Entity("ViridiscaUi.Domain.Models.Auth.User", b =>
+            modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.AcademicPeriod", b =>
                 {
                     b.Property<Guid>("Uid")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("uid");
 
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+                    b.Property<int>("AcademicYear")
+                        .HasColumnType("integer")
+                        .HasColumnName("academic_year");
 
-                    b.Property<DateTime>("DateOfBirth")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("date_of_birth");
-
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("email");
-
-                    b.Property<string>("FirstName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("first_name");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_active");
-
-                    b.Property<bool>("IsEmailConfirmed")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_email_confirmed");
-
-                    b.Property<DateTime?>("LastLoginAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_login_at");
-
-                    b.Property<DateTime?>("LastModifiedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_modified_at")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    b.Property<string>("LastName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("last_name");
-
-                    b.Property<string>("MiddleName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("middle_name");
-
-                    b.Property<string>("PasswordHash")
+                    b.Property<string>("Code")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasColumnName("password_hash");
-
-                    b.Property<string>("PhoneNumber")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("phone_number");
-
-                    b.Property<string>("ProfileImageUrl")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("profile_image_url");
-
-                    b.Property<Guid>("RoleId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("role_id");
-
-                    b.Property<string>("Username")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("username");
-
-                    b.HasKey("Uid")
-                        .HasName("pk_users");
-
-                    b.HasIndex("Email")
-                        .IsUnique()
-                        .HasDatabaseName("ix_users_email");
-
-                    b.HasIndex("RoleId")
-                        .HasDatabaseName("ix_users_role_id");
-
-                    b.HasIndex("Username")
-                        .IsUnique()
-                        .HasDatabaseName("ix_users_username");
-
-                    b.ToTable("users", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Uid = new Guid("44444444-4444-4444-4444-444444444444"),
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DateOfBirth = new DateTime(1989, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Email = "admin@viridisca.local",
-                            FirstName = "Админ",
-                            IsActive = true,
-                            IsEmailConfirmed = true,
-                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            LastName = "Системы",
-                            MiddleName = "",
-                            PasswordHash = "$2a$11$zB8qMTPJpxxzG4YCbtHVqeicEwEiVl3R9sbxvMFyp/LZh6HOei7HO",
-                            PhoneNumber = "",
-                            ProfileImageUrl = "",
-                            RoleId = new Guid("11111111-1111-1111-1111-111111111111"),
-                            Username = "admin"
-                        },
-                        new
-                        {
-                            Uid = new Guid("55555555-5555-5555-5555-555555555555"),
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DateOfBirth = new DateTime(1984, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Email = "teacher@viridisca.local",
-                            FirstName = "Преподаватель",
-                            IsActive = true,
-                            IsEmailConfirmed = true,
-                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            LastName = "Тестовый",
-                            MiddleName = "Иванович",
-                            PasswordHash = "$2a$11$tbIMTpxXyQlMI5VBHg/C7upPPPRuP9jBbRXQdfDWqpsBVE8.y.y4q",
-                            PhoneNumber = "+7 (900) 123-45-67",
-                            ProfileImageUrl = "",
-                            RoleId = new Guid("22222222-2222-2222-2222-222222222222"),
-                            Username = "teacher"
-                        },
-                        new
-                        {
-                            Uid = new Guid("66666666-6666-6666-6666-666666666666"),
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DateOfBirth = new DateTime(2004, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Email = "student@viridisca.local",
-                            FirstName = "Студент",
-                            IsActive = true,
-                            IsEmailConfirmed = true,
-                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            LastName = "Тестовый",
-                            MiddleName = "Петрович",
-                            PasswordHash = "$2a$11$k5lDUlQiStw0lSFiIvteaeMqM7E1BWK8LuAAtLA6LAsNr6PxsRXkS",
-                            PhoneNumber = "+7 (900) 987-65-43",
-                            ProfileImageUrl = "",
-                            RoleId = new Guid("33333333-3333-3333-3333-333333333333"),
-                            Username = "student"
-                        });
-                });
-
-            modelBuilder.Entity("ViridiscaUi.Domain.Models.Auth.UserRole", b =>
-                {
-                    b.Property<Guid>("Uid")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("uid");
-
-                    b.Property<DateTime>("AssignedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("assigned_at")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+                        .HasColumnName("code");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
@@ -429,13 +538,19 @@ namespace ViridiscaUi.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-                    b.Property<DateTime?>("ExpiresAt")
+                    b.Property<DateTime>("EndDate")
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("expires_at");
+                        .HasColumnName("end_date");
 
                     b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
+                        .HasDefaultValue(true)
                         .HasColumnName("is_active");
+
+                    b.Property<bool>("IsCurrent")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_current");
 
                     b.Property<DateTime?>("LastModifiedAt")
                         .ValueGeneratedOnAdd()
@@ -443,64 +558,27 @@ namespace ViridiscaUi.Migrations
                         .HasColumnName("last_modified_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-                    b.Property<Guid>("RoleUid")
-                        .HasColumnType("uuid")
-                        .HasColumnName("role_uid");
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
 
-                    b.Property<Guid>("UserUid")
-                        .HasColumnType("uuid")
-                        .HasColumnName("user_uid");
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("start_date");
 
-                    b.Property<Guid?>("UserUid1")
-                        .HasColumnType("uuid")
-                        .HasColumnName("user_uid1");
+                    b.Property<int>("Type")
+                        .HasColumnType("integer")
+                        .HasColumnName("type");
 
                     b.HasKey("Uid")
-                        .HasName("pk_user_roles");
+                        .HasName("pk_academic_periods");
 
-                    b.HasIndex("RoleUid")
-                        .HasDatabaseName("ix_user_roles_role_uid");
+                    b.HasIndex("AcademicYear", "Type")
+                        .HasDatabaseName("ix_academic_periods_academic_year_type");
 
-                    b.HasIndex("UserUid1")
-                        .HasDatabaseName("ix_user_roles_user_uid1");
-
-                    b.HasIndex("UserUid", "RoleUid")
-                        .IsUnique()
-                        .HasDatabaseName("ix_user_roles_user_uid_role_uid");
-
-                    b.ToTable("user_roles", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Uid = new Guid("77777777-7777-7777-7777-777777777777"),
-                            AssignedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            RoleUid = new Guid("11111111-1111-1111-1111-111111111111"),
-                            UserUid = new Guid("44444444-4444-4444-4444-444444444444")
-                        },
-                        new
-                        {
-                            Uid = new Guid("88888888-8888-8888-8888-888888888888"),
-                            AssignedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            RoleUid = new Guid("22222222-2222-2222-2222-222222222222"),
-                            UserUid = new Guid("55555555-5555-5555-5555-555555555555")
-                        },
-                        new
-                        {
-                            Uid = new Guid("99999999-9999-9999-9999-999999999999"),
-                            AssignedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            RoleUid = new Guid("33333333-3333-3333-3333-333333333333"),
-                            UserUid = new Guid("66666666-6666-6666-6666-666666666666")
-                        });
+                    b.ToTable("academic_periods", (string)null);
                 });
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Assignment", b =>
@@ -510,17 +588,13 @@ namespace ViridiscaUi.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("uid");
 
-                    b.Property<Guid>("CourseId")
+                    b.Property<Guid>("CourseInstanceUid")
                         .HasColumnType("uuid")
-                        .HasColumnName("course_id");
+                        .HasColumnName("course_instance_uid");
 
-                    b.Property<Guid>("CourseUid")
+                    b.Property<Guid?>("CourseInstanceUid1")
                         .HasColumnType("uuid")
-                        .HasColumnName("course_uid");
-
-                    b.Property<Guid?>("CourseUid1")
-                        .HasColumnType("uuid")
-                        .HasColumnName("course_uid1");
+                        .HasColumnName("course_instance_uid1");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -528,8 +602,8 @@ namespace ViridiscaUi.Migrations
 
                     b.Property<string>("Description")
                         .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
                         .HasColumnName("description");
 
                     b.Property<int>("Difficulty")
@@ -542,7 +616,8 @@ namespace ViridiscaUi.Migrations
 
                     b.Property<string>("Instructions")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(5000)
+                        .HasColumnType("character varying(5000)")
                         .HasColumnName("instructions");
 
                     b.Property<DateTime?>("LastModifiedAt")
@@ -553,10 +628,6 @@ namespace ViridiscaUi.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("lesson_uid");
 
-                    b.Property<Guid?>("LessonUid1")
-                        .HasColumnType("uuid")
-                        .HasColumnName("lesson_uid1");
-
                     b.Property<double>("MaxGrade")
                         .HasColumnType("double precision")
                         .HasColumnName("max_grade");
@@ -564,14 +635,6 @@ namespace ViridiscaUi.Migrations
                     b.Property<double>("MaxScore")
                         .HasColumnType("double precision")
                         .HasColumnName("max_score");
-
-                    b.Property<Guid?>("ModuleId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("module_id");
-
-                    b.Property<Guid?>("ModuleUid")
-                        .HasColumnType("uuid")
-                        .HasColumnName("module_uid");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer")
@@ -590,96 +653,44 @@ namespace ViridiscaUi.Migrations
                     b.HasKey("Uid")
                         .HasName("pk_assignments");
 
-                    b.HasIndex("CourseUid")
-                        .HasDatabaseName("ix_assignments_course_uid");
+                    b.HasIndex("CourseInstanceUid")
+                        .HasDatabaseName("ix_assignments_course_instance_uid");
 
-                    b.HasIndex("CourseUid1")
-                        .HasDatabaseName("ix_assignments_course_uid1");
+                    b.HasIndex("CourseInstanceUid1")
+                        .HasDatabaseName("ix_assignments_course_instance_uid1");
 
                     b.HasIndex("LessonUid")
                         .HasDatabaseName("ix_assignments_lesson_uid");
 
-                    b.HasIndex("LessonUid1")
-                        .HasDatabaseName("ix_assignments_lesson_uid1");
-
                     b.ToTable("assignments", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Uid = new Guid("61111111-1111-1111-1111-111111111111"),
-                            CourseId = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1"),
-                            CourseUid = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1"),
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Выполнение базовых задач по программированию на C#",
-                            Difficulty = 1,
-                            DueDate = new DateTime(2024, 1, 15, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Instructions = "Создать консольное приложение с базовыми операциями",
-                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            MaxGrade = 100.0,
-                            MaxScore = 100.0,
-                            Status = 1,
-                            Title = "Лабораторная работа №1 - Основы C#",
-                            Type = 4
-                        },
-                        new
-                        {
-                            Uid = new Guid("62222222-2222-2222-2222-222222222222"),
-                            CourseId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1"),
-                            CourseUid = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1"),
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Вычисление производных функций",
-                            Difficulty = 0,
-                            DueDate = new DateTime(2024, 1, 8, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Instructions = "Решить задачи 1-10 из учебника",
-                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            MaxGrade = 50.0,
-                            MaxScore = 50.0,
-                            Status = 1,
-                            Title = "Домашнее задание - Производные",
-                            Type = 0
-                        },
-                        new
-                        {
-                            Uid = new Guid("63333333-3333-3333-3333-333333333333"),
-                            CourseId = new Guid("cccccccc-cccc-cccc-cccc-ccccccccccc1"),
-                            CourseUid = new Guid("cccccccc-cccc-cccc-cccc-ccccccccccc1"),
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Комплексное исследование механических систем",
-                            Difficulty = 2,
-                            DueDate = new DateTime(2024, 1, 31, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Instructions = "Создать проект по моделированию физической системы",
-                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            MaxGrade = 200.0,
-                            MaxScore = 200.0,
-                            Status = 1,
-                            Title = "Проект - Механика",
-                            Type = 3
-                        });
                 });
 
-            modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Course", b =>
+            modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.CourseInstance", b =>
                 {
                     b.Property<Guid>("Uid")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("uid");
 
+                    b.Property<Guid>("AcademicPeriodUid")
+                        .HasColumnType("uuid")
+                        .HasColumnName("academic_period_uid");
+
                     b.Property<string>("Category")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
+                        .HasColumnType("text")
                         .HasColumnName("category");
 
                     b.Property<string>("Code")
                         .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
+                        .HasColumnType("text")
                         .HasColumnName("code");
 
                     b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<int>("Credits")
                         .HasColumnType("integer")
@@ -687,17 +698,29 @@ namespace ViridiscaUi.Migrations
 
                     b.Property<string>("Description")
                         .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
                         .HasColumnName("description");
 
                     b.Property<DateTime?>("EndDate")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("end_date");
 
+                    b.Property<Guid>("GroupUid")
+                        .HasColumnType("uuid")
+                        .HasColumnName("group_uid");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
                     b.Property<DateTime?>("LastModifiedAt")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_modified_at");
+                        .HasColumnName("last_modified_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<string>("LearningOutcomes")
                         .IsRequired()
@@ -708,10 +731,16 @@ namespace ViridiscaUi.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("max_enrollments");
 
+                    b.Property<int>("MaxStudents")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(30)
+                        .HasColumnName("max_students");
+
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("name");
 
                     b.Property<string>("Prerequisites")
@@ -723,15 +752,16 @@ namespace ViridiscaUi.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("start_date");
 
-                    b.Property<int>("Status")
-                        .HasColumnType("integer")
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
                         .HasColumnName("status");
 
-                    b.Property<Guid?>("SubjectUid")
+                    b.Property<Guid>("SubjectUid")
                         .HasColumnType("uuid")
                         .HasColumnName("subject_uid");
 
-                    b.Property<Guid?>("TeacherUid")
+                    b.Property<Guid>("TeacherUid")
                         .HasColumnType("uuid")
                         .HasColumnName("teacher_uid");
 
@@ -739,80 +769,144 @@ namespace ViridiscaUi.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("teacher_uid1");
 
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("title");
-
                     b.HasKey("Uid")
-                        .HasName("pk_courses");
+                        .HasName("pk_course_instances");
+
+                    b.HasIndex("AcademicPeriodUid")
+                        .HasDatabaseName("ix_course_instances_academic_period_uid");
+
+                    b.HasIndex("GroupUid")
+                        .HasDatabaseName("ix_course_instances_group_uid");
 
                     b.HasIndex("TeacherUid")
-                        .HasDatabaseName("ix_courses_teacher_uid");
+                        .HasDatabaseName("ix_course_instances_teacher_uid");
 
                     b.HasIndex("TeacherUid1")
-                        .HasDatabaseName("ix_courses_teacher_uid1");
+                        .HasDatabaseName("ix_course_instances_teacher_uid1");
 
-                    b.ToTable("courses", (string)null);
+                    b.HasIndex("SubjectUid", "GroupUid", "AcademicPeriodUid")
+                        .HasDatabaseName("ix_course_instances_subject_uid_group_uid_academic_period_uid");
 
-                    b.HasData(
-                        new
-                        {
-                            Uid = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1"),
-                            Category = "Программирование",
-                            Code = "PROG101",
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Credits = 4,
-                            Description = "Изучение основ программирования на языке C#",
-                            EndDate = new DateTime(2024, 5, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            LearningOutcomes = "Понимание основных концепций программирования, умение создавать простые программы",
-                            MaxEnrollments = 50,
-                            Name = "Основы программирования",
-                            Prerequisites = "",
-                            StartDate = new DateTime(2023, 11, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Status = 1,
-                            TeacherUid = new Guid("dddddddd-dddd-dddd-dddd-dddddddddddd"),
-                            Title = "Основы программирования"
-                        },
-                        new
-                        {
-                            Uid = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1"),
-                            Category = "Математика",
-                            Code = "MATH201",
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Credits = 5,
-                            Description = "Дифференциальное и интегральное исчисление",
-                            EndDate = new DateTime(2024, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            LearningOutcomes = "Владение методами дифференциального и интегрального исчисления",
-                            MaxEnrollments = 40,
-                            Name = "Математический анализ",
-                            Prerequisites = "Школьная математика",
-                            StartDate = new DateTime(2023, 12, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Status = 1,
-                            TeacherUid = new Guid("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"),
-                            Title = "Математический анализ"
-                        },
-                        new
-                        {
-                            Uid = new Guid("cccccccc-cccc-cccc-cccc-ccccccccccc1"),
-                            Category = "Физика",
-                            Code = "PHYS101",
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Credits = 4,
-                            Description = "Основы механики и термодинамики",
-                            EndDate = new DateTime(2024, 4, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            LearningOutcomes = "Понимание основных законов механики и термодинамики",
-                            MaxEnrollments = 35,
-                            Name = "Общая физика",
-                            Prerequisites = "Школьная физика и математика",
-                            StartDate = new DateTime(2023, 10, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Status = 1,
-                            TeacherUid = new Guid("ffffffff-ffff-ffff-ffff-ffffffffffff"),
-                            Title = "Общая физика"
-                        });
+                    b.ToTable("course_instances", (string)null);
+                });
+
+            modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Curriculum", b =>
+                {
+                    b.Property<Guid>("Uid")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("uid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("description");
+
+                    b.Property<int>("DurationInSemesters")
+                        .HasColumnType("integer")
+                        .HasColumnName("duration_in_semesters");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<DateTime?>("LastModifiedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<int>("TotalCredits")
+                        .HasColumnType("integer")
+                        .HasColumnName("total_credits");
+
+                    b.Property<DateTime>("ValidFrom")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("valid_from");
+
+                    b.Property<DateTime?>("ValidTo")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("valid_to");
+
+                    b.HasKey("Uid")
+                        .HasName("pk_curricula");
+
+                    b.ToTable("curricula", (string)null);
+                });
+
+            modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.CurriculumSubject", b =>
+                {
+                    b.Property<Guid>("Uid")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("uid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<int>("Credits")
+                        .HasColumnType("integer")
+                        .HasColumnName("credits");
+
+                    b.Property<Guid>("CurriculumUid")
+                        .HasColumnType("uuid")
+                        .HasColumnName("curriculum_uid");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsRequired")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_required");
+
+                    b.Property<DateTime?>("LastModifiedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<int>("Semester")
+                        .HasColumnType("integer")
+                        .HasColumnName("semester");
+
+                    b.Property<Guid>("SubjectUid")
+                        .HasColumnType("uuid")
+                        .HasColumnName("subject_uid");
+
+                    b.HasKey("Uid")
+                        .HasName("pk_curriculum_subjects");
+
+                    b.HasIndex("SubjectUid")
+                        .HasDatabaseName("ix_curriculum_subjects_subject_uid");
+
+                    b.HasIndex("CurriculumUid", "SubjectUid")
+                        .IsUnique()
+                        .HasDatabaseName("ix_curriculum_subjects_curriculum_uid_subject_uid");
+
+                    b.ToTable("curriculum_subjects", (string)null);
                 });
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Enrollment", b =>
@@ -826,27 +920,44 @@ namespace ViridiscaUi.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("completed_at");
 
-                    b.Property<Guid>("CourseUid")
-                        .HasColumnType("uuid")
-                        .HasColumnName("course_uid");
+                    b.Property<DateTime?>("CompletionDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completion_date");
 
-                    b.Property<Guid?>("CourseUid1")
+                    b.Property<Guid>("CourseInstanceUid")
                         .HasColumnType("uuid")
-                        .HasColumnName("course_uid1");
+                        .HasColumnName("course_instance_uid");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<DateTime>("EnrollmentDate")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("enrollment_date")
+                        .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-                    b.Property<DateTime?>("LastModifiedAt")
+                    b.Property<DateTime>("EnrolledAt")
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_modified_at");
+                        .HasColumnName("enrolled_at");
+
+                    b.Property<DateTime>("EnrollmentDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("enrollment_date");
+
+                    b.Property<decimal?>("FinalGrade")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("final_grade");
+
+                    b.Property<DateTime?>("LastModifiedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Notes")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("notes");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer")
@@ -856,68 +967,180 @@ namespace ViridiscaUi.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("student_uid");
 
-                    b.Property<Guid?>("StudentUid1")
-                        .HasColumnType("uuid")
-                        .HasColumnName("student_uid1");
-
                     b.HasKey("Uid")
                         .HasName("pk_enrollments");
 
-                    b.HasIndex("CourseUid")
-                        .HasDatabaseName("ix_enrollments_course_uid");
+                    b.HasIndex("CourseInstanceUid")
+                        .HasDatabaseName("ix_enrollments_course_instance_uid");
 
-                    b.HasIndex("CourseUid1")
-                        .HasDatabaseName("ix_enrollments_course_uid1");
-
-                    b.HasIndex("StudentUid")
-                        .HasDatabaseName("ix_enrollments_student_uid");
-
-                    b.HasIndex("StudentUid1")
-                        .HasDatabaseName("ix_enrollments_student_uid1");
+                    b.HasIndex("StudentUid", "CourseInstanceUid")
+                        .IsUnique()
+                        .HasDatabaseName("ix_enrollments_student_uid_course_instance_uid");
 
                     b.ToTable("enrollments", (string)null);
+                });
 
-                    b.HasData(
-                        new
-                        {
-                            Uid = new Guid("71111111-1111-1111-1111-111111111111"),
-                            CourseUid = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1"),
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            EnrollmentDate = new DateTime(2023, 12, 2, 0, 0, 0, 0, DateTimeKind.Utc),
-                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Status = 0,
-                            StudentUid = new Guid("11111111-1111-1111-1111-111111111110")
-                        },
-                        new
-                        {
-                            Uid = new Guid("72222222-2222-2222-2222-222222222222"),
-                            CourseUid = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1"),
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            EnrollmentDate = new DateTime(2023, 12, 7, 0, 0, 0, 0, DateTimeKind.Utc),
-                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Status = 0,
-                            StudentUid = new Guid("22222222-2222-2222-2222-222222222220")
-                        },
-                        new
-                        {
-                            Uid = new Guid("73333333-3333-3333-3333-333333333333"),
-                            CourseUid = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1"),
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            EnrollmentDate = new DateTime(2023, 12, 12, 0, 0, 0, 0, DateTimeKind.Utc),
-                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Status = 0,
-                            StudentUid = new Guid("33333333-3333-3333-3333-333333333330")
-                        },
-                        new
-                        {
-                            Uid = new Guid("74444444-4444-4444-4444-444444444444"),
-                            CourseUid = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1"),
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            EnrollmentDate = new DateTime(2023, 12, 17, 0, 0, 0, 0, DateTimeKind.Utc),
-                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Status = 0,
-                            StudentUid = new Guid("44444444-4444-4444-4444-444444444440")
-                        });
+            modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Exam", b =>
+                {
+                    b.Property<Guid>("Uid")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("uid");
+
+                    b.Property<Guid?>("AcademicPeriodUid")
+                        .HasColumnType("uuid")
+                        .HasColumnName("academic_period_uid");
+
+                    b.Property<Guid>("CourseInstanceUid")
+                        .HasColumnType("uuid")
+                        .HasColumnName("course_instance_uid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("description");
+
+                    b.Property<TimeSpan>("Duration")
+                        .HasColumnType("interval")
+                        .HasColumnName("duration");
+
+                    b.Property<DateTime>("ExamDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("exam_date");
+
+                    b.Property<string>("Instructions")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("instructions");
+
+                    b.Property<bool>("IsPublished")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_published");
+
+                    b.Property<DateTime?>("LastModifiedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Location")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("location");
+
+                    b.Property<decimal>("MaxScore")
+                        .HasPrecision(6, 2)
+                        .HasColumnType("numeric(6,2)")
+                        .HasColumnName("max_score");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer")
+                        .HasColumnName("type");
+
+                    b.HasKey("Uid")
+                        .HasName("pk_exams");
+
+                    b.HasIndex("AcademicPeriodUid")
+                        .HasDatabaseName("ix_exams_academic_period_uid");
+
+                    b.HasIndex("CourseInstanceUid")
+                        .HasDatabaseName("ix_exams_course_instance_uid");
+
+                    b.HasIndex("ExamDate")
+                        .HasDatabaseName("ix_exams_exam_date");
+
+                    b.HasIndex("IsPublished")
+                        .HasDatabaseName("ix_exams_is_published");
+
+                    b.ToTable("exams", (string)null);
+                });
+
+            modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.ExamResult", b =>
+                {
+                    b.Property<Guid>("Uid")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("uid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<Guid>("ExamUid")
+                        .HasColumnType("uuid")
+                        .HasColumnName("exam_uid");
+
+                    b.Property<string>("Feedback")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("feedback");
+
+                    b.Property<DateTime?>("GradedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("graded_at");
+
+                    b.Property<bool>("IsAbsent")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_absent");
+
+                    b.Property<DateTime?>("LastModifiedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Notes")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("notes");
+
+                    b.Property<decimal>("Score")
+                        .HasPrecision(6, 2)
+                        .HasColumnType("numeric(6,2)")
+                        .HasColumnName("score");
+
+                    b.Property<Guid>("StudentUid")
+                        .HasColumnType("uuid")
+                        .HasColumnName("student_uid");
+
+                    b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("submitted_at");
+
+                    b.HasKey("Uid")
+                        .HasName("pk_exam_results");
+
+                    b.HasIndex("StudentUid")
+                        .HasDatabaseName("ix_exam_results_student_uid");
+
+                    b.HasIndex("ExamUid", "StudentUid")
+                        .IsUnique()
+                        .HasDatabaseName("ix_exam_results_exam_uid_student_uid");
+
+                    b.ToTable("exam_results", (string)null);
                 });
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Grade", b =>
@@ -931,18 +1154,17 @@ namespace ViridiscaUi.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("assignment_uid");
 
-                    b.Property<Guid?>("AssignmentUid1")
-                        .HasColumnType("uuid")
-                        .HasColumnName("assignment_uid1");
-
                     b.Property<string>("Comment")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
                         .HasColumnName("comment");
 
                     b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -959,18 +1181,20 @@ namespace ViridiscaUi.Migrations
                         .HasColumnName("graded_by_uid");
 
                     b.Property<bool>("IsPublished")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
+                        .HasDefaultValue(false)
                         .HasColumnName("is_published");
 
                     b.Property<DateTime>("IssuedAt")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("issued_at")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+                        .HasColumnName("issued_at");
 
                     b.Property<DateTime?>("LastModifiedAt")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_modified_at");
+                        .HasColumnName("last_modified_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<Guid?>("LessonUid")
                         .HasColumnType("uuid")
@@ -992,17 +1216,9 @@ namespace ViridiscaUi.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("subject_uid");
 
-                    b.Property<Guid?>("SubjectUid1")
-                        .HasColumnType("uuid")
-                        .HasColumnName("subject_uid1");
-
                     b.Property<Guid>("TeacherUid")
                         .HasColumnType("uuid")
                         .HasColumnName("teacher_uid");
-
-                    b.Property<Guid?>("TeacherUid1")
-                        .HasColumnType("uuid")
-                        .HasColumnName("teacher_uid1");
 
                     b.Property<int>("Type")
                         .HasColumnType("integer")
@@ -1019,14 +1235,11 @@ namespace ViridiscaUi.Migrations
                     b.HasIndex("AssignmentUid")
                         .HasDatabaseName("ix_grades_assignment_uid");
 
-                    b.HasIndex("AssignmentUid1")
-                        .HasDatabaseName("ix_grades_assignment_uid1");
-
                     b.HasIndex("GradedByUid")
                         .HasDatabaseName("ix_grades_graded_by_uid");
 
-                    b.HasIndex("LessonUid")
-                        .HasDatabaseName("ix_grades_lesson_uid");
+                    b.HasIndex("IsPublished")
+                        .HasDatabaseName("ix_grades_is_published");
 
                     b.HasIndex("StudentUid")
                         .HasDatabaseName("ix_grades_student_uid");
@@ -1037,72 +1250,10 @@ namespace ViridiscaUi.Migrations
                     b.HasIndex("SubjectUid")
                         .HasDatabaseName("ix_grades_subject_uid");
 
-                    b.HasIndex("SubjectUid1")
-                        .HasDatabaseName("ix_grades_subject_uid1");
-
                     b.HasIndex("TeacherUid")
                         .HasDatabaseName("ix_grades_teacher_uid");
 
-                    b.HasIndex("TeacherUid1")
-                        .HasDatabaseName("ix_grades_teacher_uid1");
-
                     b.ToTable("grades", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Uid = new Guid("81111111-1111-1111-1111-111111111111"),
-                            AssignmentUid = new Guid("61111111-1111-1111-1111-111111111111"),
-                            Comment = "Хорошая работа! Есть небольшие замечания по стилю кода.",
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Лабораторная работа по программированию",
-                            GradedAt = new DateTime(2023, 12, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsPublished = true,
-                            IssuedAt = new DateTime(2023, 12, 27, 0, 0, 0, 0, DateTimeKind.Utc),
-                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            PublishedAt = new DateTime(2023, 12, 28, 0, 0, 0, 0, DateTimeKind.Utc),
-                            StudentUid = new Guid("11111111-1111-1111-1111-111111111110"),
-                            SubjectUid = new Guid("51111111-1111-1111-1111-111111111111"),
-                            TeacherUid = new Guid("dddddddd-dddd-dddd-dddd-dddddddddddd"),
-                            Type = 0,
-                            Value = 85m
-                        },
-                        new
-                        {
-                            Uid = new Guid("82222222-2222-2222-2222-222222222222"),
-                            AssignmentUid = new Guid("61111111-1111-1111-1111-111111111111"),
-                            Comment = "Отличная работа! Код чистый и хорошо структурированный.",
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Лабораторная работа по программированию",
-                            GradedAt = new DateTime(2023, 12, 29, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsPublished = true,
-                            IssuedAt = new DateTime(2023, 12, 29, 0, 0, 0, 0, DateTimeKind.Utc),
-                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            PublishedAt = new DateTime(2023, 12, 30, 0, 0, 0, 0, DateTimeKind.Utc),
-                            StudentUid = new Guid("22222222-2222-2222-2222-222222222220"),
-                            SubjectUid = new Guid("51111111-1111-1111-1111-111111111111"),
-                            TeacherUid = new Guid("dddddddd-dddd-dddd-dddd-dddddddddddd"),
-                            Type = 0,
-                            Value = 92m
-                        },
-                        new
-                        {
-                            Uid = new Guid("83333333-3333-3333-3333-333333333333"),
-                            AssignmentUid = new Guid("62222222-2222-2222-2222-222222222222"),
-                            Comment = "Все задачи решены правильно.",
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Домашнее задание по производным",
-                            GradedAt = new DateTime(2023, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsPublished = true,
-                            IssuedAt = new DateTime(2023, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc),
-                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            PublishedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            StudentUid = new Guid("33333333-3333-3333-3333-333333333330"),
-                            SubjectUid = new Guid("52222222-2222-2222-2222-222222222222"),
-                            TeacherUid = new Guid("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"),
-                            Type = 0,
-                            Value = 45m
-                        });
                 });
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.GradeComment", b =>
@@ -1118,8 +1269,8 @@ namespace ViridiscaUi.Migrations
 
                     b.Property<string>("Content")
                         .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
                         .HasColumnName("content");
 
                     b.Property<DateTime>("CreatedAt")
@@ -1155,15 +1306,18 @@ namespace ViridiscaUi.Migrations
                         .HasColumnName("type");
 
                     b.HasKey("Uid")
-                        .HasName("pk_grade_comments");
+                        .HasName("pk_grade_comment");
+
+                    b.HasIndex("AuthorUid")
+                        .HasDatabaseName("ix_grade_comment_author_uid");
 
                     b.HasIndex("GradeUid")
-                        .HasDatabaseName("ix_grade_comments_grade_uid");
+                        .HasDatabaseName("ix_grade_comment_grade_uid");
 
                     b.HasIndex("GradeUid1")
-                        .HasDatabaseName("ix_grade_comments_grade_uid1");
+                        .HasDatabaseName("ix_grade_comment_grade_uid1");
 
-                    b.ToTable("grade_comments", (string)null);
+                    b.ToTable("grade_comment", (string)null);
                 });
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.GradeRevision", b =>
@@ -1191,24 +1345,22 @@ namespace ViridiscaUi.Migrations
 
                     b.Property<string>("NewDescription")
                         .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
                         .HasColumnName("new_description");
 
                     b.Property<decimal>("NewValue")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("numeric(5,2)")
+                        .HasColumnType("decimal(5,2)")
                         .HasColumnName("new_value");
 
                     b.Property<string>("PreviousDescription")
                         .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
                         .HasColumnName("previous_description");
 
                     b.Property<decimal>("PreviousValue")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("numeric(5,2)")
+                        .HasColumnType("decimal(5,2)")
                         .HasColumnName("previous_value");
 
                     b.Property<string>("RevisionReason")
@@ -1222,15 +1374,18 @@ namespace ViridiscaUi.Migrations
                         .HasColumnName("teacher_uid");
 
                     b.HasKey("Uid")
-                        .HasName("pk_grade_revisions");
+                        .HasName("pk_grade_revision");
 
                     b.HasIndex("GradeUid")
-                        .HasDatabaseName("ix_grade_revisions_grade_uid");
+                        .HasDatabaseName("ix_grade_revision_grade_uid");
 
                     b.HasIndex("GradeUid1")
-                        .HasDatabaseName("ix_grade_revisions_grade_uid1");
+                        .HasDatabaseName("ix_grade_revision_grade_uid1");
 
-                    b.ToTable("grade_revisions", (string)null);
+                    b.HasIndex("TeacherUid")
+                        .HasDatabaseName("ix_grade_revision_teacher_uid");
+
+                    b.ToTable("grade_revision", (string)null);
                 });
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Group", b =>
@@ -1247,8 +1402,10 @@ namespace ViridiscaUi.Migrations
                         .HasColumnName("code");
 
                     b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<Guid?>("CuratorUid")
                         .HasColumnType("uuid")
@@ -1273,8 +1430,10 @@ namespace ViridiscaUi.Migrations
                         .HasColumnName("last_activity_date");
 
                     b.Property<DateTime?>("LastModifiedAt")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_modified_at");
+                        .HasColumnName("last_modified_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<int>("MaxStudents")
                         .HasColumnType("integer")
@@ -1294,10 +1453,6 @@ namespace ViridiscaUi.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("status");
 
-                    b.Property<Guid?>("TeacherUid")
-                        .HasColumnType("uuid")
-                        .HasColumnName("teacher_uid");
-
                     b.Property<int>("Year")
                         .HasColumnType("integer")
                         .HasColumnName("year");
@@ -1315,66 +1470,10 @@ namespace ViridiscaUi.Migrations
                     b.HasIndex("DepartmentUid")
                         .HasDatabaseName("ix_groups_department_uid");
 
-                    b.HasIndex("StartDate")
-                        .HasDatabaseName("ix_groups_start_date");
-
                     b.HasIndex("Status")
                         .HasDatabaseName("ix_groups_status");
 
-                    b.HasIndex("TeacherUid")
-                        .HasDatabaseName("ix_groups_teacher_uid");
-
-                    b.HasIndex("Year")
-                        .HasDatabaseName("ix_groups_year");
-
                     b.ToTable("groups", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Uid = new Guid("11111110-1111-1111-1111-111111111111"),
-                            Code = "IT-301",
-                            CreatedAt = new DateTime(2021, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            CuratorUid = new Guid("dddddddd-dddd-dddd-dddd-dddddddddddd"),
-                            DepartmentUid = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
-                            Description = "Информационные технологии, 3 курс, группа 1",
-                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            MaxStudents = 25,
-                            Name = "ИТ-301",
-                            StartDate = new DateTime(2021, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Status = 1,
-                            Year = 3
-                        },
-                        new
-                        {
-                            Uid = new Guid("22222220-2222-2222-2222-222222222222"),
-                            Code = "MAT-201",
-                            CreatedAt = new DateTime(2022, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            CuratorUid = new Guid("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"),
-                            DepartmentUid = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
-                            Description = "Математика, 2 курс, группа 1",
-                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            MaxStudents = 30,
-                            Name = "МАТ-201",
-                            StartDate = new DateTime(2022, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Status = 1,
-                            Year = 2
-                        },
-                        new
-                        {
-                            Uid = new Guid("33333330-3333-3333-3333-333333333333"),
-                            Code = "PHYS-401",
-                            CreatedAt = new DateTime(2020, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            CuratorUid = new Guid("ffffffff-ffff-ffff-ffff-ffffffffffff"),
-                            DepartmentUid = new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc"),
-                            Description = "Физика, 4 курс, группа 1",
-                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            MaxStudents = 20,
-                            Name = "ФИЗ-401",
-                            StartDate = new DateTime(2020, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Status = 1,
-                            Year = 4
-                        });
                 });
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Lesson", b =>
@@ -1386,8 +1485,17 @@ namespace ViridiscaUi.Migrations
 
                     b.Property<string>("Content")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(10000)
+                        .HasColumnType("character varying(10000)")
                         .HasColumnName("content");
+
+                    b.Property<Guid>("CourseInstanceUid")
+                        .HasColumnType("uuid")
+                        .HasColumnName("course_instance_uid");
+
+                    b.Property<Guid?>("CourseInstanceUid1")
+                        .HasColumnType("uuid")
+                        .HasColumnName("course_instance_uid1");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -1395,8 +1503,8 @@ namespace ViridiscaUi.Migrations
 
                     b.Property<string>("Description")
                         .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
                         .HasColumnName("description");
 
                     b.Property<TimeSpan?>("Duration")
@@ -1415,10 +1523,6 @@ namespace ViridiscaUi.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_modified_at");
 
-                    b.Property<Guid>("ModuleUid")
-                        .HasColumnType("uuid")
-                        .HasColumnName("module_uid");
-
                     b.Property<int>("OrderIndex")
                         .HasColumnType("integer")
                         .HasColumnName("order_index");
@@ -1433,13 +1537,14 @@ namespace ViridiscaUi.Migrations
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("title");
 
                     b.Property<string>("Topic")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("topic");
 
                     b.Property<int>("Type")
@@ -1449,11 +1554,14 @@ namespace ViridiscaUi.Migrations
                     b.HasKey("Uid")
                         .HasName("pk_lessons");
 
+                    b.HasIndex("CourseInstanceUid")
+                        .HasDatabaseName("ix_lessons_course_instance_uid");
+
+                    b.HasIndex("CourseInstanceUid1")
+                        .HasDatabaseName("ix_lessons_course_instance_uid1");
+
                     b.HasIndex("GroupUid")
                         .HasDatabaseName("ix_lessons_group_uid");
-
-                    b.HasIndex("ModuleUid")
-                        .HasDatabaseName("ix_lessons_module_uid");
 
                     b.HasIndex("SubjectUid")
                         .HasDatabaseName("ix_lessons_subject_uid");
@@ -1462,98 +1570,6 @@ namespace ViridiscaUi.Migrations
                         .HasDatabaseName("ix_lessons_teacher_uid");
 
                     b.ToTable("lessons", (string)null);
-                });
-
-            modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.LessonDetail", b =>
-                {
-                    b.Property<Guid>("Uid")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("uid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
-                        .HasColumnName("description");
-
-                    b.Property<DateTime>("EndTime")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("end_time");
-
-                    b.Property<string>("GroupName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("group_name");
-
-                    b.Property<bool>("IsCancelled")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_cancelled");
-
-                    b.Property<bool>("IsCompleted")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_completed");
-
-                    b.Property<DateTime?>("LastModifiedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_modified_at");
-
-                    b.Property<Guid>("LessonUid")
-                        .HasColumnType("uuid")
-                        .HasColumnName("lesson_uid");
-
-                    b.Property<DateTime>("StartTime")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("start_time");
-
-                    b.Property<string>("SubjectName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("subject_name");
-
-                    b.Property<string>("TeacherFirstName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("teacher_first_name");
-
-                    b.Property<string>("TeacherLastName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("teacher_last_name");
-
-                    b.Property<string>("TeacherMiddleName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("teacher_middle_name");
-
-                    b.Property<string>("Topic")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("topic");
-
-                    b.HasKey("Uid")
-                        .HasName("pk_lesson_details");
-
-                    b.HasIndex("LessonUid")
-                        .HasDatabaseName("ix_lesson_details_lesson_uid");
-
-                    b.HasIndex("StartTime")
-                        .HasDatabaseName("ix_lesson_details_start_time");
-
-                    b.HasIndex("TeacherLastName", "TeacherFirstName")
-                        .HasDatabaseName("ix_lesson_details_teacher_last_name_teacher_first_name");
-
-                    b.ToTable("lesson_details", (string)null);
                 });
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.LessonProgress", b =>
@@ -1572,9 +1588,7 @@ namespace ViridiscaUi.Migrations
                         .HasColumnName("created_at");
 
                     b.Property<bool>("IsCompleted")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
-                        .HasDefaultValue(false)
                         .HasColumnName("is_completed");
 
                     b.Property<DateTime?>("LastModifiedAt")
@@ -1596,12 +1610,6 @@ namespace ViridiscaUi.Migrations
                     b.HasKey("Uid")
                         .HasName("pk_lesson_progress");
 
-                    b.HasIndex("CompletedAt")
-                        .HasDatabaseName("ix_lesson_progress_completed_at");
-
-                    b.HasIndex("IsCompleted")
-                        .HasDatabaseName("ix_lesson_progress_is_completed");
-
                     b.HasIndex("LessonUid")
                         .HasDatabaseName("ix_lesson_progress_lesson_uid");
 
@@ -1612,59 +1620,250 @@ namespace ViridiscaUi.Migrations
                     b.ToTable("lesson_progress", (string)null);
                 });
 
-            modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Module", b =>
+            modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.LibraryLoan", b =>
                 {
                     b.Property<Guid>("Uid")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("uid");
 
-                    b.Property<Guid>("CourseUid")
+                    b.Property<Guid>("BorrowerUid")
                         .HasColumnType("uuid")
-                        .HasColumnName("course_uid");
-
-                    b.Property<Guid?>("CourseUid1")
-                        .HasColumnType("uuid")
-                        .HasColumnName("course_uid1");
+                        .HasColumnName("borrower_uid");
 
                     b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-                    b.Property<string>("Description")
+                    b.Property<DateTime>("DueDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("due_date");
+
+                    b.Property<decimal>("FineAmount")
+                        .HasPrecision(8, 2)
+                        .HasColumnType("numeric(8,2)")
+                        .HasColumnName("fine_amount");
+
+                    b.Property<bool>("IsReturned")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_returned");
+
+                    b.Property<DateTime?>("LastModifiedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<DateTime>("LoanDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("loan_date");
+
+                    b.Property<string>("Notes")
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
+                        .HasColumnName("notes");
+
+                    b.Property<Guid>("ResourceUid")
+                        .HasColumnType("uuid")
+                        .HasColumnName("resource_uid");
+
+                    b.Property<DateTime?>("ReturnDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("return_date");
+
+                    b.HasKey("Uid")
+                        .HasName("pk_library_loans");
+
+                    b.HasIndex("BorrowerUid")
+                        .HasDatabaseName("ix_library_loans_borrower_uid");
+
+                    b.HasIndex("DueDate")
+                        .HasDatabaseName("ix_library_loans_due_date");
+
+                    b.HasIndex("IsReturned")
+                        .HasDatabaseName("ix_library_loans_is_returned");
+
+                    b.HasIndex("ResourceUid")
+                        .HasDatabaseName("ix_library_loans_resource_uid");
+
+                    b.ToTable("library_loans", (string)null);
+                });
+
+            modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.LibraryResource", b =>
+                {
+                    b.Property<Guid>("Uid")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("uid");
+
+                    b.Property<string>("Author")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("author");
+
+                    b.Property<int>("AvailableCopies")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("available_copies");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
                         .HasColumnName("description");
 
-                    b.Property<bool>("IsPublished")
+                    b.Property<string>("DigitalUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("digital_url");
+
+                    b.Property<string>("ISBN")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("isbn");
+
+                    b.Property<bool>("IsDigital")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
-                        .HasColumnName("is_published");
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_digital");
 
                     b.Property<DateTime?>("LastModifiedAt")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_modified_at");
+                        .HasColumnName("last_modified_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-                    b.Property<string>("Name")
+                    b.Property<string>("Location")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
-                        .HasColumnName("name");
+                        .HasColumnName("location");
 
-                    b.Property<int>("OrderIndex")
+                    b.Property<DateTime?>("PublishedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("published_date");
+
+                    b.Property<string>("Publisher")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("publisher");
+
+                    b.Property<string>("Tags")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("tags");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("title");
+
+                    b.Property<int>("TotalCopies")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
-                        .HasColumnName("order_index");
+                        .HasDefaultValue(1)
+                        .HasColumnName("total_copies");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer")
+                        .HasColumnName("type");
 
                     b.HasKey("Uid")
-                        .HasName("pk_modules");
+                        .HasName("pk_library_resources");
 
-                    b.HasIndex("CourseUid")
-                        .HasDatabaseName("ix_modules_course_uid");
+                    b.HasIndex("ISBN")
+                        .HasDatabaseName("ix_library_resources_isbn");
 
-                    b.HasIndex("CourseUid1")
-                        .HasDatabaseName("ix_modules_course_uid1");
+                    b.HasIndex("Title")
+                        .HasDatabaseName("ix_library_resources_title");
 
-                    b.ToTable("modules", (string)null);
+                    b.HasIndex("Type")
+                        .HasDatabaseName("ix_library_resources_type");
+
+                    b.ToTable("library_resources", (string)null);
+                });
+
+            modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.ScheduleSlot", b =>
+                {
+                    b.Property<Guid>("Uid")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("uid");
+
+                    b.Property<string>("Classroom")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("classroom");
+
+                    b.Property<Guid>("CourseInstanceUid")
+                        .HasColumnType("uuid")
+                        .HasColumnName("course_instance_uid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<int>("DayOfWeek")
+                        .HasColumnType("integer")
+                        .HasColumnName("day_of_week");
+
+                    b.Property<TimeSpan>("EndTime")
+                        .HasColumnType("interval")
+                        .HasColumnName("end_time");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<DateTime?>("LastModifiedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<TimeSpan>("StartTime")
+                        .HasColumnType("interval")
+                        .HasColumnName("start_time");
+
+                    b.Property<DateTime>("ValidFrom")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("valid_from");
+
+                    b.Property<DateTime?>("ValidTo")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("valid_to");
+
+                    b.HasKey("Uid")
+                        .HasName("pk_schedule_slots");
+
+                    b.HasIndex("CourseInstanceUid", "DayOfWeek", "StartTime")
+                        .HasDatabaseName("ix_schedule_slots_course_instance_uid_day_of_week_start_time");
+
+                    b.ToTable("schedule_slots", (string)null);
                 });
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Student", b =>
@@ -1676,47 +1875,37 @@ namespace ViridiscaUi.Migrations
 
                     b.Property<string>("Address")
                         .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
+                        .HasColumnType("text")
                         .HasColumnName("address");
 
-                    b.Property<DateTime>("BirthDate")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("birth_date");
-
                     b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("email");
+                    b.Property<Guid?>("CurriculumUid")
+                        .HasColumnType("uuid")
+                        .HasColumnName("curriculum_uid");
 
                     b.Property<string>("EmergencyContactName")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
+                        .HasColumnType("text")
                         .HasColumnName("emergency_contact_name");
 
                     b.Property<string>("EmergencyContactPhone")
                         .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
+                        .HasColumnType("text")
                         .HasColumnName("emergency_contact_phone");
 
                     b.Property<DateTime>("EnrollmentDate")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("enrollment_date")
-                        .HasDefaultValueSql("CURRENT_DATE");
+                        .HasColumnName("enrollment_date");
 
-                    b.Property<string>("FirstName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("first_name");
+                    b.Property<decimal>("GPA")
+                        .HasPrecision(4, 2)
+                        .HasColumnType("numeric(4,2)")
+                        .HasColumnName("gpa");
 
                     b.Property<DateTime?>("GraduationDate")
                         .HasColumnType("timestamp with time zone")
@@ -1726,6 +1915,10 @@ namespace ViridiscaUi.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("group_uid");
 
+                    b.Property<Guid?>("GroupUid1")
+                        .HasColumnType("uuid")
+                        .HasColumnName("group_uid1");
+
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -1733,37 +1926,19 @@ namespace ViridiscaUi.Migrations
                         .HasColumnName("is_active");
 
                     b.Property<DateTime?>("LastModifiedAt")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_modified_at");
-
-                    b.Property<string>("LastName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("last_name");
+                        .HasColumnName("last_modified_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<string>("MedicalInformation")
                         .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
+                        .HasColumnType("text")
                         .HasColumnName("medical_information");
 
-                    b.Property<string>("MiddleName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("middle_name");
-
-                    b.Property<string>("Phone")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("phone");
-
-                    b.Property<string>("PhoneNumber")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("phone_number");
+                    b.Property<Guid>("PersonUid")
+                        .HasColumnType("uuid")
+                        .HasColumnName("person_uid");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer")
@@ -1775,25 +1950,21 @@ namespace ViridiscaUi.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("student_code");
 
-                    b.Property<Guid?>("UserUid")
-                        .HasColumnType("uuid")
-                        .HasColumnName("user_uid");
-
-                    b.Property<Guid?>("UserUid1")
-                        .HasColumnType("uuid")
-                        .HasColumnName("user_uid1");
-
                     b.HasKey("Uid")
                         .HasName("pk_students");
 
-                    b.HasIndex("Email")
-                        .HasDatabaseName("ix_students_email");
-
-                    b.HasIndex("EnrollmentDate")
-                        .HasDatabaseName("ix_students_enrollment_date");
+                    b.HasIndex("CurriculumUid")
+                        .HasDatabaseName("ix_students_curriculum_uid");
 
                     b.HasIndex("GroupUid")
                         .HasDatabaseName("ix_students_group_uid");
+
+                    b.HasIndex("GroupUid1")
+                        .HasDatabaseName("ix_students_group_uid1");
+
+                    b.HasIndex("PersonUid")
+                        .IsUnique()
+                        .HasDatabaseName("ix_students_person_uid");
 
                     b.HasIndex("Status")
                         .HasDatabaseName("ix_students_status");
@@ -1802,183 +1973,7 @@ namespace ViridiscaUi.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_students_student_code");
 
-                    b.HasIndex("UserUid")
-                        .IsUnique()
-                        .HasDatabaseName("ix_students_user_uid");
-
-                    b.HasIndex("UserUid1")
-                        .HasDatabaseName("ix_students_user_uid1");
-
                     b.ToTable("students", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Uid = new Guid("11111111-1111-1111-1111-111111111110"),
-                            Address = "",
-                            BirthDate = new DateTime(2004, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Email = "alexey.ivanov@student.viridisca.local",
-                            EmergencyContactName = "",
-                            EmergencyContactPhone = "",
-                            EnrollmentDate = new DateTime(2021, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            FirstName = "Алексей",
-                            GroupUid = new Guid("11111110-1111-1111-1111-111111111111"),
-                            IsActive = true,
-                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            LastName = "Иванов",
-                            MedicalInformation = "",
-                            MiddleName = "Петрович",
-                            Phone = "+7 (910) 123-45-67",
-                            PhoneNumber = "+7 (910) 123-45-67",
-                            Status = 1,
-                            StudentCode = "ST301001",
-                            UserUid = new Guid("66666666-6666-6666-6666-666666666666")
-                        },
-                        new
-                        {
-                            Uid = new Guid("22222222-2222-2222-2222-222222222220"),
-                            Address = "",
-                            BirthDate = new DateTime(2003, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Email = "elena.smirnova@student.viridisca.local",
-                            EmergencyContactName = "",
-                            EmergencyContactPhone = "",
-                            EnrollmentDate = new DateTime(2021, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            FirstName = "Елена",
-                            GroupUid = new Guid("11111110-1111-1111-1111-111111111111"),
-                            IsActive = true,
-                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            LastName = "Смирнова",
-                            MedicalInformation = "",
-                            MiddleName = "Александровна",
-                            Phone = "+7 (911) 234-56-78",
-                            PhoneNumber = "+7 (911) 234-56-78",
-                            Status = 1,
-                            StudentCode = "ST301002"
-                        },
-                        new
-                        {
-                            Uid = new Guid("33333333-3333-3333-3333-333333333330"),
-                            Address = "",
-                            BirthDate = new DateTime(2005, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Email = "dmitry.volkov@student.viridisca.local",
-                            EmergencyContactName = "",
-                            EmergencyContactPhone = "",
-                            EnrollmentDate = new DateTime(2022, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            FirstName = "Дмитрий",
-                            GroupUid = new Guid("22222220-2222-2222-2222-222222222222"),
-                            IsActive = true,
-                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            LastName = "Волков",
-                            MedicalInformation = "",
-                            MiddleName = "Сергеевич",
-                            Phone = "+7 (912) 345-67-89",
-                            PhoneNumber = "+7 (912) 345-67-89",
-                            Status = 1,
-                            StudentCode = "ST201001"
-                        },
-                        new
-                        {
-                            Uid = new Guid("44444444-4444-4444-4444-444444444440"),
-                            Address = "",
-                            BirthDate = new DateTime(2005, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Email = "anna.kuznetsova@student.viridisca.local",
-                            EmergencyContactName = "",
-                            EmergencyContactPhone = "",
-                            EnrollmentDate = new DateTime(2022, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            FirstName = "Анна",
-                            GroupUid = new Guid("22222220-2222-2222-2222-222222222222"),
-                            IsActive = true,
-                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            LastName = "Кузнецова",
-                            MedicalInformation = "",
-                            MiddleName = "Владимировна",
-                            Phone = "+7 (913) 456-78-90",
-                            PhoneNumber = "+7 (913) 456-78-90",
-                            Status = 1,
-                            StudentCode = "ST201002"
-                        },
-                        new
-                        {
-                            Uid = new Guid("55555555-5555-5555-5555-555555555550"),
-                            Address = "",
-                            BirthDate = new DateTime(2002, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Email = "mikhail.morozov@student.viridisca.local",
-                            EmergencyContactName = "",
-                            EmergencyContactPhone = "",
-                            EnrollmentDate = new DateTime(2020, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            FirstName = "Михаил",
-                            GroupUid = new Guid("33333330-3333-3333-3333-333333333333"),
-                            IsActive = true,
-                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            LastName = "Морозов",
-                            MedicalInformation = "",
-                            MiddleName = "Игоревич",
-                            Phone = "+7 (914) 567-89-01",
-                            PhoneNumber = "+7 (914) 567-89-01",
-                            Status = 1,
-                            StudentCode = "ST401001"
-                        });
-                });
-
-            modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.StudentParent", b =>
-                {
-                    b.Property<Guid>("Uid")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("uid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<bool>("HasAccessToAttendance")
-                        .HasColumnType("boolean")
-                        .HasColumnName("has_access_to_attendance");
-
-                    b.Property<bool>("HasAccessToGrades")
-                        .HasColumnType("boolean")
-                        .HasColumnName("has_access_to_grades");
-
-                    b.Property<bool>("IsEmergencyContact")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_emergency_contact");
-
-                    b.Property<DateTime?>("LastModifiedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_modified_at");
-
-                    b.Property<Guid>("ParentUid")
-                        .HasColumnType("uuid")
-                        .HasColumnName("parent_uid");
-
-                    b.Property<Guid>("ParentUserUid")
-                        .HasColumnType("uuid")
-                        .HasColumnName("parent_user_uid");
-
-                    b.Property<int>("RelationType")
-                        .HasColumnType("integer")
-                        .HasColumnName("relation_type");
-
-                    b.Property<Guid>("StudentUid")
-                        .HasColumnType("uuid")
-                        .HasColumnName("student_uid");
-
-                    b.HasKey("Uid")
-                        .HasName("pk_student_parents");
-
-                    b.HasIndex("ParentUserUid")
-                        .HasDatabaseName("ix_student_parents_parent_user_uid");
-
-                    b.HasIndex("StudentUid", "ParentUserUid")
-                        .IsUnique()
-                        .HasDatabaseName("ix_student_parents_student_uid_parent_user_uid");
-
-                    b.ToTable("student_parents", (string)null);
                 });
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Subject", b =>
@@ -1995,8 +1990,10 @@ namespace ViridiscaUi.Migrations
                         .HasColumnName("code");
 
                     b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<int>("Credits")
                         .HasColumnType("integer")
@@ -2023,8 +2020,15 @@ namespace ViridiscaUi.Migrations
                         .HasColumnName("is_active");
 
                     b.Property<DateTime?>("LastModifiedAt")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_modified_at");
+                        .HasColumnName("last_modified_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("LearningOutcomes")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("learning_outcomes");
 
                     b.Property<int>("LessonsPerWeek")
                         .HasColumnType("integer")
@@ -2035,6 +2039,11 @@ namespace ViridiscaUi.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("name");
+
+                    b.Property<string>("Prerequisites")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("prerequisites");
 
                     b.Property<int>("Type")
                         .HasColumnType("integer")
@@ -2053,57 +2062,10 @@ namespace ViridiscaUi.Migrations
                     b.HasIndex("DepartmentUid1")
                         .HasDatabaseName("ix_subjects_department_uid1");
 
-                    b.HasIndex("IsActive")
-                        .HasDatabaseName("ix_subjects_is_active");
-
                     b.HasIndex("Type")
                         .HasDatabaseName("ix_subjects_type");
 
                     b.ToTable("subjects", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Uid = new Guid("51111111-1111-1111-1111-111111111111"),
-                            Code = "PROG101",
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Credits = 4,
-                            DepartmentUid = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
-                            Description = "Введение в программирование на языке C#",
-                            IsActive = true,
-                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            LessonsPerWeek = 2,
-                            Name = "Основы программирования",
-                            Type = 1
-                        },
-                        new
-                        {
-                            Uid = new Guid("52222222-2222-2222-2222-222222222222"),
-                            Code = "MATH201",
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Credits = 5,
-                            DepartmentUid = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
-                            Description = "Дифференциальное и интегральное исчисление",
-                            IsActive = true,
-                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            LessonsPerWeek = 3,
-                            Name = "Математический анализ",
-                            Type = 1
-                        },
-                        new
-                        {
-                            Uid = new Guid("53333333-3333-3333-3333-333333333333"),
-                            Code = "PHYS101",
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Credits = 4,
-                            DepartmentUid = new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc"),
-                            Description = "Основы механики и термодинамики",
-                            IsActive = true,
-                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            LessonsPerWeek = 2,
-                            Name = "Общая физика",
-                            Type = 1
-                        });
                 });
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Submission", b =>
@@ -2121,13 +2083,10 @@ namespace ViridiscaUi.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("assignment_uid");
 
-                    b.Property<Guid?>("AssignmentUid1")
-                        .HasColumnType("uuid")
-                        .HasColumnName("assignment_uid1");
-
                     b.Property<string>("Content")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(10000)
+                        .HasColumnType("character varying(10000)")
                         .HasColumnName("content");
 
                     b.Property<DateTime>("CreatedAt")
@@ -2136,7 +2095,8 @@ namespace ViridiscaUi.Migrations
 
                     b.Property<string>("Feedback")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
                         .HasColumnName("feedback");
 
                     b.Property<string>("FilePath")
@@ -2157,7 +2117,7 @@ namespace ViridiscaUi.Migrations
                         .HasColumnName("last_modified_at");
 
                     b.Property<double?>("Score")
-                        .HasColumnType("double precision")
+                        .HasColumnType("decimal(5,2)")
                         .HasColumnName("score");
 
                     b.Property<int>("Status")
@@ -2172,10 +2132,6 @@ namespace ViridiscaUi.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("student_uid");
 
-                    b.Property<Guid?>("StudentUid1")
-                        .HasColumnType("uuid")
-                        .HasColumnName("student_uid1");
-
                     b.Property<DateTime>("SubmissionDate")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("submission_date");
@@ -2186,17 +2142,12 @@ namespace ViridiscaUi.Migrations
                     b.HasIndex("AssignmentUid")
                         .HasDatabaseName("ix_submissions_assignment_uid");
 
-                    b.HasIndex("AssignmentUid1")
-                        .HasDatabaseName("ix_submissions_assignment_uid1");
-
                     b.HasIndex("GradedByUid")
                         .HasDatabaseName("ix_submissions_graded_by_uid");
 
-                    b.HasIndex("StudentUid")
-                        .HasDatabaseName("ix_submissions_student_uid");
-
-                    b.HasIndex("StudentUid1")
-                        .HasDatabaseName("ix_submissions_student_uid1");
+                    b.HasIndex("StudentUid", "AssignmentUid")
+                        .IsUnique()
+                        .HasDatabaseName("ix_submissions_student_uid_assignment_uid");
 
                     b.ToTable("submissions", (string)null);
                 });
@@ -2208,31 +2159,19 @@ namespace ViridiscaUi.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("uid");
 
-                    b.Property<string>("AcademicDegree")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("academic_degree");
-
-                    b.Property<string>("AcademicTitle")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("academic_title");
-
-                    b.Property<string>("Bio")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)")
-                        .HasColumnName("bio");
-
                     b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<Guid?>("DepartmentUid")
                         .HasColumnType("uuid")
                         .HasColumnName("department_uid");
+
+                    b.Property<Guid?>("DepartmentUid1")
+                        .HasColumnType("uuid")
+                        .HasColumnName("department_uid1");
 
                     b.Property<string>("EmployeeCode")
                         .IsRequired()
@@ -2240,41 +2179,42 @@ namespace ViridiscaUi.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("employee_code");
 
-                    b.Property<string>("FirstName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("first_name");
-
                     b.Property<DateTime>("HireDate")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("hire_date");
 
-                    b.Property<decimal>("HourlyRate")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("numeric(10,2)")
-                        .HasColumnName("hourly_rate");
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
 
                     b.Property<DateTime?>("LastModifiedAt")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_modified_at");
+                        .HasColumnName("last_modified_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-                    b.Property<string>("LastName")
+                    b.Property<string>("OfficeLocation")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
-                        .HasColumnName("last_name");
+                        .HasColumnName("office_location");
 
-                    b.Property<string>("MiddleName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("middle_name");
+                    b.Property<Guid>("PersonUid")
+                        .HasColumnType("uuid")
+                        .HasColumnName("person_uid");
 
-                    b.Property<string>("Phone")
+                    b.Property<string>("Qualification")
                         .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("phone");
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("qualification");
+
+                    b.Property<decimal>("Salary")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("salary");
 
                     b.Property<string>("Specialization")
                         .IsRequired()
@@ -2282,21 +2222,14 @@ namespace ViridiscaUi.Migrations
                         .HasColumnType("character varying(300)")
                         .HasColumnName("specialization");
 
-                    b.Property<int>("Status")
-                        .HasColumnType("integer")
-                        .HasColumnName("status");
-
                     b.Property<DateTime?>("TerminationDate")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("termination_date");
 
-                    b.Property<Guid?>("UserUid")
-                        .HasColumnType("uuid")
-                        .HasColumnName("user_uid");
-
-                    b.Property<Guid?>("UserUid1")
-                        .HasColumnType("uuid")
-                        .HasColumnName("user_uid1");
+                    b.Property<string>("WorkingHours")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("working_hours");
 
                     b.HasKey("Uid")
                         .HasName("pk_teachers");
@@ -2304,234 +2237,18 @@ namespace ViridiscaUi.Migrations
                     b.HasIndex("DepartmentUid")
                         .HasDatabaseName("ix_teachers_department_uid");
 
+                    b.HasIndex("DepartmentUid1")
+                        .HasDatabaseName("ix_teachers_department_uid1");
+
                     b.HasIndex("EmployeeCode")
                         .IsUnique()
                         .HasDatabaseName("ix_teachers_employee_code");
 
-                    b.HasIndex("HireDate")
-                        .HasDatabaseName("ix_teachers_hire_date");
-
-                    b.HasIndex("Status")
-                        .HasDatabaseName("ix_teachers_status");
-
-                    b.HasIndex("UserUid")
+                    b.HasIndex("PersonUid")
                         .IsUnique()
-                        .HasDatabaseName("ix_teachers_user_uid");
-
-                    b.HasIndex("UserUid1")
-                        .HasDatabaseName("ix_teachers_user_uid1");
+                        .HasDatabaseName("ix_teachers_person_uid");
 
                     b.ToTable("teachers", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Uid = new Guid("dddddddd-dddd-dddd-dddd-dddddddddddd"),
-                            AcademicDegree = "Кандидат технических наук",
-                            AcademicTitle = "Доцент",
-                            Bio = "Опытный преподаватель программирования с 5-летним стажем",
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DepartmentUid = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
-                            EmployeeCode = "T001",
-                            FirstName = "Иван",
-                            HireDate = new DateTime(2019, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            HourlyRate = 1500m,
-                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            LastName = "Петров",
-                            MiddleName = "Иванович",
-                            Phone = "+7 (901) 234-56-78",
-                            Specialization = "Программирование",
-                            Status = 1,
-                            UserUid = new Guid("55555555-5555-5555-5555-555555555555")
-                        },
-                        new
-                        {
-                            Uid = new Guid("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"),
-                            AcademicDegree = "Доктор физико-математических наук",
-                            AcademicTitle = "Профессор",
-                            Bio = "Профессор математики, автор более 50 научных работ",
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DepartmentUid = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
-                            EmployeeCode = "T002",
-                            FirstName = "Мария",
-                            HireDate = new DateTime(2021, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            HourlyRate = 1400m,
-                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            LastName = "Сидорова",
-                            MiddleName = "Петровна",
-                            Phone = "+7 (902) 345-67-89",
-                            Specialization = "Математика",
-                            Status = 1
-                        },
-                        new
-                        {
-                            Uid = new Guid("ffffffff-ffff-ffff-ffff-ffffffffffff"),
-                            AcademicDegree = "Кандидат физико-математических наук",
-                            AcademicTitle = "Старший преподаватель",
-                            Bio = "Специалист по теоретической физике и механике",
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DepartmentUid = new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc"),
-                            EmployeeCode = "T003",
-                            FirstName = "Александр",
-                            HireDate = new DateTime(2016, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            HourlyRate = 1600m,
-                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            LastName = "Козлов",
-                            MiddleName = "Николаевич",
-                            Phone = "+7 (903) 456-78-90",
-                            Specialization = "Физика",
-                            Status = 1
-                        });
-                });
-
-            modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.TeacherGroup", b =>
-                {
-                    b.Property<Guid>("Uid")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("uid");
-
-                    b.Property<DateTime>("AssignedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("assigned_at")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<DateTime?>("EndedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("ended_at");
-
-                    b.Property<Guid>("GroupUid")
-                        .HasColumnType("uuid")
-                        .HasColumnName("group_uid");
-
-                    b.Property<Guid>("GroupUid1")
-                        .HasColumnType("uuid")
-                        .HasColumnName("group_uid1");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_active");
-
-                    b.Property<bool>("IsCurator")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_curator");
-
-                    b.Property<DateTime?>("LastModifiedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_modified_at");
-
-                    b.Property<Guid>("SubjectUid")
-                        .HasColumnType("uuid")
-                        .HasColumnName("subject_uid");
-
-                    b.Property<Guid>("SubjectUid1")
-                        .HasColumnType("uuid")
-                        .HasColumnName("subject_uid1");
-
-                    b.Property<Guid>("TeacherUid")
-                        .HasColumnType("uuid")
-                        .HasColumnName("teacher_uid");
-
-                    b.Property<Guid>("TeacherUid1")
-                        .HasColumnType("uuid")
-                        .HasColumnName("teacher_uid1");
-
-                    b.HasKey("Uid")
-                        .HasName("pk_teacher_groups");
-
-                    b.HasIndex("GroupUid")
-                        .HasDatabaseName("ix_teacher_groups_group_uid");
-
-                    b.HasIndex("GroupUid1")
-                        .HasDatabaseName("ix_teacher_groups_group_uid1");
-
-                    b.HasIndex("SubjectUid")
-                        .HasDatabaseName("ix_teacher_groups_subject_uid");
-
-                    b.HasIndex("SubjectUid1")
-                        .HasDatabaseName("ix_teacher_groups_subject_uid1");
-
-                    b.HasIndex("TeacherUid1")
-                        .HasDatabaseName("ix_teacher_groups_teacher_uid1");
-
-                    b.HasIndex("TeacherUid", "GroupUid", "SubjectUid")
-                        .IsUnique()
-                        .HasDatabaseName("ix_teacher_groups_teacher_uid_group_uid_subject_uid");
-
-                    b.ToTable("teacher_groups", (string)null);
-                });
-
-            modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.TeacherSubject", b =>
-                {
-                    b.Property<Guid>("Uid")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("uid");
-
-                    b.Property<DateTime>("AssignedDate")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("assigned_date")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<DateTime?>("DeactivatedDate")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("deactivated_date");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_active");
-
-                    b.Property<bool>("IsMainTeacher")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_main_teacher");
-
-                    b.Property<DateTime?>("LastModifiedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_modified_at");
-
-                    b.Property<Guid>("SubjectUid")
-                        .HasColumnType("uuid")
-                        .HasColumnName("subject_uid");
-
-                    b.Property<Guid?>("SubjectUid1")
-                        .HasColumnType("uuid")
-                        .HasColumnName("subject_uid1");
-
-                    b.Property<Guid>("TeacherUid")
-                        .HasColumnType("uuid")
-                        .HasColumnName("teacher_uid");
-
-                    b.Property<Guid?>("TeacherUid1")
-                        .HasColumnType("uuid")
-                        .HasColumnName("teacher_uid1");
-
-                    b.HasKey("Uid")
-                        .HasName("pk_teacher_subjects");
-
-                    b.HasIndex("SubjectUid")
-                        .HasDatabaseName("ix_teacher_subjects_subject_uid");
-
-                    b.HasIndex("SubjectUid1")
-                        .HasDatabaseName("ix_teacher_subjects_subject_uid1");
-
-                    b.HasIndex("TeacherUid1")
-                        .HasDatabaseName("ix_teacher_subjects_teacher_uid1");
-
-                    b.HasIndex("TeacherUid", "SubjectUid")
-                        .IsUnique()
-                        .HasDatabaseName("ix_teacher_subjects_teacher_uid_subject_uid");
-
-                    b.ToTable("teacher_subjects", (string)null);
                 });
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.System.Attendance", b =>
@@ -2542,22 +2259,24 @@ namespace ViridiscaUi.Migrations
                         .HasColumnName("uid");
 
                     b.Property<DateTime>("CheckedAt")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("checked_at")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+                        .HasColumnName("checked_at");
 
                     b.Property<Guid>("CheckedByUid")
                         .HasColumnType("uuid")
                         .HasColumnName("checked_by_uid");
 
                     b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<DateTime?>("LastModifiedAt")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_modified_at");
+                        .HasColumnName("last_modified_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<Guid>("LessonUid")
                         .HasColumnType("uuid")
@@ -2579,9 +2298,6 @@ namespace ViridiscaUi.Migrations
 
                     b.HasKey("Uid")
                         .HasName("pk_attendances");
-
-                    b.HasIndex("CheckedByUid")
-                        .HasDatabaseName("ix_attendances_checked_by_uid");
 
                     b.HasIndex("LessonUid")
                         .HasDatabaseName("ix_attendances_lesson_uid");
@@ -2607,8 +2323,10 @@ namespace ViridiscaUi.Migrations
                         .HasColumnName("code");
 
                     b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -2621,12 +2339,16 @@ namespace ViridiscaUi.Migrations
                         .HasColumnName("head_of_department_uid");
 
                     b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
+                        .HasDefaultValue(true)
                         .HasColumnName("is_active");
 
                     b.Property<DateTime?>("LastModifiedAt")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_modified_at");
+                        .HasColumnName("last_modified_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -2656,26 +2378,6 @@ namespace ViridiscaUi.Migrations
                             IsActive = true,
                             LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Name = "Информационные технологии"
-                        },
-                        new
-                        {
-                            Uid = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
-                            Code = "MATH",
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Кафедра высшей математики и математического анализа",
-                            IsActive = true,
-                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Name = "Математический анализ"
-                        },
-                        new
-                        {
-                            Uid = new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc"),
-                            Code = "PHYS",
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Кафедра общей физики",
-                            IsActive = true,
-                            LastModifiedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Name = "Физика"
                         });
                 });
 
@@ -2728,7 +2430,9 @@ namespace ViridiscaUi.Migrations
                         .HasColumnName("file_size");
 
                     b.Property<bool>("IsPublic")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
+                        .HasDefaultValue(false)
                         .HasColumnName("is_public");
 
                     b.Property<DateTime?>("LastModifiedAt")
@@ -2759,12 +2463,6 @@ namespace ViridiscaUi.Migrations
                     b.HasIndex("ContentType")
                         .HasDatabaseName("ix_file_records_content_type");
 
-                    b.HasIndex("CreatedAt")
-                        .HasDatabaseName("ix_file_records_created_at");
-
-                    b.HasIndex("IsPublic")
-                        .HasDatabaseName("ix_file_records_is_public");
-
                     b.HasIndex("UploadedByUid")
                         .HasDatabaseName("ix_file_records_uploaded_by_uid");
 
@@ -2782,32 +2480,42 @@ namespace ViridiscaUi.Migrations
                         .HasColumnName("uid");
 
                     b.Property<string>("ActionUrl")
-                        .HasColumnType("text")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("action_url");
 
                     b.Property<string>("Category")
-                        .HasColumnType("text")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("category");
 
                     b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<DateTime?>("ExpiresAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at");
 
                     b.Property<bool>("IsImportant")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
+                        .HasDefaultValue(false)
                         .HasColumnName("is_important");
 
                     b.Property<bool>("IsRead")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
+                        .HasDefaultValue(false)
                         .HasColumnName("is_read");
 
                     b.Property<DateTime?>("LastModifiedAt")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_modified_at");
+                        .HasColumnName("last_modified_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<string>("Message")
                         .IsRequired()
@@ -2844,10 +2552,8 @@ namespace ViridiscaUi.Migrations
                         .HasColumnName("scheduled_for");
 
                     b.Property<DateTime>("SentAt")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("sent_at")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+                        .HasColumnName("sent_at");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -2891,9 +2597,7 @@ namespace ViridiscaUi.Migrations
                         .HasColumnName("created_at");
 
                     b.Property<bool>("EmailNotifications")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
-                        .HasDefaultValue(true)
                         .HasColumnName("email_notifications");
 
                     b.Property<DateTime?>("LastModifiedAt")
@@ -2901,15 +2605,11 @@ namespace ViridiscaUi.Migrations
                         .HasColumnName("last_modified_at");
 
                     b.Property<int>("MinimumPriority")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
-                        .HasDefaultValue(0)
                         .HasColumnName("minimum_priority");
 
                     b.Property<bool>("PushNotifications")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
-                        .HasDefaultValue(true)
                         .HasColumnName("push_notifications");
 
                     b.Property<TimeSpan>("QuietHoursEnd")
@@ -2921,9 +2621,7 @@ namespace ViridiscaUi.Migrations
                         .HasColumnName("quiet_hours_start");
 
                     b.Property<bool>("SmsNotifications")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
-                        .HasDefaultValue(false)
                         .HasColumnName("sms_notifications");
 
                     b.Property<string>("TypeSettings")
@@ -2936,16 +2634,13 @@ namespace ViridiscaUi.Migrations
                         .HasColumnName("user_uid");
 
                     b.Property<bool>("WeekendNotifications")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
-                        .HasDefaultValue(false)
                         .HasColumnName("weekend_notifications");
 
                     b.HasKey("Uid")
                         .HasName("pk_notification_settings");
 
                     b.HasIndex("UserUid")
-                        .IsUnique()
                         .HasDatabaseName("ix_notification_settings_user_uid");
 
                     b.ToTable("notification_settings", (string)null);
@@ -2964,8 +2659,10 @@ namespace ViridiscaUi.Migrations
                         .HasColumnName("category");
 
                     b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -2980,8 +2677,10 @@ namespace ViridiscaUi.Migrations
                         .HasColumnName("is_active");
 
                     b.Property<DateTime?>("LastModifiedAt")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_modified_at");
+                        .HasColumnName("last_modified_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<string>("MessageTemplate")
                         .IsRequired()
@@ -3029,85 +2728,37 @@ namespace ViridiscaUi.Migrations
                     b.ToTable("notification_templates", (string)null);
                 });
 
-            modelBuilder.Entity("ViridiscaUi.Domain.Models.System.Schedule", b =>
+            modelBuilder.Entity("ViridiscaUi.Domain.Models.Auth.Account", b =>
                 {
-                    b.Property<Guid>("Uid")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("uid");
-
-                    b.Property<string>("Classroom")
+                    b.HasOne("ViridiscaUi.Domain.Models.Auth.Person", "Person")
+                        .WithOne()
+                        .HasForeignKey("ViridiscaUi.Domain.Models.Auth.Account", "PersonUid")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("classroom");
+                        .HasConstraintName("fk_accounts_persons_person_uid");
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
+                    b.Navigation("Person");
+                });
 
-                    b.Property<int>("DayOfWeek")
-                        .HasColumnType("integer")
-                        .HasColumnName("day_of_week");
+            modelBuilder.Entity("ViridiscaUi.Domain.Models.Auth.PersonRole", b =>
+                {
+                    b.HasOne("ViridiscaUi.Domain.Models.Auth.Person", "Person")
+                        .WithMany("PersonRoles")
+                        .HasForeignKey("PersonUid")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_person_roles_persons_person_uid");
 
-                    b.Property<TimeSpan>("EndTime")
-                        .HasColumnType("interval")
-                        .HasColumnName("end_time");
+                    b.HasOne("ViridiscaUi.Domain.Models.Auth.Role", "Role")
+                        .WithMany()
+                        .HasForeignKey("RoleUid")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_person_roles_roles_role_uid");
 
-                    b.Property<Guid>("GroupUid")
-                        .HasColumnType("uuid")
-                        .HasColumnName("group_uid");
+                    b.Navigation("Person");
 
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_active");
-
-                    b.Property<DateTime?>("LastModifiedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_modified_at");
-
-                    b.Property<TimeSpan>("StartTime")
-                        .HasColumnType("interval")
-                        .HasColumnName("start_time");
-
-                    b.Property<Guid>("SubjectUid")
-                        .HasColumnType("uuid")
-                        .HasColumnName("subject_uid");
-
-                    b.Property<Guid>("TeacherUid")
-                        .HasColumnType("uuid")
-                        .HasColumnName("teacher_uid");
-
-                    b.Property<int>("Type")
-                        .HasColumnType("integer")
-                        .HasColumnName("type");
-
-                    b.Property<DateTime>("ValidFrom")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("valid_from")
-                        .HasDefaultValueSql("CURRENT_DATE");
-
-                    b.Property<DateTime?>("ValidTo")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("valid_to");
-
-                    b.HasKey("Uid")
-                        .HasName("pk_schedules");
-
-                    b.HasIndex("SubjectUid")
-                        .HasDatabaseName("ix_schedules_subject_uid");
-
-                    b.HasIndex("ValidFrom")
-                        .HasDatabaseName("ix_schedules_valid_from");
-
-                    b.HasIndex("GroupUid", "DayOfWeek", "StartTime")
-                        .HasDatabaseName("ix_schedules_group_uid_day_of_week_start_time");
-
-                    b.HasIndex("TeacherUid", "DayOfWeek", "StartTime")
-                        .HasDatabaseName("ix_schedules_teacher_uid_day_of_week_start_time");
-
-                    b.ToTable("schedules", (string)null);
+                    b.Navigation("Role");
                 });
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Auth.RolePermission", b =>
@@ -3141,178 +2792,192 @@ namespace ViridiscaUi.Migrations
                     b.Navigation("Role");
                 });
 
-            modelBuilder.Entity("ViridiscaUi.Domain.Models.Auth.User", b =>
-                {
-                    b.HasOne("ViridiscaUi.Domain.Models.Auth.Role", "Role")
-                        .WithMany()
-                        .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_users_roles_role_id");
-
-                    b.Navigation("Role");
-                });
-
-            modelBuilder.Entity("ViridiscaUi.Domain.Models.Auth.UserRole", b =>
-                {
-                    b.HasOne("ViridiscaUi.Domain.Models.Auth.Role", "Role")
-                        .WithMany()
-                        .HasForeignKey("RoleUid")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_user_roles_roles_role_uid");
-
-                    b.HasOne("ViridiscaUi.Domain.Models.Auth.User", null)
-                        .WithMany("UserRoles")
-                        .HasForeignKey("UserUid")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_user_roles_users_user_uid");
-
-                    b.HasOne("ViridiscaUi.Domain.Models.Auth.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserUid1")
-                        .HasConstraintName("fk_user_roles_users_user_uid1");
-
-                    b.Navigation("Role");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Assignment", b =>
                 {
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Course", null)
+                    b.HasOne("ViridiscaUi.Domain.Models.Education.CourseInstance", "CourseInstance")
                         .WithMany()
-                        .HasForeignKey("CourseUid")
+                        .HasForeignKey("CourseInstanceUid")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_assignments_courses_course_uid");
+                        .HasConstraintName("fk_assignments_course_instances_course_instance_uid");
 
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Course", "Course")
+                    b.HasOne("ViridiscaUi.Domain.Models.Education.CourseInstance", null)
                         .WithMany("Assignments")
-                        .HasForeignKey("CourseUid1")
-                        .HasConstraintName("fk_assignments_courses_course_uid1");
+                        .HasForeignKey("CourseInstanceUid1")
+                        .HasConstraintName("fk_assignments_course_instances_course_instance_uid1");
 
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Lesson", null)
+                    b.HasOne("ViridiscaUi.Domain.Models.Education.Lesson", "Lesson")
                         .WithMany()
                         .HasForeignKey("LessonUid")
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_assignments_lessons_lesson_uid");
 
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Lesson", "Lesson")
-                        .WithMany()
-                        .HasForeignKey("LessonUid1")
-                        .HasConstraintName("fk_assignments_lessons_lesson_uid1");
-
-                    b.Navigation("Course");
+                    b.Navigation("CourseInstance");
 
                     b.Navigation("Lesson");
                 });
 
-            modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Course", b =>
+            modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.CourseInstance", b =>
                 {
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Teacher", null)
+                    b.HasOne("ViridiscaUi.Domain.Models.Education.AcademicPeriod", "AcademicPeriod")
+                        .WithMany("CourseInstances")
+                        .HasForeignKey("AcademicPeriodUid")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_course_instances_academic_periods_academic_period_uid");
+
+                    b.HasOne("ViridiscaUi.Domain.Models.Education.Group", "Group")
+                        .WithMany()
+                        .HasForeignKey("GroupUid")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_course_instances_groups_group_uid");
+
+                    b.HasOne("ViridiscaUi.Domain.Models.Education.Subject", "Subject")
+                        .WithMany()
+                        .HasForeignKey("SubjectUid")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_course_instances_subjects_subject_uid");
+
+                    b.HasOne("ViridiscaUi.Domain.Models.Education.Teacher", "Teacher")
                         .WithMany()
                         .HasForeignKey("TeacherUid")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_courses_teachers_teacher_uid");
+                        .IsRequired()
+                        .HasConstraintName("fk_course_instances_teachers_teacher_uid");
 
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Teacher", "Teacher")
-                        .WithMany("Courses")
+                    b.HasOne("ViridiscaUi.Domain.Models.Education.Teacher", null)
+                        .WithMany("CourseInstances")
                         .HasForeignKey("TeacherUid1")
-                        .HasConstraintName("fk_courses_teachers_teacher_uid1");
+                        .HasConstraintName("fk_course_instances_teachers_teacher_uid1");
+
+                    b.Navigation("AcademicPeriod");
+
+                    b.Navigation("Group");
+
+                    b.Navigation("Subject");
 
                     b.Navigation("Teacher");
                 });
 
-            modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Enrollment", b =>
+            modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.CurriculumSubject", b =>
                 {
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Course", null)
-                        .WithMany()
-                        .HasForeignKey("CourseUid")
+                    b.HasOne("ViridiscaUi.Domain.Models.Education.Curriculum", "Curriculum")
+                        .WithMany("CurriculumSubjects")
+                        .HasForeignKey("CurriculumUid")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_enrollments_courses_course_uid");
+                        .HasConstraintName("fk_curriculum_subjects_curricula_curriculum_uid");
 
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Course", "Course")
-                        .WithMany("Enrollments")
-                        .HasForeignKey("CourseUid1")
-                        .HasConstraintName("fk_enrollments_courses_course_uid1");
-
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Student", null)
+                    b.HasOne("ViridiscaUi.Domain.Models.Education.Subject", "Subject")
                         .WithMany()
+                        .HasForeignKey("SubjectUid")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_curriculum_subjects_subjects_subject_uid");
+
+                    b.Navigation("Curriculum");
+
+                    b.Navigation("Subject");
+                });
+
+            modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Enrollment", b =>
+                {
+                    b.HasOne("ViridiscaUi.Domain.Models.Education.CourseInstance", "CourseInstance")
+                        .WithMany("Enrollments")
+                        .HasForeignKey("CourseInstanceUid")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_enrollments_course_instances_course_instance_uid");
+
+                    b.HasOne("ViridiscaUi.Domain.Models.Education.Student", "Student")
+                        .WithMany("Enrollments")
                         .HasForeignKey("StudentUid")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_enrollments_students_student_uid");
 
+                    b.Navigation("CourseInstance");
+
+                    b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Exam", b =>
+                {
+                    b.HasOne("ViridiscaUi.Domain.Models.Education.AcademicPeriod", null)
+                        .WithMany("Exams")
+                        .HasForeignKey("AcademicPeriodUid")
+                        .HasConstraintName("fk_exams_academic_periods_academic_period_uid");
+
+                    b.HasOne("ViridiscaUi.Domain.Models.Education.CourseInstance", "CourseInstance")
+                        .WithMany()
+                        .HasForeignKey("CourseInstanceUid")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_exams_course_instances_course_instance_uid");
+
+                    b.Navigation("CourseInstance");
+                });
+
+            modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.ExamResult", b =>
+                {
+                    b.HasOne("ViridiscaUi.Domain.Models.Education.Exam", "Exam")
+                        .WithMany("Results")
+                        .HasForeignKey("ExamUid")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_exam_results_exams_exam_uid");
+
                     b.HasOne("ViridiscaUi.Domain.Models.Education.Student", "Student")
                         .WithMany()
-                        .HasForeignKey("StudentUid1")
-                        .HasConstraintName("fk_enrollments_students_student_uid1");
+                        .HasForeignKey("StudentUid")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_exam_results_students_student_uid");
 
-                    b.Navigation("Course");
+                    b.Navigation("Exam");
 
                     b.Navigation("Student");
                 });
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Grade", b =>
                 {
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Assignment", null)
-                        .WithMany()
-                        .HasForeignKey("AssignmentUid")
-                        .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_grades_assignments_assignment_uid");
-
                     b.HasOne("ViridiscaUi.Domain.Models.Education.Assignment", "Assignment")
                         .WithMany()
-                        .HasForeignKey("AssignmentUid1")
-                        .HasConstraintName("fk_grades_assignments_assignment_uid1");
+                        .HasForeignKey("AssignmentUid")
+                        .HasConstraintName("fk_grades_assignments_assignment_uid");
 
                     b.HasOne("ViridiscaUi.Domain.Models.Education.Teacher", "GradedBy")
                         .WithMany()
                         .HasForeignKey("GradedByUid")
                         .HasConstraintName("fk_grades_teachers_graded_by_uid");
 
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Lesson", null)
-                        .WithMany()
-                        .HasForeignKey("LessonUid")
-                        .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_grades_lessons_lesson_uid");
-
                     b.HasOne("ViridiscaUi.Domain.Models.Education.Student", null)
-                        .WithMany()
+                        .WithMany("Grades")
                         .HasForeignKey("StudentUid")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_grades_students_student_uid");
 
                     b.HasOne("ViridiscaUi.Domain.Models.Education.Student", "Student")
-                        .WithMany("Grades")
+                        .WithMany()
                         .HasForeignKey("StudentUid1")
                         .HasConstraintName("fk_grades_students_student_uid1");
 
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Subject", null)
+                    b.HasOne("ViridiscaUi.Domain.Models.Education.Subject", "Subject")
                         .WithMany()
                         .HasForeignKey("SubjectUid")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_grades_subjects_subject_uid");
 
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Subject", "Subject")
-                        .WithMany()
-                        .HasForeignKey("SubjectUid1")
-                        .HasConstraintName("fk_grades_subjects_subject_uid1");
-
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Teacher", null)
-                        .WithMany()
-                        .HasForeignKey("TeacherUid")
-                        .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_grades_teachers_teacher_uid");
-
                     b.HasOne("ViridiscaUi.Domain.Models.Education.Teacher", "Teacher")
                         .WithMany()
-                        .HasForeignKey("TeacherUid1")
-                        .HasConstraintName("fk_grades_teachers_teacher_uid1");
+                        .HasForeignKey("TeacherUid")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_grades_teachers_teacher_uid");
 
                     b.Navigation("Assignment");
 
@@ -3327,17 +2992,24 @@ namespace ViridiscaUi.Migrations
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.GradeComment", b =>
                 {
+                    b.HasOne("ViridiscaUi.Domain.Models.Auth.Person", null)
+                        .WithMany()
+                        .HasForeignKey("AuthorUid")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_grade_comment_persons_author_uid");
+
                     b.HasOne("ViridiscaUi.Domain.Models.Education.Grade", null)
                         .WithMany()
                         .HasForeignKey("GradeUid")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_grade_comments_grades_grade_uid");
+                        .HasConstraintName("fk_grade_comment_grades_grade_uid");
 
                     b.HasOne("ViridiscaUi.Domain.Models.Education.Grade", null)
                         .WithMany("Comments")
                         .HasForeignKey("GradeUid1")
-                        .HasConstraintName("fk_grade_comments_grades_grade_uid1");
+                        .HasConstraintName("fk_grade_comment_grades_grade_uid1");
                 });
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.GradeRevision", b =>
@@ -3347,12 +3019,19 @@ namespace ViridiscaUi.Migrations
                         .HasForeignKey("GradeUid")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_grade_revisions_grades_grade_uid");
+                        .HasConstraintName("fk_grade_revision_grades_grade_uid");
 
                     b.HasOne("ViridiscaUi.Domain.Models.Education.Grade", null)
                         .WithMany("Revisions")
                         .HasForeignKey("GradeUid1")
-                        .HasConstraintName("fk_grade_revisions_grades_grade_uid1");
+                        .HasConstraintName("fk_grade_revision_grades_grade_uid1");
+
+                    b.HasOne("ViridiscaUi.Domain.Models.Education.Teacher", null)
+                        .WithMany()
+                        .HasForeignKey("TeacherUid")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_grade_revision_teachers_teacher_uid");
                 });
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Group", b =>
@@ -3360,43 +3039,42 @@ namespace ViridiscaUi.Migrations
                     b.HasOne("ViridiscaUi.Domain.Models.Education.Teacher", "Curator")
                         .WithMany()
                         .HasForeignKey("CuratorUid")
-                        .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_groups_teachers_curator_uid");
 
                     b.HasOne("ViridiscaUi.Domain.Models.System.Department", null)
                         .WithMany("Groups")
                         .HasForeignKey("DepartmentUid")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_groups_departments_department_uid");
-
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Teacher", null)
-                        .WithMany("CuratedGroups")
-                        .HasForeignKey("TeacherUid")
-                        .HasConstraintName("fk_groups_teachers_teacher_uid");
 
                     b.Navigation("Curator");
                 });
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Lesson", b =>
                 {
+                    b.HasOne("ViridiscaUi.Domain.Models.Education.CourseInstance", "CourseInstance")
+                        .WithMany()
+                        .HasForeignKey("CourseInstanceUid")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_lessons_course_instances_course_instance_uid");
+
+                    b.HasOne("ViridiscaUi.Domain.Models.Education.CourseInstance", null)
+                        .WithMany("Lessons")
+                        .HasForeignKey("CourseInstanceUid1")
+                        .HasConstraintName("fk_lessons_course_instances_course_instance_uid1");
+
                     b.HasOne("ViridiscaUi.Domain.Models.Education.Group", null)
                         .WithMany()
                         .HasForeignKey("GroupUid")
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_lessons_groups_group_uid");
 
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Module", "Module")
-                        .WithMany("Lessons")
-                        .HasForeignKey("ModuleUid")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_lessons_modules_module_uid");
-
                     b.HasOne("ViridiscaUi.Domain.Models.Education.Subject", null)
                         .WithMany()
                         .HasForeignKey("SubjectUid")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_lessons_subjects_subject_uid");
 
                     b.HasOne("ViridiscaUi.Domain.Models.Education.Teacher", null)
@@ -3405,17 +3083,7 @@ namespace ViridiscaUi.Migrations
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_lessons_teachers_teacher_uid");
 
-                    b.Navigation("Module");
-                });
-
-            modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.LessonDetail", b =>
-                {
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Lesson", null)
-                        .WithMany()
-                        .HasForeignKey("LessonUid")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_lesson_details_lessons_lesson_uid");
+                    b.Navigation("CourseInstance");
                 });
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.LessonProgress", b =>
@@ -3439,74 +3107,82 @@ namespace ViridiscaUi.Migrations
                     b.Navigation("Student");
                 });
 
-            modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Module", b =>
+            modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.LibraryLoan", b =>
                 {
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Course", null)
+                    b.HasOne("ViridiscaUi.Domain.Models.Auth.Person", "Borrower")
                         .WithMany()
-                        .HasForeignKey("CourseUid")
+                        .HasForeignKey("BorrowerUid")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_modules_courses_course_uid");
+                        .HasConstraintName("fk_library_loans_persons_borrower_uid");
 
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Course", "Course")
-                        .WithMany("Modules")
-                        .HasForeignKey("CourseUid1")
-                        .HasConstraintName("fk_modules_courses_course_uid1");
+                    b.HasOne("ViridiscaUi.Domain.Models.Education.LibraryResource", "Resource")
+                        .WithMany("Loans")
+                        .HasForeignKey("ResourceUid")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_library_loans_library_resources_resource_uid");
 
-                    b.Navigation("Course");
+                    b.Navigation("Borrower");
+
+                    b.Navigation("Resource");
+                });
+
+            modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.ScheduleSlot", b =>
+                {
+                    b.HasOne("ViridiscaUi.Domain.Models.Education.CourseInstance", "CourseInstance")
+                        .WithMany("ScheduleSlots")
+                        .HasForeignKey("CourseInstanceUid")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_schedule_slots_course_instances_course_instance_uid");
+
+                    b.Navigation("CourseInstance");
                 });
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Student", b =>
                 {
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Group", "Group")
+                    b.HasOne("ViridiscaUi.Domain.Models.Education.Curriculum", "Curriculum")
                         .WithMany("Students")
+                        .HasForeignKey("CurriculumUid")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_students_curricula_curriculum_uid");
+
+                    b.HasOne("ViridiscaUi.Domain.Models.Education.Group", "Group")
+                        .WithMany()
                         .HasForeignKey("GroupUid")
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_students_groups_group_uid");
 
-                    b.HasOne("ViridiscaUi.Domain.Models.Auth.User", null)
-                        .WithOne("StudentProfile")
-                        .HasForeignKey("ViridiscaUi.Domain.Models.Education.Student", "UserUid")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .HasConstraintName("fk_students_users_user_uid");
+                    b.HasOne("ViridiscaUi.Domain.Models.Education.Group", null)
+                        .WithMany("Students")
+                        .HasForeignKey("GroupUid1")
+                        .HasConstraintName("fk_students_groups_group_uid1");
 
-                    b.HasOne("ViridiscaUi.Domain.Models.Auth.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserUid1")
-                        .HasConstraintName("fk_students_users_user_uid1");
+                    b.HasOne("ViridiscaUi.Domain.Models.Auth.Person", "Person")
+                        .WithOne()
+                        .HasForeignKey("ViridiscaUi.Domain.Models.Education.Student", "PersonUid")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_students_persons_person_uid");
+
+                    b.Navigation("Curriculum");
 
                     b.Navigation("Group");
 
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.StudentParent", b =>
-                {
-                    b.HasOne("ViridiscaUi.Domain.Models.Auth.User", null)
-                        .WithMany()
-                        .HasForeignKey("ParentUserUid")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_student_parents_users_parent_user_uid");
-
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Student", null)
-                        .WithMany("Parents")
-                        .HasForeignKey("StudentUid")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_student_parents_students_student_uid");
+                    b.Navigation("Person");
                 });
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Subject", b =>
                 {
                     b.HasOne("ViridiscaUi.Domain.Models.System.Department", null)
-                        .WithMany("Subjects")
+                        .WithMany()
                         .HasForeignKey("DepartmentUid")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_subjects_departments_department_uid");
 
                     b.HasOne("ViridiscaUi.Domain.Models.System.Department", "Department")
-                        .WithMany()
+                        .WithMany("Subjects")
                         .HasForeignKey("DepartmentUid1")
                         .HasConstraintName("fk_subjects_departments_department_uid1");
 
@@ -3515,34 +3191,25 @@ namespace ViridiscaUi.Migrations
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Submission", b =>
                 {
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Assignment", null)
-                        .WithMany()
+                    b.HasOne("ViridiscaUi.Domain.Models.Education.Assignment", "Assignment")
+                        .WithMany("Submissions")
                         .HasForeignKey("AssignmentUid")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_submissions_assignments_assignment_uid");
 
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Assignment", "Assignment")
-                        .WithMany("Submissions")
-                        .HasForeignKey("AssignmentUid1")
-                        .HasConstraintName("fk_submissions_assignments_assignment_uid1");
-
                     b.HasOne("ViridiscaUi.Domain.Models.Education.Teacher", "GradedBy")
                         .WithMany()
                         .HasForeignKey("GradedByUid")
+                        .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_submissions_teachers_graded_by_uid");
 
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Student", null)
+                    b.HasOne("ViridiscaUi.Domain.Models.Education.Student", "Student")
                         .WithMany()
                         .HasForeignKey("StudentUid")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_submissions_students_student_uid");
-
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Student", "Student")
-                        .WithMany()
-                        .HasForeignKey("StudentUid1")
-                        .HasConstraintName("fk_submissions_students_student_uid1");
 
                     b.Navigation("Assignment");
 
@@ -3553,117 +3220,31 @@ namespace ViridiscaUi.Migrations
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Teacher", b =>
                 {
-                    b.HasOne("ViridiscaUi.Domain.Models.System.Department", null)
-                        .WithMany("Teachers")
+                    b.HasOne("ViridiscaUi.Domain.Models.System.Department", "Department")
+                        .WithMany()
                         .HasForeignKey("DepartmentUid")
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_teachers_departments_department_uid");
 
-                    b.HasOne("ViridiscaUi.Domain.Models.Auth.User", null)
-                        .WithOne("TeacherProfile")
-                        .HasForeignKey("ViridiscaUi.Domain.Models.Education.Teacher", "UserUid")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .HasConstraintName("fk_teachers_users_user_uid");
+                    b.HasOne("ViridiscaUi.Domain.Models.System.Department", null)
+                        .WithMany("Teachers")
+                        .HasForeignKey("DepartmentUid1")
+                        .HasConstraintName("fk_teachers_departments_department_uid1");
 
-                    b.HasOne("ViridiscaUi.Domain.Models.Auth.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserUid1")
-                        .HasConstraintName("fk_teachers_users_user_uid1");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.TeacherGroup", b =>
-                {
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Group", null)
-                        .WithMany()
-                        .HasForeignKey("GroupUid")
+                    b.HasOne("ViridiscaUi.Domain.Models.Auth.Person", "Person")
+                        .WithOne()
+                        .HasForeignKey("ViridiscaUi.Domain.Models.Education.Teacher", "PersonUid")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_teacher_groups_groups_group_uid");
+                        .HasConstraintName("fk_teachers_persons_person_uid");
 
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Group", "Group")
-                        .WithMany()
-                        .HasForeignKey("GroupUid1")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_teacher_groups_groups_group_uid1");
+                    b.Navigation("Department");
 
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Subject", null)
-                        .WithMany()
-                        .HasForeignKey("SubjectUid")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_teacher_groups_subjects_subject_uid");
-
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Subject", "Subject")
-                        .WithMany()
-                        .HasForeignKey("SubjectUid1")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_teacher_groups_subjects_subject_uid1");
-
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Teacher", null)
-                        .WithMany()
-                        .HasForeignKey("TeacherUid")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_teacher_groups_teachers_teacher_uid");
-
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Teacher", "Teacher")
-                        .WithMany()
-                        .HasForeignKey("TeacherUid1")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_teacher_groups_teachers_teacher_uid1");
-
-                    b.Navigation("Group");
-
-                    b.Navigation("Subject");
-
-                    b.Navigation("Teacher");
-                });
-
-            modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.TeacherSubject", b =>
-                {
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Subject", null)
-                        .WithMany("TeacherSubjects")
-                        .HasForeignKey("SubjectUid")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_teacher_subjects_subjects_subject_uid");
-
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Subject", "Subject")
-                        .WithMany()
-                        .HasForeignKey("SubjectUid1")
-                        .HasConstraintName("fk_teacher_subjects_subjects_subject_uid1");
-
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Teacher", null)
-                        .WithMany("Subjects")
-                        .HasForeignKey("TeacherUid")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_teacher_subjects_teachers_teacher_uid");
-
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Teacher", "Teacher")
-                        .WithMany()
-                        .HasForeignKey("TeacherUid1")
-                        .HasConstraintName("fk_teacher_subjects_teachers_teacher_uid1");
-
-                    b.Navigation("Subject");
-
-                    b.Navigation("Teacher");
+                    b.Navigation("Person");
                 });
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.System.Attendance", b =>
                 {
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Teacher", null)
-                        .WithMany()
-                        .HasForeignKey("CheckedByUid")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_attendances_teachers_checked_by_uid");
-
                     b.HasOne("ViridiscaUi.Domain.Models.Education.Lesson", "Lesson")
                         .WithMany()
                         .HasForeignKey("LessonUid")
@@ -3672,7 +3253,7 @@ namespace ViridiscaUi.Migrations
                         .HasConstraintName("fk_attendances_lessons_lesson_uid");
 
                     b.HasOne("ViridiscaUi.Domain.Models.Education.Student", "Student")
-                        .WithMany()
+                        .WithMany("Attendances")
                         .HasForeignKey("StudentUid")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
@@ -3688,7 +3269,6 @@ namespace ViridiscaUi.Migrations
                     b.HasOne("ViridiscaUi.Domain.Models.Education.Teacher", "HeadOfDepartment")
                         .WithMany()
                         .HasForeignKey("HeadOfDepartmentUid")
-                        .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_departments_teachers_head_of_department_uid");
 
                     b.Navigation("HeadOfDepartment");
@@ -3696,63 +3276,36 @@ namespace ViridiscaUi.Migrations
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.System.Notification", b =>
                 {
-                    b.HasOne("ViridiscaUi.Domain.Models.Auth.User", "Recipient")
+                    b.HasOne("ViridiscaUi.Domain.Models.Auth.Person", "Recipient")
                         .WithMany()
                         .HasForeignKey("RecipientUid")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_notifications_users_recipient_uid");
+                        .HasConstraintName("fk_notifications_persons_recipient_uid");
 
                     b.Navigation("Recipient");
                 });
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.System.NotificationSettings", b =>
                 {
-                    b.HasOne("ViridiscaUi.Domain.Models.Auth.User", null)
+                    b.HasOne("ViridiscaUi.Domain.Models.Auth.Person", null)
                         .WithMany()
                         .HasForeignKey("UserUid")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_notification_settings_users_user_uid");
+                        .HasConstraintName("fk_notification_settings_persons_user_uid");
                 });
 
-            modelBuilder.Entity("ViridiscaUi.Domain.Models.System.Schedule", b =>
+            modelBuilder.Entity("ViridiscaUi.Domain.Models.Auth.Person", b =>
                 {
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Group", "Group")
-                        .WithMany()
-                        .HasForeignKey("GroupUid")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_schedules_groups_group_uid");
-
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Subject", "Subject")
-                        .WithMany()
-                        .HasForeignKey("SubjectUid")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_schedules_subjects_subject_uid");
-
-                    b.HasOne("ViridiscaUi.Domain.Models.Education.Teacher", "Teacher")
-                        .WithMany()
-                        .HasForeignKey("TeacherUid")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_schedules_teachers_teacher_uid");
-
-                    b.Navigation("Group");
-
-                    b.Navigation("Subject");
-
-                    b.Navigation("Teacher");
+                    b.Navigation("PersonRoles");
                 });
 
-            modelBuilder.Entity("ViridiscaUi.Domain.Models.Auth.User", b =>
+            modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.AcademicPeriod", b =>
                 {
-                    b.Navigation("StudentProfile");
+                    b.Navigation("CourseInstances");
 
-                    b.Navigation("TeacherProfile");
-
-                    b.Navigation("UserRoles");
+                    b.Navigation("Exams");
                 });
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Assignment", b =>
@@ -3760,13 +3313,27 @@ namespace ViridiscaUi.Migrations
                     b.Navigation("Submissions");
                 });
 
-            modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Course", b =>
+            modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.CourseInstance", b =>
                 {
                     b.Navigation("Assignments");
 
                     b.Navigation("Enrollments");
 
-                    b.Navigation("Modules");
+                    b.Navigation("Lessons");
+
+                    b.Navigation("ScheduleSlots");
+                });
+
+            modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Curriculum", b =>
+                {
+                    b.Navigation("CurriculumSubjects");
+
+                    b.Navigation("Students");
+                });
+
+            modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Exam", b =>
+                {
+                    b.Navigation("Results");
                 });
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Grade", b =>
@@ -3786,30 +3353,23 @@ namespace ViridiscaUi.Migrations
                     b.Navigation("LessonProgress");
                 });
 
-            modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Module", b =>
+            modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.LibraryResource", b =>
                 {
-                    b.Navigation("Lessons");
+                    b.Navigation("Loans");
                 });
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Student", b =>
                 {
+                    b.Navigation("Attendances");
+
+                    b.Navigation("Enrollments");
+
                     b.Navigation("Grades");
-
-                    b.Navigation("Parents");
-                });
-
-            modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Subject", b =>
-                {
-                    b.Navigation("TeacherSubjects");
                 });
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.Education.Teacher", b =>
                 {
-                    b.Navigation("Courses");
-
-                    b.Navigation("CuratedGroups");
-
-                    b.Navigation("Subjects");
+                    b.Navigation("CourseInstances");
                 });
 
             modelBuilder.Entity("ViridiscaUi.Domain.Models.System.Department", b =>

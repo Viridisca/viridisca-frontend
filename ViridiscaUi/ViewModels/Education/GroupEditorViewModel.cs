@@ -40,7 +40,7 @@ namespace ViridiscaUi.ViewModels.Education
         [Reactive] public DateTime? PlannedEndDate { get; set; }
         [Reactive] public DateTime? ActualEndDate { get; set; }
         [Reactive] public bool IsActive { get; set; } = true;
-        [Reactive] public Course? Course { get; set; }
+        [Reactive] public CourseInstance? CourseInstance { get; set; }
         [Reactive] public Teacher? Curator { get; set; }
         [Reactive] public ObservableCollection<Student> Students { get; set; } = new();
         [Reactive] public DateTime CreatedAt { get; set; }

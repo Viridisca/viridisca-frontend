@@ -13,6 +13,7 @@ using ViridiscaUi.Infrastructure.Navigation;
 using ViridiscaUi.Services.Interfaces;
 using ViridiscaUi.ViewModels;
 using ViridiscaUi.ViewModels.Bases.Navigations;
+using ViridiscaUi.Domain.Models.Auth;
 
 namespace ViridiscaUi.ViewModels.Education;
 
@@ -118,11 +119,11 @@ public class TeacherEditorViewModel : RoutableViewModelBase
     [Reactive] public int PublicationsCount { get; set; } = 0;
     
     // Collections for details dialog
-    [Reactive] public ObservableCollection<Course> Courses { get; set; } = new();
+    [Reactive] public ObservableCollection<CourseInstance> CourseInstances { get; set; } = new();
     [Reactive] public ObservableCollection<Group> CuratedGroups { get; set; } = new();
     
     // Computed properties for collections
-    public bool HasCourses => Courses.Any();
+    public bool HasCourses => CourseInstances.Any();
     public bool HasGroups => CuratedGroups.Any();
 
     #endregion
@@ -378,7 +379,7 @@ public class TeacherEditorViewModel : RoutableViewModelBase
         AcademicTitle = teacher.AcademicTitle ?? string.Empty;
         HireDate = teacher.HireDate;
         HourlyRate = teacher.HourlyRate;
-        Status = teacher.Status;
+        Status = TeacherStatus.Active;
         
         // Для работы в диалогах добавляем дополнительные поля
         // TODO: Эти поля нужно будет добавить в модель Teacher при необходимости
@@ -465,35 +466,47 @@ public class TeacherEditorViewModel : RoutableViewModelBase
     {
         if (CurrentTeacher == null) return;
 
-        // Обновляем только существующие settable свойства
-        CurrentTeacher.FirstName = FirstName.Trim();
-        CurrentTeacher.LastName = LastName.Trim();
-        CurrentTeacher.MiddleName = string.IsNullOrWhiteSpace(MiddleName) ? string.Empty : MiddleName.Trim();
-        CurrentTeacher.AcademicDegree = string.IsNullOrWhiteSpace(AcademicDegree) ? string.Empty : AcademicDegree.Trim();
-        CurrentTeacher.AcademicTitle = string.IsNullOrWhiteSpace(AcademicTitle) ? string.Empty : AcademicTitle.Trim();
-        CurrentTeacher.Specialization = string.IsNullOrWhiteSpace(Specialization) ? string.Empty : Specialization.Trim();
+        // Обновляем данные Person
+        CurrentTeacher.Person.FirstName = FirstName.Trim();
+        CurrentTeacher.Person.LastName = LastName.Trim();
+        CurrentTeacher.Person.MiddleName = string.IsNullOrWhiteSpace(MiddleName) ? null : MiddleName.Trim();
+        CurrentTeacher.Person.Email = Email.Trim();
+        CurrentTeacher.Person.PhoneNumber = string.IsNullOrWhiteSpace(PhoneNumber) ? null : PhoneNumber.Trim();
+        CurrentTeacher.Person.DateOfBirth = BirthDate ?? DateTime.MinValue;
 
         await _teacherService.UpdateTeacherAsync(CurrentTeacher);
-        LogInfo("Updated teacher: {TeacherName}", $"{CurrentTeacher.LastName} {CurrentTeacher.FirstName}");
+        LogInfo("Updated teacher: {TeacherName}", $"{CurrentTeacher.Person.LastName} {CurrentTeacher.Person.FirstName}");
     }
 
     private async Task CreateTeacherAsync()
     {
-        var newTeacher = new Teacher(
-            employeeCode: $"T{DateTime.Now:yyyyMMddHHmmss}",
-            userUid: Guid.Empty, // Temporary
-            hireDate: DateTime.Now,
-            specialization: Specialization.Trim(),
-            hourlyRate: 1000m,
-            lastName: LastName.Trim(),
-            firstName: FirstName.Trim(),
-            middleName: string.IsNullOrWhiteSpace(MiddleName) ? null : MiddleName.Trim(),
-            academicDegree: string.IsNullOrWhiteSpace(AcademicDegree) ? null : AcademicDegree.Trim(),
-            academicTitle: string.IsNullOrWhiteSpace(AcademicTitle) ? null : AcademicTitle.Trim()
-        );
+        var newPerson = new Person
+        {
+            FirstName = FirstName.Trim(),
+            LastName = LastName.Trim(),
+            MiddleName = string.IsNullOrWhiteSpace(MiddleName) ? null : MiddleName.Trim(),
+            Email = Email.Trim(),
+            PhoneNumber = string.IsNullOrWhiteSpace(PhoneNumber) ? null : PhoneNumber.Trim(),
+            DateOfBirth = BirthDate ?? DateTime.MinValue
+        };
+
+        var newTeacher = new Teacher
+        {
+            Uid = Guid.NewGuid(),
+            PersonUid = newPerson.Uid,
+            Person = newPerson,
+            EmployeeCode = $"EMP{DateTime.Now.Year % 100:D2}{new Random().Next(1000, 9999)}",
+            Specialization = string.IsNullOrWhiteSpace(Specialization) ? null : Specialization.Trim(),
+            DepartmentUid = null, // SelectedDepartment это строка, нужно найти Department по имени
+            HireDate = HireDate,
+            Salary = HourlyRate,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            LastModifiedAt = DateTime.UtcNow
+        };
 
         await _teacherService.CreateTeacherAsync(newTeacher);
-        LogInfo("Created teacher: {TeacherName}", $"{newTeacher.LastName} {newTeacher.FirstName}");
+        LogInfo("Created teacher: {TeacherName}", $"{newTeacher.Person.LastName} {newTeacher.Person.FirstName}");
     }
 
     private async Task DeleteAsync()
@@ -508,7 +521,7 @@ public class TeacherEditorViewModel : RoutableViewModelBase
             await _teacherService.DeleteTeacherAsync(CurrentTeacher.Uid);
             
             ShowSuccess("Преподаватель удален");
-            LogInfo("Deleted teacher: {TeacherName}", $"{CurrentTeacher.LastName} {CurrentTeacher.FirstName}");
+            LogInfo("Deleted teacher: {TeacherName}", $"{CurrentTeacher.Person.LastName} {CurrentTeacher.Person.FirstName}");
             
             await _navigationService.NavigateToAsync("teachers");
         }
@@ -557,8 +570,7 @@ public class TeacherEditorViewModel : RoutableViewModelBase
     {
         try
         {
-            var random = new Random();
-            EmployeeCode = $"T{DateTime.Now:yy}{random.Next(1000, 9999)}";
+            EmployeeCode = $"EMP{DateTime.Now.Year % 100:D2}{new Random().Next(1000, 9999)}";
             ShowInfo("Код сотрудника сгенерирован");
         }
         catch (Exception ex)
@@ -569,18 +581,14 @@ public class TeacherEditorViewModel : RoutableViewModelBase
 
     private async Task ManageCoursesAsync()
     {
-        if (CurrentTeacher == null) return;
+        if (CurrentTeacher == null)
+        {
+            ShowError("Преподаватель не выбран");
+            return;
+        }
 
-        try
-        {
-            // TODO: Получить все доступные курсы
-            var allCourses = new List<Course>(); // await _courseService.GetAllCoursesAsync();
-            await _dialogService.ShowTeacherCoursesManagementDialogAsync(CurrentTeacher, allCourses);
-        }
-        catch (Exception ex)
-        {
-            SetError("Ошибка при управлении курсами", ex);
-        }
+        var allCourseInstances = new List<CourseInstance>(); // await _courseInstanceService.GetAllCourseInstancesAsync();
+        await _dialogService.ShowTeacherCoursesManagementDialogAsync(CurrentTeacher, allCourseInstances);
     }
 
     private async Task ManageGroupsAsync()

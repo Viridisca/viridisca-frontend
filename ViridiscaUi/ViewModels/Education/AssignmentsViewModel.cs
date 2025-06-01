@@ -34,7 +34,7 @@ namespace ViridiscaUi.ViewModels.Education
     public class AssignmentsViewModel : RoutableViewModelBase
     {
         private readonly IAssignmentService _assignmentService;
-        private readonly ICourseService _courseService;
+        private readonly ICourseInstanceService _courseInstanceService;
         private readonly ITeacherService _teacherService;
         private readonly IDialogService _dialogService;
         private readonly IStatusService _statusService;
@@ -54,8 +54,8 @@ namespace ViridiscaUi.ViewModels.Education
         
         // Фильтры
         [Reactive] public AssignmentStatus? StatusFilter { get; set; }
-        [Reactive] public ObservableCollection<CourseViewModel> Courses { get; set; } = new();
-        [Reactive] public CourseViewModel? SelectedCourseFilter { get; set; }
+        [Reactive] public ObservableCollection<CourseInstanceViewModel> CourseInstances { get; set; } = new();
+        [Reactive] public CourseInstanceViewModel? SelectedCourseInstanceFilter { get; set; }
         [Reactive] public ObservableCollection<TeacherViewModel> Teachers { get; set; } = new();
         [Reactive] public TeacherViewModel? SelectedTeacherFilter { get; set; }
         [Reactive] public DateTime? DueDateFrom { get; set; }
@@ -100,14 +100,14 @@ namespace ViridiscaUi.ViewModels.Education
         public AssignmentsViewModel(
             IScreen hostScreen,
             IAssignmentService assignmentService,
-            ICourseService courseService,
+            ICourseInstanceService courseInstanceService,
             ITeacherService teacherService,
             IDialogService dialogService,
             IStatusService statusService,
             INotificationService notificationService) : base(hostScreen)
         {
             _assignmentService = assignmentService ?? throw new ArgumentNullException(nameof(assignmentService));
-            _courseService = courseService ?? throw new ArgumentNullException(nameof(courseService));
+            _courseInstanceService = courseInstanceService ?? throw new ArgumentNullException(nameof(courseInstanceService));
             _teacherService = teacherService ?? throw new ArgumentNullException(nameof(teacherService));
             _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
             _statusService = statusService ?? throw new ArgumentNullException(nameof(statusService));
@@ -180,7 +180,7 @@ namespace ViridiscaUi.ViewModels.Education
                 .DisposeWith(Disposables);
 
             // Применение фильтров при изменении - добавляем обработку ошибок
-            this.WhenAnyValue(x => x.StatusFilter, x => x.SelectedCourseFilter, x => x.SelectedTeacherFilter, x => x.DueDateFrom, x => x.DueDateTo)
+            this.WhenAnyValue(x => x.StatusFilter, x => x.SelectedCourseInstanceFilter, x => x.SelectedTeacherFilter, x => x.DueDateFrom, x => x.DueDateTo)
                 .Throttle(TimeSpan.FromMilliseconds(300))
                 .ObserveOn(RxApp.MainThreadScheduler)
                 .Select(_ => Unit.Default)
@@ -264,22 +264,21 @@ namespace ViridiscaUi.ViewModels.Education
 
         private async Task LoadCoursesAndTeachersAsync()
         {
-            LogInfo("Loading courses and teachers for filters");
+            LogInfo("Loading courses and teachers for assignment filters");
             
-            // Используем новые универсальные методы получения данных
-            var courses = await _courseService.GetAllAsync();
-            var teachers = await _teacherService.GetAllAsync();
+            var courseInstances = await _courseInstanceService.GetAllCourseInstancesAsync();
+            var teachers = await _teacherService.GetAllTeachersAsync();
 
-            Courses.Clear();
+            CourseInstances.Clear();
             Teachers.Clear();
 
-            foreach (var course in courses)
-                Courses.Add(new CourseViewModel(course));
+            foreach (var courseInstance in courseInstances)
+                CourseInstances.Add(new CourseInstanceViewModel(courseInstance));
 
             foreach (var teacher in teachers)
                 Teachers.Add(new TeacherViewModel(teacher));
                 
-            LogInfo("Loaded {CourseCount} courses and {TeacherCount} teachers for filters", courses.Count(), teachers.Count());
+            LogInfo("Loaded {CourseInstanceCount} course instances and {TeacherCount} teachers for filters", courseInstances.Count(), teachers.Count());
         }
 
         private async Task RefreshAsync()
@@ -329,7 +328,7 @@ namespace ViridiscaUi.ViewModels.Education
             LogInfo("Assignment created successfully: {AssignmentTitle}", createdAssignment.Title);
             
             // Уведомление о создании нового задания
-            if (createdAssignment.CourseUid != Guid.Empty)
+            if (createdAssignment.CourseInstanceUid != Guid.Empty)
             {
                 await _notificationService.CreateNotificationAsync(
                     Guid.NewGuid(), // Заглушка для recipientUid
@@ -373,7 +372,7 @@ namespace ViridiscaUi.ViewModels.Education
                 LogInfo("Assignment updated successfully: {AssignmentTitle}", dialogResult.Title);
                 
                 // Уведомление об изменении задания
-                if (dialogResult.CourseUid != Guid.Empty)
+                if (dialogResult.CourseInstanceUid != Guid.Empty)
                 {
                     await _notificationService.CreateNotificationAsync(
                         Guid.NewGuid(), // Заглушка для recipientUid
@@ -413,14 +412,7 @@ namespace ViridiscaUi.ViewModels.Education
                 LogInfo("Assignment deleted successfully: {AssignmentTitle}", assignmentViewModel.Title);
                 
                 // Уведомление об удалении задания
-                if (assignmentViewModel.CourseName != null)
-                {
-                    await _notificationService.CreateNotificationAsync(
-                        Guid.NewGuid(), // Заглушка для recipientUid
-                        "Задание удалено",
-                        $"Задание '{assignmentViewModel.Title}' было удалено",
-                        Domain.Models.System.Enums.NotificationType.Warning);
-                }
+                // if (assignmentViewModel.CourseInstanceName != null) // TODO: Add CourseInstanceName property to AssignmentViewModel
             }
             else
             {
@@ -549,8 +541,8 @@ namespace ViridiscaUi.ViewModels.Education
         {
             try
             {
-                var courseFilter = SelectedCourseFilter?.Uid;
-                Analytics = await _assignmentService.GetAssignmentAnalyticsAsync(courseFilter);
+                var courseInstanceFilter = SelectedCourseInstanceFilter?.Uid;
+                Analytics = await _assignmentService.GetAssignmentAnalyticsAsync(courseInstanceFilter);
             }
             catch (Exception ex)
             {
@@ -613,7 +605,7 @@ namespace ViridiscaUi.ViewModels.Education
         private async Task ClearFiltersAsync()
         {
             StatusFilter = null;
-            SelectedCourseFilter = null;
+            SelectedCourseInstanceFilter = null;
             SelectedTeacherFilter = null;
             DueDateFrom = null;
             DueDateTo = null;

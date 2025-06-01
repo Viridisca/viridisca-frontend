@@ -2,135 +2,193 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using ViridiscaUi.Domain.Models.Education;
-using CourseStatus = ViridiscaUi.Domain.Models.Education.Enums.CourseStatus;
+using ViridiscaUi.Domain.Models.Education.Enums;
 
 namespace ViridiscaUi.Services.Interfaces
 {
     /// <summary>
-    /// Сервис для работы с курсами
+    /// Сервис для работы с экземплярами курсов (CourseInstance)
     /// Наследуется от IGenericCrudService для получения универсальных CRUD операций
     /// </summary>
-    public interface ICourseService : IGenericCrudService<Course>
+    public interface ICourseInstanceService : IGenericCrudService<CourseInstance>
     {
         /// <summary>
-        /// Получает курс по идентификатору
+        /// Получает экземпляр курса по идентификатору
         /// </summary>
-        Task<Course?> GetCourseAsync(Guid uid);
+        Task<CourseInstance?> GetCourseInstanceAsync(Guid uid);
         
         /// <summary>
-        /// Получает все курсы
+        /// Получает все экземпляры курсов
         /// </summary>
-        Task<IEnumerable<Course>> GetAllCoursesAsync();
+        Task<IEnumerable<CourseInstance>> GetAllCourseInstancesAsync();
         
         /// <summary>
-        /// Получает курсы преподавателя
+        /// Получает экземпляры курсов преподавателя
         /// </summary>
-        Task<IEnumerable<Course>> GetCoursesByTeacherAsync(Guid teacherUid);
+        Task<IEnumerable<CourseInstance>> GetCourseInstancesByTeacherAsync(Guid teacherUid);
         
         /// <summary>
-        /// Добавляет новый курс
+        /// Добавляет новый экземпляр курса
         /// </summary>
-        Task AddCourseAsync(Course course);
+        Task AddCourseInstanceAsync(CourseInstance courseInstance);
         
         /// <summary>
-        /// Обновляет существующий курс
+        /// Обновляет существующий экземпляр курса
         /// </summary>
-        Task<bool> UpdateCourseAsync(Course course);
+        Task<bool> UpdateCourseInstanceAsync(CourseInstance courseInstance);
         
         /// <summary>
-        /// Удаляет курс
+        /// Удаляет экземпляр курса
         /// </summary>
-        Task<bool> DeleteCourseAsync(Guid uid);
+        Task<bool> DeleteCourseInstanceAsync(Guid uid);
         
         /// <summary>
-        /// Публикует курс (изменяет статус)
+        /// Активирует экземпляр курса
         /// </summary>
-        Task<bool> PublishCourseAsync(Guid uid);
+        Task<bool> ActivateCourseInstanceAsync(Guid uid);
         
         /// <summary>
-        /// Архивирует курс (изменяет статус)
+        /// Завершает экземпляр курса
         /// </summary>
-        Task<bool> ArchiveCourseAsync(Guid uid);
+        Task<bool> CompleteCourseInstanceAsync(Guid uid);
 
         // === РАСШИРЕНИЯ ЭТАПА 2 ===
         
         /// <summary>
-        /// Получает курсы студента
+        /// Получает экземпляры курсов студента
         /// </summary>
-        Task<IEnumerable<Course>> GetCoursesByStudentAsync(Guid studentUid);
+        Task<IEnumerable<CourseInstance>> GetCourseInstancesByStudentAsync(Guid studentUid);
         
         /// <summary>
-        /// Регистрирует студента на курс
+        /// Получает экземпляры курсов по группе
         /// </summary>
-        Task<bool> EnrollStudentAsync(Guid courseUid, Guid studentUid);
+        Task<IEnumerable<CourseInstance>> GetCourseInstancesByGroupAsync(Guid groupUid);
         
         /// <summary>
-        /// Отменяет регистрацию студента на курс
+        /// Получает экземпляры курсов по академическому периоду
         /// </summary>
-        Task<bool> UnenrollStudentAsync(Guid courseUid, Guid studentUid);
+        Task<IEnumerable<CourseInstance>> GetCourseInstancesByAcademicPeriodAsync(Guid academicPeriodUid);
         
         /// <summary>
-        /// Получает прогресс студента по курсу
+        /// Получает экземпляры курсов по предмету
         /// </summary>
-        Task<CourseProgress> GetCourseProgressAsync(Guid courseUid, Guid studentUid);
+        Task<IEnumerable<CourseInstance>> GetCourseInstancesBySubjectAsync(Guid subjectUid);
         
         /// <summary>
-        /// Получает статистику курса
+        /// Регистрирует студента на экземпляр курса
         /// </summary>
-        Task<CourseStatistics> GetCourseStatisticsAsync(Guid courseUid);
+        Task<bool> EnrollStudentAsync(Guid courseInstanceUid, Guid studentUid);
         
         /// <summary>
-        /// Получает курсы с пагинацией
+        /// Отменяет регистрацию студента на экземпляр курса
         /// </summary>
-        Task<(IEnumerable<Course> Courses, int TotalCount)> GetCoursesPagedAsync(
+        Task<bool> UnenrollStudentAsync(Guid courseInstanceUid, Guid studentUid);
+        
+        /// <summary>
+        /// Получает прогресс студента по экземпляру курса
+        /// </summary>
+        Task<CourseInstanceProgress> GetCourseInstanceProgressAsync(Guid courseInstanceUid, Guid studentUid);
+        
+        /// <summary>
+        /// Получает статистику экземпляра курса
+        /// </summary>
+        Task<CourseInstanceStatistics> GetCourseInstanceStatisticsAsync(Guid courseInstanceUid);
+        
+        /// <summary>
+        /// Получает экземпляры курсов с пагинацией
+        /// </summary>
+        Task<(IEnumerable<CourseInstance> CourseInstances, int TotalCount)> GetCourseInstancesPagedAsync(
             int page, 
             int pageSize, 
             string? searchTerm = null,
-            string? categoryFilter = null,
-            string? statusFilter = null,
-            string? difficultyFilter = null,
-            Guid? teacherFilter = null);
+            Guid? subjectFilter = null,
+            Guid? teacherFilter = null,
+            Guid? groupFilter = null,
+            Guid? academicPeriodFilter = null);
         
         /// <summary>
-        /// Получает все курсы с фильтрами
+        /// Получает все экземпляры курсов с фильтрами
         /// </summary>
-        Task<IEnumerable<Course>> GetAllCoursesAsync(
-            string? categoryFilter = null,
-            string? statusFilter = null,
-            string? difficultyFilter = null);
+        Task<IEnumerable<CourseInstance>> GetAllCourseInstancesAsync(
+            Guid? subjectFilter = null,
+            Guid? teacherFilter = null,
+            Guid? groupFilter = null,
+            Guid? academicPeriodFilter = null);
         
         /// <summary>
-        /// Клонирует курс
+        /// Клонирует экземпляр курса
         /// </summary>
-        Task<Course?> CloneCourseAsync(Guid courseUid, string newName);
+        Task<CourseInstance?> CloneCourseInstanceAsync(Guid courseInstanceUid, Guid newAcademicPeriodUid);
         
         /// <summary>
-        /// Доступные курсы для регистрации студента
+        /// Доступные экземпляры курсов для регистрации студента
         /// </summary>
-        Task<IEnumerable<Course>> GetAvailableCoursesForStudentAsync(Guid studentUid);
+        Task<IEnumerable<CourseInstance>> GetAvailableCourseInstancesForStudentAsync(Guid studentUid);
         
         /// <summary>
-        /// Массовая регистрация студентов группы на курс
+        /// Массовая регистрация студентов группы на экземпляр курса
         /// </summary>
-        Task<BulkEnrollmentResult> BulkEnrollGroupAsync(Guid courseUid, Guid groupUid);
+        Task<BulkEnrollmentResult> BulkEnrollGroupAsync(Guid courseInstanceUid, Guid groupUid);
         
         /// <summary>
-        /// Получает рекомендованные курсы для студента
+        /// Получает рекомендованные экземпляры курсов для студента
         /// </summary>
-        Task<IEnumerable<Course>> GetRecommendedCoursesAsync(Guid studentUid);
+        Task<IEnumerable<CourseInstance>> GetRecommendedCourseInstancesAsync(Guid studentUid);
 
         /// <summary>
-        /// Получает управляемые курсы (для академических руководителей)
+        /// Получает управляемые экземпляры курсов (для академических руководителей)
         /// </summary>
-        Task<IEnumerable<Course>> GetManagedCoursesAsync();
+        Task<IEnumerable<CourseInstance>> GetManagedCourseInstancesAsync();
+
+        // === ДОПОЛНИТЕЛЬНЫЕ МЕТОДЫ ДЛЯ СОВМЕСТИМОСТИ ===
+        
+        /// <summary>
+        /// Получает все экземпляры курсов (алиас)
+        /// </summary>
+        Task<IEnumerable<CourseInstance>> GetAllCoursesAsync();
+
+        /// <summary>
+        /// Получает экземпляры курсов с пагинацией (алиас)
+        /// </summary>
+        Task<(IEnumerable<CourseInstance> Courses, int TotalCount)> GetCoursesPagedAsync(
+            int page, int pageSize, string? searchTerm = null);
+
+        /// <summary>
+        /// Получает статистику курса (алиас)
+        /// </summary>
+        Task<object> GetCourseStatisticsAsync(Guid courseInstanceUid);
+
+        /// <summary>
+        /// Получает курсы студента (алиас)
+        /// </summary>
+        Task<IEnumerable<CourseInstance>> GetCoursesByStudentAsync(Guid studentUid);
+
+        /// <summary>
+        /// Получает экземпляр курса по ID (алиас)
+        /// </summary>
+        Task<CourseInstance?> GetCourseAsync(Guid courseInstanceUid);
+
+        /// <summary>
+        /// Клонирует экземпляр курса (алиас)
+        /// </summary>
+        Task<CourseInstance?> CloneCourseAsync(Guid sourceUid, Guid? newGroupUid = null, Guid? newAcademicPeriodUid = null);
+
+        /// <summary>
+        /// Получает экземпляры курсов по фильтрам
+        /// </summary>
+        Task<IEnumerable<CourseInstance>> GetCourseInstancesByFiltersAsync(
+            Guid? subjectUid = null,
+            Guid? teacherUid = null,
+            Guid? groupUid = null,
+            Guid? academicPeriodUid = null);
     }
 
     /// <summary>
-    /// Прогресс студента по курсу
+    /// Прогресс студента по экземпляру курса
     /// </summary>
-    public class CourseProgress
+    public class CourseInstanceProgress
     {
-        public Guid CourseUid { get; set; }
+        public Guid CourseInstanceUid { get; set; }
         public Guid StudentUid { get; set; }
         public int CompletedLessons { get; set; }
         public int TotalLessons { get; set; }
@@ -144,11 +202,11 @@ namespace ViridiscaUi.Services.Interfaces
     }
 
     /// <summary>
-    /// Статистика курса
+    /// Статистика экземпляра курса
     /// </summary>
-    public class CourseStatistics
+    public class CourseInstanceStatistics
     {
-        public Guid CourseUid { get; set; }
+        public Guid CourseInstanceUid { get; set; }
         public int TotalStudents { get; set; }
         public int ActiveStudents { get; set; }
         public int CompletedStudents { get; set; }

@@ -13,6 +13,8 @@ public class Subject : ViewModelBase
     private string _code = string.Empty;
     private string _name = string.Empty;
     private string _description = string.Empty;
+    private string _prerequisites = string.Empty;
+    private string _learningOutcomes = string.Empty;
 
     private int _credits;
     private int _lessonsPerWeek;
@@ -20,7 +22,6 @@ public class Subject : ViewModelBase
     private SubjectType _type;
 
     private bool _isActive;
-    private ObservableCollection<TeacherSubject> _teacherSubjects = [];
 
     private Guid? _departmentUid;
     private Department? _department;
@@ -50,6 +51,24 @@ public class Subject : ViewModelBase
     {
         get => _description;
         set => this.RaiseAndSetIfChanged(ref _description, value);
+    }
+
+    /// <summary>
+    /// Пререквизиты (предварительные требования)
+    /// </summary>
+    public string Prerequisites
+    {
+        get => _prerequisites;
+        set => this.RaiseAndSetIfChanged(ref _prerequisites, value);
+    }
+
+    /// <summary>
+    /// Результаты обучения
+    /// </summary>
+    public string LearningOutcomes
+    {
+        get => _learningOutcomes;
+        set => this.RaiseAndSetIfChanged(ref _learningOutcomes, value);
     }
 
     /// <summary>
@@ -107,15 +126,6 @@ public class Subject : ViewModelBase
     }
 
     /// <summary>
-    /// Преподаватели, связанные с предметом
-    /// </summary>
-    public ObservableCollection<TeacherSubject> TeacherSubjects
-    {
-        get => _teacherSubjects;
-        set => this.RaiseAndSetIfChanged(ref _teacherSubjects, value);
-    }
-
-    /// <summary>
     /// Отображаемый тип предмета
     /// </summary>
     public string TypeDisplayName => Type.GetDisplayName();
@@ -125,6 +135,9 @@ public class Subject : ViewModelBase
     /// </summary>
     public Subject()
     {
+        Uid = Guid.NewGuid();
+        CreatedAt = DateTime.UtcNow;
+        LastModifiedAt = DateTime.UtcNow;
         _isActive = true;
     }
 
@@ -141,6 +154,8 @@ public class Subject : ViewModelBase
         Guid departmentUid)
     {
         Uid = Guid.NewGuid();
+        CreatedAt = DateTime.UtcNow;
+        LastModifiedAt = DateTime.UtcNow;
         _code = code.Trim();
         _name = name.Trim();
         _description = description;
@@ -191,31 +206,5 @@ public class Subject : ViewModelBase
     {
         IsActive = false;
         LastModifiedAt = DateTime.UtcNow;
-    }
-
-    /// <summary>
-    /// Добавляет преподавателя к предмету
-    /// </summary>
-    public void AddTeacher(TeacherSubject teacherSubject)
-    {
-        if (teacherSubject != null && !TeacherSubjects.Any(ts => ts.TeacherUid == teacherSubject.TeacherUid))
-        {
-            TeacherSubjects.Add(teacherSubject);
-            this.RaisePropertyChanged(nameof(TeacherSubjects));
-            LastModifiedAt = DateTime.UtcNow;
-        }
-    }
-
-    /// <summary>
-    /// Удаляет преподавателя из предмета
-    /// </summary>
-    public void RemoveTeacher(TeacherSubject teacherSubject)
-    {
-        if (teacherSubject != null && TeacherSubjects.Contains(teacherSubject))
-        {
-            TeacherSubjects.Remove(teacherSubject);
-            this.RaisePropertyChanged(nameof(TeacherSubjects));
-            LastModifiedAt = DateTime.UtcNow;
-        }
     }
 } 

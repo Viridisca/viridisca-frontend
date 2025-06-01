@@ -36,19 +36,16 @@ public class TeacherService : GenericCrudService<Teacher>, ITeacherService
 
         var lowerSearchTerm = searchTerm.ToLower();
 
-        return query.Where(t => 
-            t.FirstName.ToLower().Contains(lowerSearchTerm) ||
-            t.LastName.ToLower().Contains(lowerSearchTerm) ||
-            t.MiddleName.ToLower().Contains(lowerSearchTerm) ||
-            t.Email.ToLower().Contains(lowerSearchTerm) ||
-            t.PhoneNumber.Contains(searchTerm) ||
+        return query.Where(t =>
+            (t.Person != null && (
+                t.Person.FirstName.ToLower().Contains(lowerSearchTerm) ||
+                t.Person.LastName.ToLower().Contains(lowerSearchTerm) ||
+                t.Person.MiddleName != null && t.Person.MiddleName.ToLower().Contains(lowerSearchTerm) ||
+                t.Person.Email.ToLower().Contains(lowerSearchTerm) ||
+                t.Person.PhoneNumber != null && t.Person.PhoneNumber.Contains(searchTerm)
+            )) ||
             t.Specialization.ToLower().Contains(lowerSearchTerm) ||
-            t.Department.ToLower().Contains(lowerSearchTerm) ||
-            (t.User != null && (
-                t.User.FirstName.ToLower().Contains(lowerSearchTerm) ||
-                t.User.LastName.ToLower().Contains(lowerSearchTerm) ||
-                t.User.Email.ToLower().Contains(lowerSearchTerm)
-            ))
+            (t.Department != null && t.Department.Name.ToLower().Contains(lowerSearchTerm))
         );
     }
 
@@ -57,47 +54,51 @@ public class TeacherService : GenericCrudService<Teacher>, ITeacherService
     /// </summary>
     protected override async Task ValidateEntitySpecificRulesAsync(Teacher entity, List<string> errors, List<string> warnings, bool isCreate)
     {
-        // Проверка обязательных полей
-        if (string.IsNullOrWhiteSpace(entity.FirstName))
+        // Проверка обязательных полей через Person
+        if (entity.Person == null)
+        {
+            errors.Add("Информация о человеке обязательна для преподавателя");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(entity.Person.FirstName))
             errors.Add("Имя преподавателя обязательно для заполнения");
 
-        if (string.IsNullOrWhiteSpace(entity.LastName))
+        if (string.IsNullOrWhiteSpace(entity.Person.LastName))
             errors.Add("Фамилия преподавателя обязательна для заполнения");
 
-        if (string.IsNullOrWhiteSpace(entity.Email))
+        if (string.IsNullOrWhiteSpace(entity.Person.Email))
             errors.Add("Email преподавателя обязателен для заполнения");
 
         if (string.IsNullOrWhiteSpace(entity.Specialization))
             warnings.Add("Рекомендуется указать специализацию преподавателя");
 
-        if (string.IsNullOrWhiteSpace(entity.Department))
+        if (entity.Department == null)
             warnings.Add("Рекомендуется указать кафедру преподавателя");
 
         // Проверка формата email
-        if (!string.IsNullOrWhiteSpace(entity.Email) && !IsValidEmail(entity.Email))
+        if (!string.IsNullOrWhiteSpace(entity.Person.Email) && !IsValidEmail(entity.Person.Email))
             errors.Add("Некорректный формат email");
 
         // Проверка уникальности email
-        if (!string.IsNullOrWhiteSpace(entity.Email))
+        if (!string.IsNullOrWhiteSpace(entity.Person.Email))
         {
-            var emailExists = await _dbSet
-                .Where(t => t.Uid != entity.Uid && t.Email.ToLower() == entity.Email.ToLower())
+            var emailExists = await _dbContext.Persons
+                .Where(p => p.Uid != entity.PersonUid && p.Email.ToLower() == entity.Person.Email.ToLower())
                 .AnyAsync();
 
             if (emailExists)
-                errors.Add($"Преподаватель с email '{entity.Email}' уже существует");
+                errors.Add($"Преподаватель с email '{entity.Person.Email}' уже существует");
         }
 
-        // Проверка возраста (если есть дата рождения в User)
-        if (entity.User != null && entity.User.DateOfBirth != default(DateTime))
-        {
-            var age = DateTime.Now.Year - entity.User.DateOfBirth.Year;
-            if (DateTime.Now.DayOfYear < entity.User.DateOfBirth.DayOfYear)
-                age--;
+        // Проверка даты рождения
+        if (entity.Person.DateOfBirth > DateTime.Now.AddYears(-18))
+            warnings.Add("Возраст преподавателя меньше 18 лет");
 
-            if (age < 18)
-                errors.Add("Возраст преподавателя должен быть не менее 18 лет");
-        }
+        if (entity.Person.DateOfBirth < DateTime.Now.AddYears(-100))
+            errors.Add("Некорректная дата рождения");
+        if (entity.Person.DateOfBirth > DateTime.Now.AddYears(-21))
+            warnings.Add("Возраст преподавателя меньше 21 года");
 
         // Проверка даты найма
         if (entity.HireDate > DateTime.Now)
@@ -107,14 +108,14 @@ public class TeacherService : GenericCrudService<Teacher>, ITeacherService
             warnings.Add("Дата найма более 50 лет назад");
 
         // Проверка пользователя
-        if (entity.UserUid != Guid.Empty)
+        if (entity.PersonUid != Guid.Empty)
         {
-            var userExists = await _dbContext.Users
-                .Where(u => u.Uid == entity.UserUid)
+            var personExists = await _dbContext.Persons
+                .Where(p => p.Uid == entity.PersonUid)
                 .AnyAsync();
 
-            if (!userExists)
-                errors.Add($"Пользователь с Uid {entity.UserUid} не найден");
+            if (!personExists)
+                errors.Add($"Пользователь с Uid {entity.PersonUid} не найден");
         }
 
         await base.ValidateEntitySpecificRulesAsync(entity, errors, warnings, isCreate);
@@ -127,14 +128,14 @@ public class TeacherService : GenericCrudService<Teacher>, ITeacherService
     public async Task<Teacher?> GetTeacherAsync(Guid uid)
     {
         return await GetByUidWithIncludesAsync(uid, 
-            t => t.User, 
-            t => t.Courses, 
-            t => t.CuratedGroups);
+            t => t.Person, 
+            t => t.Department, 
+            t => t.CourseInstances);
     }
 
     public async Task<IEnumerable<Teacher>> GetAllTeachersAsync()
     {
-        return await GetAllWithIncludesAsync(t => t.User);
+        return await GetAllWithIncludesAsync(t => t.Person);
     }
 
     public async Task<IEnumerable<Teacher>> GetTeachersAsync()
@@ -162,37 +163,39 @@ public class TeacherService : GenericCrudService<Teacher>, ITeacherService
         return await DeleteAsync(uid);
     }
 
-    public async Task<bool> AssignToCourseAsync(Guid teacherUid, Guid courseUid)
+    /// <summary>
+    /// Назначает преподавателя на курс
+    /// </summary>
+    public async Task<bool> AssignToCourseAsync(Guid teacherUid, Guid courseInstanceUid)
     {
-        try
-        {
-            var course = await _dbContext.Courses.FindAsync(courseUid);
-            if (course == null)
-            {
-                _logger.LogWarning("Course not found for teacher assignment: {CourseUid}", courseUid);
-                return false;
-            }
+        var teacher = await _dbContext.Teachers.FindAsync(teacherUid);
+        var courseInstance = await _dbContext.CourseInstances.FindAsync(courseInstanceUid);
 
-            var teacher = await GetByUidAsync(teacherUid);
-            if (teacher == null)
-            {
-                _logger.LogWarning("Teacher not found for course assignment: {TeacherUid}", teacherUid);
-                return false;
-            }
+        if (teacher == null || courseInstance == null)
+            return false;
 
-            course.TeacherUid = teacherUid;
-            course.LastModifiedAt = DateTime.UtcNow;
+        courseInstance.TeacherUid = teacherUid;
+        courseInstance.LastModifiedAt = DateTime.UtcNow;
 
-            await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync();
+        return true;
+    }
 
-            _logger.LogInformation("Teacher {TeacherUid} assigned to course {CourseUid}", teacherUid, courseUid);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error assigning teacher {TeacherUid} to course {CourseUid}", teacherUid, courseUid);
-            throw;
-        }
+    /// <summary>
+    /// Отменяет назначение преподавателя на курс
+    /// </summary>
+    public async Task<bool> UnassignFromCourseAsync(Guid teacherUid, Guid courseInstanceUid)
+    {
+        var courseInstance = await _dbContext.CourseInstances.FindAsync(courseInstanceUid);
+
+        if (courseInstance == null || courseInstance.TeacherUid != teacherUid)
+            return false;
+
+        courseInstance.TeacherUid = Guid.Empty;
+        courseInstance.LastModifiedAt = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync();
+        return true;
     }
 
     #endregion
@@ -204,7 +207,7 @@ public class TeacherService : GenericCrudService<Teacher>, ITeacherService
     /// </summary>
     public async Task<IEnumerable<Teacher>> GetByDepartmentAsync(string department)
     {
-        return await FindWithIncludesAsync(t => t.Department == department, t => t.User);
+        return await FindWithIncludesAsync(t => t.Department != null && t.Department.Name == department, t => t.Person);
     }
 
     /// <summary>
@@ -212,7 +215,7 @@ public class TeacherService : GenericCrudService<Teacher>, ITeacherService
     /// </summary>
     public async Task<IEnumerable<Teacher>> GetBySpecializationAsync(string specialization)
     {
-        return await FindWithIncludesAsync(t => t.Specialization == specialization, t => t.User);
+        return await FindWithIncludesAsync(t => t.Specialization == specialization, t => t.Person);
     }
 
     /// <summary>
@@ -222,12 +225,12 @@ public class TeacherService : GenericCrudService<Teacher>, ITeacherService
     {
         try
         {
-            var coursesCount = await _dbContext.Courses
+            var coursesCount = await _dbContext.CourseInstances
                 .Where(c => c.TeacherUid == teacherUid)
                 .CountAsync();
 
             var studentsCount = await _dbContext.Enrollments
-                .Where(e => e.Course.TeacherUid == teacherUid)
+                .Where(e => e.CourseInstance.TeacherUid == teacherUid)
                 .Select(e => e.StudentUid)
                 .Distinct()
                 .CountAsync();
@@ -258,20 +261,28 @@ public class TeacherService : GenericCrudService<Teacher>, ITeacherService
     /// <summary>
     /// Получает курсы преподавателя
     /// </summary>
-    public async Task<IEnumerable<Course>> GetTeacherCoursesAsync(Guid teacherUid)
+    public async Task<IEnumerable<CourseInstance>> GetTeacherCoursesAsync(Guid teacherUid)
     {
         try
         {
-            return await _dbContext.Courses
-                .Include(c => c.Enrollments)
-                .Where(c => c.TeacherUid == teacherUid)
-                .OrderBy(c => c.Name)
-                .ToListAsync();
+            var teacher = await _dbContext.Teachers
+                .Include(t => t.CourseInstances)
+                    .ThenInclude(ci => ci.Subject)
+                .Include(t => t.CourseInstances)
+                    .ThenInclude(ci => ci.Group)
+                .Include(t => t.CourseInstances)
+                    .ThenInclude(ci => ci.AcademicPeriod)
+                .FirstOrDefaultAsync(t => t.PersonUid == teacherUid);
+
+            if (teacher == null)
+                return new List<CourseInstance>();
+
+            return teacher.CourseInstances?.ToList() ?? new List<CourseInstance>();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting teacher courses: {TeacherUid}", teacherUid);
-            throw;
+            return new List<CourseInstance>();
         }
     }
 
@@ -338,15 +349,17 @@ public class TeacherService : GenericCrudService<Teacher>, ITeacherService
         try
         {
             var query = _dbContext.Teachers
-                .Include(t => t.User)
+                .Include(t => t.Person)
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
                 query = query.Where(t =>
-                    t.FirstName.Contains(searchTerm) ||
-                    t.LastName.Contains(searchTerm) ||
-                    t.Email.Contains(searchTerm) ||
+                    (t.Person != null && (
+                        t.Person.FirstName.Contains(searchTerm) ||
+                        t.Person.LastName.Contains(searchTerm) ||
+                        t.Person.Email.Contains(searchTerm)
+                    )) ||
                     (t.Specialization != null && t.Specialization.Contains(searchTerm)));
             }
 
@@ -358,8 +371,8 @@ public class TeacherService : GenericCrudService<Teacher>, ITeacherService
             var totalCount = await query.CountAsync();
 
             var teachers = await query
-                .OrderBy(t => t.LastName)
-                .ThenBy(t => t.FirstName)
+                .OrderBy(t => t.Person != null ? t.Person.LastName : "")
+                .ThenBy(t => t.Person != null ? t.Person.FirstName : "")
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
@@ -376,9 +389,11 @@ public class TeacherService : GenericCrudService<Teacher>, ITeacherService
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
                 sampleTeachers = sampleTeachers.Where(t =>
-                    t.FirstName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
-                    t.LastName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
-                    t.Email.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                    (t.Person != null && (
+                        t.Person.FirstName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                        t.Person.LastName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                        t.Person.Email.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
+                    )) ||
                     (t.Specialization?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false))
                     .ToList();
             }
@@ -416,23 +431,6 @@ public class TeacherService : GenericCrudService<Teacher>, ITeacherService
     }
 
     /// <summary>
-    /// Отменяет назначение преподавателя на курс
-    /// </summary>
-    public async Task<bool> UnassignFromCourseAsync(Guid teacherUid, Guid courseUid)
-    {
-        var course = await _dbContext.Courses.FindAsync(courseUid);
-
-        if (course == null || course.TeacherUid != teacherUid)
-            return false;
-
-        course.TeacherUid = null;
-        course.LastModifiedAt = DateTime.UtcNow;
-
-        await _dbContext.SaveChangesAsync();
-        return true;
-    }
-
-    /// <summary>
     /// Генерирует тестовые данные преподавателей
     /// </summary>
     private static IEnumerable<Teacher> GenerateSampleTeachers()
@@ -442,23 +440,19 @@ public class TeacherService : GenericCrudService<Teacher>, ITeacherService
             new Teacher
             {
                 Uid = Guid.Parse("11111111-1111-1111-1111-111111111111"),
-                FirstName = "Иван",
-                LastName = "Петров",
-                MiddleName = "Сергеевич",
                 Specialization = "Программирование",
-                AcademicTitle = "Доцент",
                 CreatedAt = DateTime.UtcNow.AddDays(-100),
                 LastModifiedAt = DateTime.UtcNow.AddDays(-5),
-                Status = TeacherStatus.Active,
                 HireDate = DateTime.UtcNow.AddDays(-365),
-                HourlyRate = 1500,
-                User = new User
+                Salary = 1500,
+                Person = new Person
                 {
                     Uid = Guid.Parse("11111111-1111-1111-1111-111111111111"),
                     Email = "petrov@example.com",
                     PhoneNumber = "+7 (999) 123-45-67",
                     FirstName = "Иван",
                     LastName = "Петров",
+                    MiddleName = "Сергеевич",
                     CreatedAt = DateTime.UtcNow,
                     IsActive = true
                 }
@@ -466,23 +460,19 @@ public class TeacherService : GenericCrudService<Teacher>, ITeacherService
             new Teacher
             {
                 Uid = Guid.Parse("22222222-2222-2222-2222-222222222222"),
-                FirstName = "Мария",
-                LastName = "Сидорова",
-                MiddleName = "Александровна",
                 Specialization = "Веб-разработка",
-                AcademicTitle = "Старший преподаватель",
                 CreatedAt = DateTime.UtcNow.AddDays(-80),
                 LastModifiedAt = DateTime.UtcNow.AddDays(-3),
-                Status = TeacherStatus.Active,
                 HireDate = DateTime.UtcNow.AddDays(-300),
-                HourlyRate = 1800,
-                User = new User
+                Salary = 1800,
+                Person = new Person
                 {
                     Uid = Guid.Parse("22222222-2222-2222-2222-222222222222"),
                     Email = "sidorova@example.com",
                     PhoneNumber = "+7 (999) 234-56-78",
                     FirstName = "Мария",
                     LastName = "Сидорова",
+                    MiddleName = "Александровна",
                     CreatedAt = DateTime.UtcNow,
                     IsActive = true
                 }
@@ -490,23 +480,19 @@ public class TeacherService : GenericCrudService<Teacher>, ITeacherService
             new Teacher
             {
                 Uid = Guid.Parse("33333333-3333-3333-3333-333333333333"),
-                FirstName = "Алексей",
-                LastName = "Козлов",
-                MiddleName = "Владимирович",
                 Specialization = "Базы данных",
-                AcademicTitle = "Профессор",
                 CreatedAt = DateTime.UtcNow.AddDays(-120),
                 LastModifiedAt = DateTime.UtcNow.AddDays(-1),
-                Status = TeacherStatus.Active,
                 HireDate = DateTime.UtcNow.AddDays(-400),
-                HourlyRate = 2000,
-                User = new User
+                Salary = 2000,
+                Person = new Person
                 {
                     Uid = Guid.Parse("33333333-3333-3333-3333-333333333333"),
                     Email = "kozlov@example.com",
                     PhoneNumber = "+7 (999) 345-67-89",
                     FirstName = "Алексей",
                     LastName = "Козлов",
+                    MiddleName = "Владимирович",
                     CreatedAt = DateTime.UtcNow,
                     IsActive = true
                 }

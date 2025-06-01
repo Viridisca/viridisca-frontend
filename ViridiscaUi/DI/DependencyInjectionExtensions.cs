@@ -1,15 +1,18 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using ReactiveUI;
-using ViridiscaUi.ViewModels;
+using Microsoft.EntityFrameworkCore;
 using ViridiscaUi.Infrastructure;
-using ViridiscaUi.Infrastructure.Navigation;
-using ViridiscaUi.Services.Implementations;
 using ViridiscaUi.Services.Interfaces;
+using ViridiscaUi.Services.Implementations;
+using ViridiscaUi.ViewModels;
 using ViridiscaUi.ViewModels.Auth;
 using ViridiscaUi.ViewModels.Education;
-using ViridiscaUi.ViewModels.Students;
 using ViridiscaUi.ViewModels.System;
+using ViridiscaUi.ViewModels.Components;
+using ViridiscaUi.Infrastructure.Navigation;
+using ReactiveUI;
+using Avalonia.Controls;
+using ViridiscaUi.ViewModels.Bases.Navigations;
 using ViridiscaUi.Windows;
 using Microsoft.Extensions.Configuration;
 using ViridiscaUi.Configuration;
@@ -82,7 +85,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<IStudentService, StudentService>();
         services.AddScoped<IGroupService, GroupService>();
         services.AddScoped<ITeacherService, TeacherService>();
-        services.AddScoped<ICourseService, CourseService>(); 
+        services.AddScoped<ICourseInstanceService, CourseInstanceService>();
         services.AddScoped<IAssignmentService, AssignmentService>();
         services.AddScoped<ISubmissionService, SubmissionService>();
         services.AddScoped<IGradeService, GradeService>();
@@ -96,8 +99,8 @@ public static class DependencyInjectionExtensions
 
     private static IServiceCollection AddAuthenticationServices(this IServiceCollection services)
     {
-        // Auth services (Singleton for UserSessionService alignment)
-        services.AddScoped<IUserService, UserService>();
+        // Auth services (Singleton for PersonSessionService alignment)
+        services.AddScoped<IPersonService, PersonService>();
         services.AddScoped<IRoleService, RoleService>();
         services.AddScoped<IPermissionService, PermissionService>();
         services.AddScoped<IRolePermissionService, RolePermissionService>();
@@ -115,7 +118,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<IStatisticsService, StatisticsService>();
 
         // Singleton services for application state
-        services.AddSingleton<IUserSessionService, UserSessionService>();
+        services.AddSingleton<IPersonSessionService, PersonSessionService>();
 
         // Unified navigation system (replaces old navigation services)
         services.AddSingleton<IUnifiedNavigationService, UnifiedNavigationService>();

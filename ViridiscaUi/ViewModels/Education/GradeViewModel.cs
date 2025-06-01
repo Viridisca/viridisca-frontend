@@ -328,8 +328,8 @@ public class GradeViewModel : ReactiveObject, IDisposable
         if (grade.Student != null)
         {
             StudentName = grade.Student.FullName;
-            StudentFirstName = grade.Student.FirstName;
-            StudentLastName = grade.Student.LastName;
+            StudentFirstName = grade.Student.Person?.FirstName ?? string.Empty;
+            StudentLastName = grade.Student.Person?.LastName ?? string.Empty;
         }
 
         if (grade.Subject != null)
@@ -341,8 +341,8 @@ public class GradeViewModel : ReactiveObject, IDisposable
         if (grade.Teacher != null)
         {
             TeacherName = grade.Teacher.FullName;
-            TeacherFirstName = grade.Teacher.FirstName;
-            TeacherLastName = grade.Teacher.LastName;
+            TeacherFirstName = grade.Teacher.Person?.FirstName ?? string.Empty;
+            TeacherLastName = grade.Teacher.Person?.LastName ?? string.Empty;
         }
 
         if (grade.Assignment != null)

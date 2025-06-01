@@ -33,7 +33,7 @@ public class AssignmentViewModel : ReactiveObject
 
     #region Course and Teacher Properties
 
-    [Reactive] public Guid CourseUid { get; set; }
+    [Reactive] public Guid CourseInstanceUid { get; set; }
     [Reactive] public string CourseName { get; set; } = string.Empty;
     [Reactive] public string CourseCode { get; set; } = string.Empty;
     [Reactive] public Guid TeacherUid { get; set; }
@@ -302,7 +302,7 @@ public class AssignmentViewModel : ReactiveObject
                 x => x.Title,
                 x => x.DueDate,
                 x => x.MaxScore,
-                x => x.CourseUid,
+                x => x.CourseInstanceUid,
                 x => x.TeacherUid)
             .Select(_ => GetValidationErrors())
             .ToProperty(this, x => x.ValidationErrors);
@@ -414,7 +414,7 @@ public class AssignmentViewModel : ReactiveObject
         if (MaxScore > 1000)
             errors.Add("Максимальный балл не должен превышать 1000");
 
-        if (CourseUid == Guid.Empty)
+        if (CourseInstanceUid == Guid.Empty)
             errors.Add("Курс должен быть выбран");
 
         if (TeacherUid == Guid.Empty)
@@ -445,7 +445,7 @@ public class AssignmentViewModel : ReactiveObject
             DueDate = DueDate,
             MaxScore = MaxScore,
             Instructions = Instructions,
-            CourseUid = CourseUid,
+            CourseInstanceUid = CourseInstanceUid,
             // PublishedAt = PublishedAt, // Не существует в модели
             // AllowLateSubmissions = AllowLateSubmissions, // Не существует в модели
             // AttachmentsPath = AttachmentsPath, // Не существует в модели
@@ -468,7 +468,7 @@ public class AssignmentViewModel : ReactiveObject
         DueDate = assignment.DueDate ?? DateTime.Now.AddDays(7);
         MaxScore = (int)assignment.MaxScore;
         Instructions = assignment.Instructions ?? string.Empty;
-        CourseUid = assignment.CourseUid;
+        CourseInstanceUid = assignment.CourseInstanceUid;
         // PublishedAt = assignment.PublishedAt; // Не существует в модели
         // AllowLateSubmissions = assignment.AllowLateSubmissions; // Не существует в модели
         // AttachmentsPath = assignment.AttachmentsPath ?? string.Empty; // Не существует в модели
@@ -494,7 +494,7 @@ public class AssignmentViewModel : ReactiveObject
             AllowLateSubmissions = AllowLateSubmissions,
             Instructions = Instructions,
             AttachmentsPath = AttachmentsPath,
-            CourseUid = CourseUid,
+            CourseInstanceUid = CourseInstanceUid,
             CourseName = CourseName,
             CourseCode = CourseCode,
             TeacherUid = TeacherUid,
@@ -530,12 +530,12 @@ public class AssignmentViewModel : ReactiveObject
     /// <summary>
     /// Создает пустую ViewModel для нового задания
     /// </summary>
-    public static AssignmentViewModel CreateNew(Guid courseUid, Guid teacherUid)
+    public static AssignmentViewModel CreateNew(Guid courseInstanceUid, Guid teacherUid)
     {
         return new AssignmentViewModel
         {
             Uid = Guid.NewGuid(),
-            CourseUid = courseUid,
+            CourseInstanceUid = courseInstanceUid,
             TeacherUid = teacherUid,
             CreatedAt = DateTime.Now,
             DueDate = DateTime.Now.AddDays(7),

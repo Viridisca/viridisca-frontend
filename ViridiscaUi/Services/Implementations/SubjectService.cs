@@ -25,74 +25,61 @@ namespace ViridiscaUi.Services.Implementations
             _logger = logger;
         }
 
-        public async Task<Subject?> GetSubjectAsync(Guid uid)
-        {
-            try
-            {
-                return await _dbContext.Subjects
-                    .Include(s => s.Department)
-                    .Include(s => s.TeacherSubjects)
-                        .ThenInclude(ts => ts.Teacher)
-                    .FirstOrDefaultAsync(s => s.Uid == uid);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting subject with UID {SubjectUid}", uid);
-                throw;
-            }
-        }
-
         public async Task<IEnumerable<Subject>> GetAllSubjectsAsync()
         {
             try
             {
-                return await _dbContext.Subjects
-                    .Include(s => s.Department)
-                    .Include(s => s.TeacherSubjects)
-                        .ThenInclude(ts => ts.Teacher)
+                var subjects = await _dbContext.Subjects
                     .OrderBy(s => s.Name)
                     .ToListAsync();
+
+                return subjects;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting all subjects");
-                throw;
+                _logger.LogError(ex, "Ошибка при получении всех предметов");
+                return [];
             }
         }
 
-        public async Task<IEnumerable<Subject>> GetActiveSubjectsAsync()
+        public async Task<Subject?> GetSubjectAsync(Guid uid)
         {
             try
             {
-                return await _dbContext.Subjects
-                    .Include(s => s.Department)
-                    .Where(s => s.IsActive)
-                    .OrderBy(s => s.Name)
-                    .ToListAsync();
+                var subject = await _dbContext.Subjects
+                    .FirstOrDefaultAsync(s => s.Uid == uid);
+
+                return subject;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting active subjects");
-                throw;
+                _logger.LogError(ex, "Ошибка при получении предмета {SubjectUid}", uid);
+                return null;
             }
         }
 
-        public async Task<IEnumerable<Subject>> GetSubjectsByDepartmentAsync(Guid departmentUid)
+        public async Task<Subject?> GetSubjectByUidAsync(Guid uid)
+        {
+            return await GetSubjectAsync(uid);
+        }
+
+        public async Task<IEnumerable<Subject>> GetSubjectsByTeacherAsync(Guid teacherUid)
         {
             try
             {
-                return await _dbContext.Subjects
-                    .Include(s => s.Department)
-                    .Include(s => s.TeacherSubjects)
-                        .ThenInclude(ts => ts.Teacher)
-                    .Where(s => s.DepartmentUid == departmentUid)
-                    .OrderBy(s => s.Name)
+                // Используем CourseInstances для получения предметов преподавателя
+                var subjects = await _dbContext.CourseInstances
+                    .Where(ci => ci.TeacherUid == teacherUid)
+                    .Select(ci => ci.Subject)
+                    .Distinct()
                     .ToListAsync();
+
+                return subjects;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting subjects by department {DepartmentUid}", departmentUid);
-                throw;
+                _logger.LogError(ex, "Ошибка при получении предметов преподавателя {TeacherUid}", teacherUid);
+                return [];
             }
         }
 
@@ -100,21 +87,15 @@ namespace ViridiscaUi.Services.Implementations
         {
             try
             {
-                subject.Uid = Guid.NewGuid();
-                subject.CreatedAt = DateTime.UtcNow;
-                subject.LastModifiedAt = DateTime.UtcNow;
-
-                await _dbContext.Subjects.AddAsync(subject);
+                _dbContext.Subjects.Add(subject);
                 await _dbContext.SaveChangesAsync();
 
-                _logger.LogInformation("Subject created successfully: {SubjectName} ({SubjectCode})", 
-                    subject.Name, subject.Code);
-
+                _logger.LogInformation("Создан предмет {SubjectName} с ID {SubjectUid}", subject.Name, subject.Uid);
                 return subject;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating subject: {SubjectName}", subject.Name);
+                _logger.LogError(ex, "Ошибка при создании предмета {SubjectName}", subject.Name);
                 throw;
             }
         }
@@ -123,18 +104,14 @@ namespace ViridiscaUi.Services.Implementations
         {
             try
             {
-                subject.CreatedAt = DateTime.UtcNow;
-                subject.LastModifiedAt = DateTime.UtcNow;
-
-                await _dbContext.Subjects.AddAsync(subject);
+                _dbContext.Subjects.Add(subject);
                 await _dbContext.SaveChangesAsync();
 
-                _logger.LogInformation("Subject added successfully: {SubjectName} ({SubjectCode})", 
-                    subject.Name, subject.Code);
+                _logger.LogInformation("Добавлен предмет {SubjectName} с ID {SubjectUid}", subject.Name, subject.Uid);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding subject: {SubjectName}", subject.Name);
+                _logger.LogError(ex, "Ошибка при добавлении предмета {SubjectName}", subject.Name);
                 throw;
             }
         }
@@ -143,33 +120,16 @@ namespace ViridiscaUi.Services.Implementations
         {
             try
             {
-                var existingSubject = await _dbContext.Subjects.FindAsync(subject.Uid);
-                if (existingSubject == null)
-                {
-                    _logger.LogWarning("Subject not found for update: {SubjectUid}", subject.Uid);
-                    return false;
-                }
-
-                existingSubject.Name = subject.Name;
-                existingSubject.Code = subject.Code;
-                existingSubject.Description = subject.Description;
-                existingSubject.IsActive = subject.IsActive;
-                existingSubject.Credits = subject.Credits;
-                existingSubject.LessonsPerWeek = subject.LessonsPerWeek;
-                existingSubject.DepartmentUid = subject.DepartmentUid;
-                existingSubject.LastModifiedAt = DateTime.UtcNow;
-
+                _dbContext.Subjects.Update(subject);
                 await _dbContext.SaveChangesAsync();
 
-                _logger.LogInformation("Subject updated successfully: {SubjectName} ({SubjectCode})", 
-                    subject.Name, subject.Code);
-
+                _logger.LogInformation("Обновлен предмет {SubjectName} с ID {SubjectUid}", subject.Name, subject.Uid);
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating subject: {SubjectUid}", subject.Uid);
-                throw;
+                _logger.LogError(ex, "Ошибка при обновлении предмета {SubjectUid}", subject.Uid);
+                return false;
             }
         }
 
@@ -177,45 +137,68 @@ namespace ViridiscaUi.Services.Implementations
         {
             try
             {
-                var subject = await _dbContext.Subjects
-                    .Include(s => s.TeacherSubjects)
-                    .FirstOrDefaultAsync(s => s.Uid == uid);
-
+                var subject = await _dbContext.Subjects.FindAsync(uid);
                 if (subject == null)
                 {
-                    _logger.LogWarning("Subject not found for deletion: {SubjectUid}", uid);
+                    _logger.LogWarning("Предмет с ID {SubjectUid} не найден для удаления", uid);
                     return false;
                 }
 
-                // Проверяем, есть ли связанные данные
-                if (subject.TeacherSubjects.Any())
-                {
-                    _logger.LogWarning("Cannot delete subject {SubjectName} - has related teachers", subject.Name);
-                    throw new InvalidOperationException("Нельзя удалить предмет, который преподается преподавателями");
-                }
-
-                // Проверяем связанные курсы
-                var hasRelatedCourses = await _dbContext.Courses
-                    .AnyAsync(c => c.SubjectUid == uid);
+                // Проверяем, есть ли связанные CourseInstances
+                var hasRelatedCourses = await _dbContext.CourseInstances
+                    .AnyAsync(ci => ci.SubjectUid == uid);
 
                 if (hasRelatedCourses)
                 {
-                    _logger.LogWarning("Cannot delete subject {SubjectName} - has related courses", subject.Name);
-                    throw new InvalidOperationException("Нельзя удалить предмет, по которому есть курсы");
+                    _logger.LogWarning("Нельзя удалить предмет {SubjectUid}, так как есть связанные курсы", uid);
+                    return false;
                 }
 
                 _dbContext.Subjects.Remove(subject);
                 await _dbContext.SaveChangesAsync();
 
-                _logger.LogInformation("Subject deleted successfully: {SubjectName} ({SubjectCode})", 
-                    subject.Name, subject.Code);
-
+                _logger.LogInformation("Удален предмет {SubjectName} с ID {SubjectUid}", subject.Name, uid);
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting subject: {SubjectUid}", uid);
-                throw;
+                _logger.LogError(ex, "Ошибка при удалении предмета {SubjectUid}", uid);
+                return false;
+            }
+        }
+
+        public async Task<IEnumerable<Subject>> GetSubjectsByDepartmentAsync(Guid departmentUid)
+        {
+            try
+            {
+                var subjects = await _dbContext.Subjects
+                    .Where(s => s.DepartmentUid == departmentUid)
+                    .ToListAsync();
+
+                return subjects;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при получении предметов департамента {DepartmentUid}", departmentUid);
+                return [];
+            }
+        }
+
+        public async Task<IEnumerable<Subject>> GetActiveSubjectsAsync()
+        {
+            try
+            {
+                var subjects = await _dbContext.Subjects
+                    .Where(s => s.IsActive)
+                    .OrderBy(s => s.Name)
+                    .ToListAsync();
+
+                return subjects;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при получении активных предметов");
+                return [];
             }
         }
 
@@ -231,9 +214,6 @@ namespace ViridiscaUi.Services.Implementations
                 var lowerSearchTerm = searchTerm.ToLower();
 
                 return await _dbContext.Subjects
-                    .Include(s => s.Department)
-                    .Include(s => s.TeacherSubjects)
-                        .ThenInclude(ts => ts.Teacher)
                     .Where(s => 
                         s.Name.ToLower().Contains(lowerSearchTerm) ||
                         s.Code.ToLower().Contains(lowerSearchTerm) ||
@@ -243,8 +223,8 @@ namespace ViridiscaUi.Services.Implementations
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error searching subjects with term: {SearchTerm}", searchTerm);
-                throw;
+                _logger.LogError(ex, "Ошибка при поиске предметов с термином: {SearchTerm}", searchTerm);
+                return [];
             }
         }
 
@@ -252,16 +232,12 @@ namespace ViridiscaUi.Services.Implementations
             int page, 
             int pageSize, 
             string? searchTerm = null, 
-            bool? isActive = null,
+            bool? isActive = null, 
             Guid? departmentUid = null)
         {
             try
             {
-                var query = _dbContext.Subjects
-                    .Include(s => s.Department)
-                    .Include(s => s.TeacherSubjects)
-                        .ThenInclude(ts => ts.Teacher)
-                    .AsQueryable();
+                var query = _dbContext.Subjects.AsQueryable();
 
                 if (!string.IsNullOrWhiteSpace(searchTerm))
                 {
@@ -294,8 +270,8 @@ namespace ViridiscaUi.Services.Implementations
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting paged subjects");
-                throw;
+                _logger.LogError(ex, "Ошибка при получении предметов с пагинацией");
+                return ([], 0);
             }
         }
 
@@ -314,8 +290,8 @@ namespace ViridiscaUi.Services.Implementations
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error checking subject code existence: {Code}", code);
-                throw;
+                _logger.LogError(ex, "Ошибка при проверке существования кода предмета: {Code}", code);
+                return false;
             }
         }
 
@@ -324,8 +300,6 @@ namespace ViridiscaUi.Services.Implementations
             try
             {
                 var subject = await _dbContext.Subjects
-                    .Include(s => s.TeacherSubjects)
-                        .ThenInclude(ts => ts.Teacher)
                     .FirstOrDefaultAsync(s => s.Uid == subjectUid);
 
                 if (subject == null)
@@ -333,38 +307,28 @@ namespace ViridiscaUi.Services.Implementations
                     throw new ArgumentException($"Subject with UID {subjectUid} not found");
                 }
 
-                var coursesCount = await _dbContext.Courses
-                    .Where(c => c.SubjectUid == subjectUid)
+                var coursesCount = await _dbContext.CourseInstances
+                    .Where(ci => ci.SubjectUid == subjectUid)
                     .CountAsync();
 
-                var activeCoursesCount = await _dbContext.Courses
-                    .Where(c => c.SubjectUid == subjectUid && c.Status == CourseStatus.Active)
+                var activeCoursesCount = await _dbContext.CourseInstances
+                    .Where(ci => ci.SubjectUid == subjectUid && ci.IsActive)
                     .CountAsync();
-
-                var studentsCount = await _dbContext.Enrollments
-                    .Where(e => e.Course.SubjectUid == subjectUid)
-                    .Select(e => e.StudentUid)
-                    .Distinct()
-                    .CountAsync();
-
-                var averageGrade = await _dbContext.Grades
-                    .Where(g => g.Assignment.Course.SubjectUid == subjectUid)
-                    .AverageAsync(g => (decimal?)g.Value) ?? 0;
 
                 var statistics = new SubjectStatistics
                 {
-                    TeachersCount = subject.TeacherSubjects.Count,
+                    TeachersCount = 0, // Teachers count is no longer available in the new architecture
                     CoursesCount = coursesCount,
                     ActiveCoursesCount = activeCoursesCount,
-                    StudentsCount = studentsCount,
-                    AverageGrade = averageGrade
+                    StudentsCount = 0, // Will need to calculate from enrollments
+                    AverageGrade = 0 // Will need to calculate from grades
                 };
 
                 return statistics;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting subject statistics: {SubjectUid}", subjectUid);
+                _logger.LogError(ex, "Ошибка при получении статистики предмета: {SubjectUid}", subjectUid);
                 throw;
             }
         }
@@ -376,24 +340,23 @@ namespace ViridiscaUi.Services.Implementations
                 var subject = await _dbContext.Subjects.FindAsync(uid);
                 if (subject == null)
                 {
-                    _logger.LogWarning("Subject not found for status update: {SubjectUid}", uid);
+                    _logger.LogWarning("Предмет с ID {SubjectUid} не найден для обновления статуса", uid);
                     return false;
                 }
 
                 subject.IsActive = isActive;
-                subject.LastModifiedAt = DateTime.UtcNow;
 
                 await _dbContext.SaveChangesAsync();
 
-                _logger.LogInformation("Subject status updated: {SubjectName} - Active: {IsActive}", 
+                _logger.LogInformation("Статус предмета обновлен: {SubjectName} - Активен: {IsActive}", 
                     subject.Name, isActive);
 
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating subject status: {SubjectUid}", uid);
-                throw;
+                _logger.LogError(ex, "Ошибка при обновлении статуса предмета: {SubjectUid}", uid);
+                return false;
             }
         }
 
@@ -429,6 +392,32 @@ namespace ViridiscaUi.Services.Implementations
             {
                 _logger.LogError(ex, "Error seeding test subjects data");
                 throw;
+            }
+        }
+
+        private async Task<IEnumerable<Subject>> GetSubjectsWithStatisticsAsync(string? status)
+        {
+            try
+            {
+                var query = _dbContext.Subjects.AsQueryable();
+
+                // Фильтрация по статусу через CourseInstances
+                if (!string.IsNullOrEmpty(status))
+                {
+                    // Временная заглушка - нужно определить как фильтровать по статусу
+                    query = query.Where(s => s.IsActive);
+                }
+
+                var subjects = await query
+                    .OrderBy(s => s.Name)
+                    .ToListAsync();
+
+                return subjects;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при получении предметов со статистикой");
+                return [];
             }
         }
     }

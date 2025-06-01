@@ -1,7 +1,8 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
-using ViridiscaUi.ViewModels.Students;
+using Avalonia.Interactivity;
+using ViridiscaUi.ViewModels.Education;
 
 namespace ViridiscaUi.Windows;
 

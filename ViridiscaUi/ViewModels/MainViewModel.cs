@@ -22,10 +22,12 @@ namespace ViridiscaUi.ViewModels;
 public class MainViewModel : ViewModelBase, IScreen, IDisposable
 {
     private readonly IAuthService _authService;
-    private readonly IUserSessionService _userSessionService;
+    private readonly IPersonSessionService _personSessionService;
     private readonly IStatusService _statusService;
     private readonly IUnifiedNavigationService _navigationService;
     private readonly IStatisticsService _statisticsService;
+    private readonly INotificationService _notificationService;
+    private readonly IDialogService _dialogService;
 
     private readonly CompositeDisposable _disposables = [];
 
@@ -116,6 +118,8 @@ public class MainViewModel : ViewModelBase, IScreen, IDisposable
     /// </summary>
     [Reactive] public bool IsLoadingStatistics { get; set; } = false;
 
+    [Reactive] public Person? CurrentPerson { get; set; }
+
     #endregion
 
     #region Commands
@@ -154,20 +158,24 @@ public class MainViewModel : ViewModelBase, IScreen, IDisposable
 
     public MainViewModel(
         IAuthService authService,
-        IUserSessionService userSessionService,
+        IPersonSessionService personSessionService,
         IStatusService statusService,
         IUnifiedNavigationService navigationService,
         IStatisticsService statisticsService,
-        IViewLocator viewLocator)
+        IViewLocator viewLocator,
+        INotificationService notificationService,
+        IDialogService dialogService)
     {
         StatusLogger.LogInfo("Инициализация главной модели представления", "MainViewModel");
 
         _authService = authService ?? throw new ArgumentNullException(nameof(authService));
-        _userSessionService = userSessionService ?? throw new ArgumentNullException(nameof(userSessionService));
+        _personSessionService = personSessionService ?? throw new ArgumentNullException(nameof(personSessionService));
         _statusService = statusService ?? throw new ArgumentNullException(nameof(statusService));
         _navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
         _statisticsService = statisticsService ?? throw new ArgumentNullException(nameof(statisticsService));
         ViewLocator = viewLocator ?? throw new ArgumentNullException(nameof(viewLocator));
+        _notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
+        _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
 
         // Initialize collections
         GroupedMenuItems = new ObservableCollection<MenuGroup>();
@@ -186,7 +194,21 @@ public class MainViewModel : ViewModelBase, IScreen, IDisposable
         InitializeCommands();
 
         // Subscribe to user changes
-        SubscribeToUserChanges();
+        _personSessionService.CurrentPersonObservable
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(person =>
+            {
+                CurrentPerson = person;
+                if (person != null)
+                {
+                    HandleUserLoggedIn(person);
+                }
+                else
+                {
+                    HandleUserLoggedOut();
+                }
+            })
+            .DisposeWith(_disposables);
 
         // Initialize navigation
         InitializeNavigation();
@@ -194,7 +216,7 @@ public class MainViewModel : ViewModelBase, IScreen, IDisposable
         // Load initial statistics
         LoadStatisticsAsync().ConfigureAwait(false);
 
-        StatusLogger.LogInfo($"MainViewModel инициализирована: Пользователь={_userSessionService.CurrentUser?.Email ?? "не авторизован"}", "MainViewModel");
+        StatusLogger.LogInfo($"MainViewModel инициализирована: Пользователь={_personSessionService.CurrentPerson?.Email ?? "не авторизован"}", "MainViewModel");
     }
 
     #region Private Methods
@@ -239,156 +261,63 @@ public class MainViewModel : ViewModelBase, IScreen, IDisposable
             .DisposeWith(_disposables);
     }
 
-    private void SubscribeToUserChanges()
+    private void HandleUserLoggedIn(Person person)
     {
-        _userSessionService.CurrentUserObservable
-            .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(HandleUserChanged)
-            .DisposeWith(_disposables);
-    }
-
-    private void HandleUserChanged(User? user)
-    {
-        // Обновляем состояние авторизации
-        IsLoggedIn = user != null;
-        CurrentUser = user?.Email;
-        UserRole = user?.Role?.Name;
-
-        if (user != null)
+        LogInfo("User logged in: {PersonName}", $"{person.FirstName} {person.LastName}");
+        
+        // Set IsLoggedIn to true to show sidebar
+        IsLoggedIn = true;
+        
+        // Set user information for UI
+        CurrentUser = person.Email;
+        UserInitials = GetUserInitials(person);
+        UserRole = person.PersonRoles?.FirstOrDefault(pr => pr.IsActive)?.Role?.Name ?? "Unknown";
+        
+        // Create CurrentUserInfo for sidebar display
+        CurrentUserInfo = new CurrentUserInfo
         {
-            StatusLogger.LogInfo($"Пользователь авторизован: {user.Email} ({user.Role?.Name ?? "без роли"})", "MainViewModel");
-        }
-
-        // Обновляем полную информацию о пользователе
-        if (user != null)
-        {
-            CurrentUserInfo = new CurrentUserInfo
-            {
-                Id = user.Uid,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                Email = user.Email,
-                Roles = user.Role?.Name != null ? new[] { user.Role.Name } : Array.Empty<string>(),
-                PrimaryRole = user.Role?.Name ?? "Пользователь",
-                LastLoginAt = user.LastLoginAt ?? DateTime.Now
-            };
-        }
-        else
-        {
-            CurrentUserInfo = null;
-        }
-
-        // Обновляем инициалы пользователя
-        if (user != null)
-        {
-            UserInitials = GetUserInitials(user);
-        }
-        else
-        {
-            UserInitials = "U";
-        }
-
-        // Обновляем меню
-        UpdateMenuItems(user);
-
-        if (user != null)
-        {
-            HandleUserLoggedIn(user);
-        }
-        else
-        {
-            HandleUserLoggedOut();
-        }
-    }
-
-    private string GetUserInitials(User user)
-    {
-        var firstInitial = !string.IsNullOrEmpty(user.FirstName) ? user.FirstName[0].ToString().ToUpper() : "";
-        var lastInitial = !string.IsNullOrEmpty(user.LastName) ? user.LastName[0].ToString().ToUpper() : "";
-        var initials = firstInitial + lastInitial;
-        if (string.IsNullOrEmpty(initials))
-        {
-            initials = user.Email?.Length > 0 ? user.Email[0].ToString().ToUpper() : "U";
-        }
-        return initials;
-    }
-
-    private void UpdateMenuItems(User? user)
-    {
-        var userRoles = user?.Role?.Name != null ? new[] { user.Role.Name } : null;
-        var menuRoutes = _navigationService.GetMenuRoutes(userRoles);
-
-        // Очищаем коллекцию
-        GroupedMenuItems.Clear();
-
-        // Создаем сгруппированное меню одним LINQ-запросом
-        var groupedMenuItems = menuRoutes
-            .GroupBy(route => route.Group ?? "Основное")
-            .OrderBy(group => group.Min(r => r.Order)) // Сортируем группы по минимальному Order в группе
-            .Select(group => new MenuGroup
-            {
-                GroupName = group.Key,
-                Order = group.Min(r => r.Order), // Используем минимальный Order из группы
-                Items = new ObservableCollection<NavigationRoute>(
-                    group.OrderBy(r => r.Order)
-                         .ThenBy(r => r.DisplayName)
-                         .Select(r =>
-                         {
-                             // Создаем команду навигации для каждого маршрута
-                             r.NavigateCommand = ReactiveCommand.CreateFromTask(async () =>
-                             {
-                                 await _navigationService.NavigateToAsync(r.Path);
-                             });
-                             return r;
-                         }))
-            })
-            .OrderBy(g => g.Order);
-
-        // Добавляем группы в коллекцию
-        foreach (var group in groupedMenuItems)
-        {
-            GroupedMenuItems.Add(group);
-        }
-
-        if (user != null)
-        {
-            StatusLogger.LogInfo($"Меню обновлено: {GroupedMenuItems.Count} групп, {menuRoutes.Count()} пунктов", "MainViewModel");
-        }
-    }
-
-    private void HandleUserLoggedIn(User user)
-    {
-        ShowSuccess($"Добро пожаловать, {user.Email}!");
-
-        var currentViewModel = Router.GetCurrentViewModel();
-
-        if (currentViewModel is AuthenticationViewModel)
-        {
-            NavigateToDefaultPage(user);
-        }
-        else if (Router.NavigationStack.Count == 0)
-        {
-            NavigateToDefaultPage(user);
-        }
-    }
-
-    private void NavigateToDefaultPage(User user)
-    {
-        // todo: изменить
-        var defaultRoute = user.Role?.Name?.ToLowerInvariant() switch
-        {
-            "student" => "student-dashboard",
-            "teacher" => "teacher-dashboard",
-            "admin" => "admin-dashboard",
-            "systemadmin" => "system-admin-dashboard",
-            _ => "home"
+            Id = person.Uid,
+            FirstName = person.FirstName,
+            LastName = person.LastName,
+            Email = person.Email,
+            PrimaryRole = UserRole,
+            Roles = person.PersonRoles?.Where(pr => pr.IsActive)
+                .Select(pr => pr.Role?.Name ?? "Unknown")
+                .ToArray() ?? Array.Empty<string>(),
+            LastLoginAt = DateTime.UtcNow
         };
- 
+        
+        // Update menu based on user roles
+        UpdateMenuItems(person);
+        
+        // Navigate to appropriate default page
+        NavigateToDefaultPage(person);
+        
+        // Load user-specific data
+        LoadUserDataAsync(person);
+    }
+
+    private void NavigateToDefaultPage(Person person)
+    {
+        // Navigate to home page by default
         _navigationService.NavigateToAsync("home");
     }
 
     private void HandleUserLoggedOut()
     {
+        // Set IsLoggedIn to false to hide sidebar
+        IsLoggedIn = false;
+        
+        // Clear user information
+        CurrentUser = null;
+        CurrentUserInfo = null;
+        UserRole = null;
+        UserInitials = string.Empty;
+        CurrentPerson = null;
+        
+        // Clear menu items
+        GroupedMenuItems.Clear();
+        
         ShowInfo("Вы вышли из системы");
 
         var currentViewModel = Router.GetCurrentViewModel();
@@ -402,7 +331,7 @@ public class MainViewModel : ViewModelBase, IScreen, IDisposable
     // Начальная навигация: если пользователь не авторизован и стек пуст, переходим на авторизацию
     private void InitializeNavigation()
     {
-        if (_userSessionService.CurrentUser == null && Router.NavigationStack.Count == 0)
+        if (_personSessionService.CurrentPerson == null && Router.NavigationStack.Count == 0)
         {
             _navigationService.NavigateToAsync("auth");
         }
@@ -453,6 +382,75 @@ public class MainViewModel : ViewModelBase, IScreen, IDisposable
         {
             IsLoadingStatistics = false;
         }
+    }
+
+    private string GetUserInitials(Person person)
+    {
+        if (person == null) return "??";
+        
+        var firstInitial = !string.IsNullOrEmpty(person.FirstName) ? person.FirstName[0].ToString().ToUpper() : "";
+        var lastInitial = !string.IsNullOrEmpty(person.LastName) ? person.LastName[0].ToString().ToUpper() : "";
+        
+        return firstInitial + lastInitial;
+    }
+
+    private void UpdateMenuItems(Person? person)
+    {
+        // Получаем роли пользователя из новой архитектуры PersonRoles
+        var userRoles = person?.PersonRoles?.Where(pr => pr.IsActive)
+            .Select(pr => pr.Role?.Name)
+            .Where(name => !string.IsNullOrEmpty(name))
+            .ToArray();
+        
+        var menuRoutes = _navigationService.GetMenuRoutes(userRoles);
+
+        // Очищаем коллекцию
+        GroupedMenuItems.Clear();
+
+        // Создаем сгруппированное меню одним LINQ-запросом
+        var groupedMenuItems = menuRoutes
+            .GroupBy(route => route.Group ?? "Основное")
+            .OrderBy(group => group.Min(r => r.Order)) // Сортируем группы по минимальному Order в группе
+            .Select(group => new MenuGroup
+            {
+                GroupName = group.Key,
+                Order = group.Min(r => r.Order), // Используем минимальный Order из группы
+                Items = new ObservableCollection<NavigationRoute>(
+                    group.OrderBy(r => r.Order)
+                         .ThenBy(r => r.DisplayName)
+                         .Select(r =>
+                         {
+                             // Создаем команду навигации для каждого маршрута
+                             r.NavigateCommand = ReactiveCommand.CreateFromTask(async () =>
+                             {
+                                 await _navigationService.NavigateToAsync(r.Path);
+                             });
+                             return r;
+                         }))
+            })
+            .OrderBy(g => g.Order);
+
+        // Добавляем группы в коллекцию
+        foreach (var group in groupedMenuItems)
+        {
+            GroupedMenuItems.Add(group);
+        }
+
+        if (person != null)
+        {
+            StatusLogger.LogInfo($"Меню обновлено: {GroupedMenuItems.Count} групп, {menuRoutes.Count()} пунктов", "MainViewModel");
+        }
+    }
+
+    private async Task LoadUserDataAsync(Person person)
+    {
+        // Implementation of LoadUserDataAsync method
+    }
+
+    private async Task InitializeNavigationAsync()
+    {
+        // Временная заглушка для компиляции
+        await Task.CompletedTask;
     }
 
     #endregion

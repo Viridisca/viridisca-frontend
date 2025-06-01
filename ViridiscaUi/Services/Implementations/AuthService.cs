@@ -5,65 +5,102 @@ using System.Threading.Tasks;
 using ViridiscaUi.Domain.Models.Auth;
 using ViridiscaUi.Infrastructure;
 using ViridiscaUi.Services.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace ViridiscaUi.Services.Implementations;
 
 /// <summary>
-/// Сервис аутентификации
+/// Сервис аутентификации для новой архитектуры Person/Account
 /// </summary>
-/// <remarks>
-/// Создает новый экземпляр сервиса аутентификации
-/// </remarks>
-public class AuthService(
-    IUserService userService,
-    IPermissionService permissionService,
-    IRoleService roleService,
-    IUserSessionService userSessionService) : IAuthService
+public class AuthService : IAuthService
 {
-    private readonly IUserService _userService = userService;
-    private readonly IPermissionService _permissionService = permissionService;
-    private readonly IRoleService _roleService = roleService;
-    private readonly IUserSessionService _userSessionService = userSessionService;
+    private readonly IPersonService _personService;
+    private readonly IPermissionService _permissionService;
+    private readonly IRoleService _roleService;
+    private readonly IPersonSessionService _personSessionService;
+    private readonly ApplicationDbContext _dbContext;
+
+    public AuthService(
+        IPersonService personService,
+        IPermissionService permissionService,
+        IRoleService roleService,
+        IPersonSessionService personSessionService,
+        ApplicationDbContext dbContext)
+    {
+        _personService = personService;
+        _permissionService = permissionService;
+        _roleService = roleService;
+        _personSessionService = personSessionService;
+        _dbContext = dbContext;
+    }
 
     /// <summary>
     /// Аутентифицирует пользователя по логину и паролю
     /// </summary>
-    public async Task<(bool Success, User? User, string ErrorMessage)> AuthenticateAsync(string username, string password)
+    public async Task<(bool Success, Person? Person, string ErrorMessage)> AuthenticateAsync(string username, string password)
     {
         try
         {
-            // Попробуем найти пользователя сначала по username, затем по email
-            var user = await _userService.GetUserByUsernameAsync(username) ?? await _userService.GetUserByEmailAsync(username);
+            // Ищем аккаунт по username
+            var account = await _dbContext.Accounts
+                .Include(a => a.Person)
+                .ThenInclude(p => p.PersonRoles)
+                .ThenInclude(pr => pr.Role)
+                .FirstOrDefaultAsync(a => a.Username == username);
 
-            if (user is null)
+            if (account == null)
             {
-                _userSessionService.ClearSession();
+                _personSessionService.ClearSession();
                 return (false, null, "Пользователь не найден");
             }
 
-            if (!BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
+            if (!BCrypt.Net.BCrypt.Verify(password, account.PasswordHash))
             {
-                _userSessionService.ClearSession();
+                // Увеличиваем счетчик неудачных попыток
+                account.FailedLoginAttempts++;
+                account.LastFailedLoginAt = DateTime.UtcNow;
+
+                if (account.FailedLoginAttempts >= 5)
+                {
+                    account.IsLocked = true;
+                    account.LockedUntil = DateTime.UtcNow.AddMinutes(30);
+                }
+
+                await _dbContext.SaveChangesAsync();
+                _personSessionService.ClearSession();
                 return (false, null, "Неверный пароль");
             }
 
-            if (!user.IsActive)
+            if (account.IsLocked && account.LockedUntil > DateTime.UtcNow)
             {
-                _userSessionService.ClearSession();
-                return (false, null, "Учетная запись заблокирована");
+                _personSessionService.ClearSession();
+                return (false, null, $"Учетная запись заблокирована до {account.LockedUntil:HH:mm dd.MM.yyyy}");
             }
 
-            // Логируем информацию о загруженном пользователе для отладки
-            StatusLogger.LogInfo($"Пользователь успешно аутентифицирован: {user.Email} ({user.Role?.Name ?? "без роли"})", "AuthService");
+            if (!account.IsActive)
+            {
+                _personSessionService.ClearSession();
+                return (false, null, "Учетная запись деактивирована");
+            }
 
-            _userSessionService.SetCurrentUser(user);
+            // Сбрасываем счетчик неудачных попыток при успешном входе
+            account.FailedLoginAttempts = 0;
+            account.LastLoginAt = DateTime.UtcNow;
+            account.IsLocked = false;
+            account.LockedUntil = null;
+            await _dbContext.SaveChangesAsync();
+
+            StatusLogger.LogInfo($"Пользователь успешно аутентифицирован: {account.Person.Email}", "AuthService");
+
+            _personSessionService.SetCurrentPerson(account.Person);
+            _personSessionService.SetCurrentAccount(account);
             
-            return (true, user, string.Empty);
+            return (true, account.Person, string.Empty);
         }
         catch (Exception ex)
         {
             StatusLogger.LogError($"Ошибка аутентификации: {ex.Message}", "AuthService");
-            _userSessionService.ClearSession();
+            _personSessionService.ClearSession();
             return (false, null, $"Ошибка аутентификации: {ex.Message}");
         }
     }
@@ -71,12 +108,12 @@ public class AuthService(
     /// <summary>
     /// Регистрирует нового пользователя
     /// </summary>
-    public async Task<(bool Success, User? User, string ErrorMessage)> RegisterAsync(string username, string email, string password, string firstName, string lastName)
+    public async Task<(bool Success, Person? Person, string ErrorMessage)> RegisterAsync(string username, string email, string password, string firstName, string lastName)
     {
         // Используем роль студента по умолчанию
         var studentRole = await _roleService.GetRoleByNameAsync("Student");
 
-        if (studentRole is null)
+        if (studentRole == null)
         {
             return (false, null, "Системная ошибка: роль студента не найдена");
         }
@@ -87,45 +124,81 @@ public class AuthService(
     /// <summary>
     /// Регистрирует нового пользователя с указанной ролью
     /// </summary>
-    public async Task<(bool Success, User? User, string ErrorMessage)> RegisterAsync(string username, string email, string password, string firstName, string lastName, Guid roleId)
+    public async Task<(bool Success, Person? Person, string ErrorMessage)> RegisterAsync(string username, string email, string password, string firstName, string lastName, Guid roleId)
     {
-        var existingUser = await _userService.GetUserByUsernameAsync(username);
-      
-        if (existingUser != null)
+        try
         {
-            return (false, null, "Пользователь с таким именем уже существует");
+            // Проверяем существование username
+            var existingAccount = await _dbContext.Accounts
+                .FirstOrDefaultAsync(a => a.Username == username);
+
+            if (existingAccount != null)
+            {
+                return (false, null, "Пользователь с таким именем уже существует");
+            }
+
+            // Проверяем существование email
+            var existingPerson = await _personService.GetPersonByEmailAsync(email);
+            if (existingPerson != null)
+            {
+                return (false, null, "Пользователь с таким email уже существует");
+            }
+
+            // Проверяем роль
+            var role = await _roleService.GetRoleAsync(roleId);
+            if (role == null)
+            {
+                return (false, null, "Указанная роль не найдена");
+            }
+
+            // Создаем Person
+            var person = new Person
+            {
+                Uid = Guid.NewGuid(),
+                FirstName = firstName,
+                LastName = lastName,
+                Email = email,
+                CreatedAt = DateTime.UtcNow,
+                LastModifiedAt = DateTime.UtcNow
+            };
+
+            // Создаем Account
+            var account = new Account
+            {
+                Uid = Guid.NewGuid(),
+                PersonUid = person.Uid,
+                Username = username,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                LastModifiedAt = DateTime.UtcNow
+            };
+
+            // Создаем PersonRole
+            var personRole = new PersonRole
+            {
+                Uid = Guid.NewGuid(),
+                PersonUid = person.Uid,
+                RoleUid = roleId,
+                IsActive = true,
+                AssignedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                LastModifiedAt = DateTime.UtcNow
+            };
+
+            // Сохраняем в базу
+            _dbContext.Persons.Add(person);
+            _dbContext.Accounts.Add(account);
+            _dbContext.PersonRoles.Add(personRole);
+            await _dbContext.SaveChangesAsync();
+
+            return (true, person, string.Empty);
         }
-
-        var existingEmail = await _userService.GetUserByEmailAsync(email);
-       
-        if (existingEmail != null)
+        catch (Exception ex)
         {
-            return (false, null, "Пользователь с таким email уже существует");
+            StatusLogger.LogError($"Ошибка регистрации: {ex.Message}", "AuthService");
+            return (false, null, $"Ошибка регистрации: {ex.Message}");
         }
-
-        // Проверяем, что роль существует
-        var role = await _roleService.GetRoleAsync(roleId);
-        
-        if (role == null)
-        {
-            return (false, null, "Указанная роль не найдена");
-        }
-
-        var user = new User
-        {
-            Uid = Guid.NewGuid(),
-            Username = username,
-            Email = email,
-            FirstName = firstName,
-            LastName = lastName,
-            RoleId = roleId, // Устанавливаем выбранную роль
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow,
-            LastModifiedAt = DateTime.UtcNow
-        };
-
-        await _userService.AddUserAsync(user, password);
-        return (true, user, string.Empty);
     }
 
     /// <summary>
@@ -133,83 +206,149 @@ public class AuthService(
     /// </summary>
     public Task LogoutAsync()
     {
-        _userSessionService.ClearSession();
+        _personSessionService.ClearSession();
         return Task.CompletedTask;
     }
 
     /// <summary>
     /// Получает текущего аутентифицированного пользователя
     /// </summary>
-    public async Task<User?> GetCurrentUserAsync()
+    public async Task<Person?> GetCurrentPersonAsync()
     {
-        return _userSessionService.CurrentUser;
+        return _personSessionService.CurrentPerson;
+    }
+
+    /// <summary>
+    /// Получает Uid текущего пользователя
+    /// </summary>
+    public async Task<Guid> GetCurrentPersonUidAsync()
+    {
+        var person = await GetCurrentPersonAsync();
+        return person?.Uid ?? Guid.Empty;
     }
 
     /// <summary>
     /// Наблюдаемый объект, отражающий текущего пользователя
     /// </summary>
-    public IObservable<User?> CurrentUserObservable => _userSessionService.CurrentUserObservable;
+    public IObservable<Person?> CurrentPersonObservable => _personSessionService.CurrentPersonObservable;
+
+    /// <summary>
+    /// Получает аккаунт по PersonUid
+    /// </summary>
+    public async Task<Account?> GetAccountByPersonUidAsync(Guid personUid)
+    {
+        return await _dbContext.Accounts
+            .FirstOrDefaultAsync(a => a.PersonUid == personUid);
+    }
+
+    /// <summary>
+    /// Блокирует аккаунт
+    /// </summary>
+    public async Task<bool> LockAccountAsync(Guid personUid, string reason)
+    {
+        try
+        {
+            var account = await GetAccountByPersonUidAsync(personUid);
+            if (account == null)
+                return false;
+
+            account.IsLocked = true;
+            account.LockedUntil = DateTime.UtcNow.AddDays(30); // Блокируем на 30 дней
+            account.LastModifiedAt = DateTime.UtcNow;
+
+            await _dbContext.SaveChangesAsync();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            StatusLogger.LogError($"Ошибка блокировки аккаунта: {ex.Message}", "AuthService");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Разблокирует аккаунт
+    /// </summary>
+    public async Task<bool> UnlockAccountAsync(Guid personUid)
+    {
+        try
+        {
+            var account = await GetAccountByPersonUidAsync(personUid);
+            if (account == null)
+                return false;
+
+            account.IsLocked = false;
+            account.LockedUntil = null;
+            account.FailedLoginAttempts = 0;
+            account.LastModifiedAt = DateTime.UtcNow;
+
+            await _dbContext.SaveChangesAsync();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            StatusLogger.LogError($"Ошибка разблокировки аккаунта: {ex.Message}", "AuthService");
+            return false;
+        }
+    }
 
     /// <summary>
     /// Проверяет доступ пользователя к определенному разрешению
     /// </summary>
-    public async Task<bool> HasPermissionAsync(Guid userUid, string permissionName)
+    public async Task<bool> HasPermissionAsync(Guid personUid, string permissionName)
     {
-        var user = await _userService.GetUserAsync(userUid);
-      
-        if (user == null)
-        {
-            return false;
-        }
+        var personRoles = await _dbContext.PersonRoles
+            .Include(pr => pr.Role)
+            .Where(pr => pr.PersonUid == personUid && pr.IsActive)
+            .ToListAsync();
 
-        var roles = await _roleService.GetUserRolesAsync(userUid);
+        // Получаем права доступа для ролей пользователя
+        var roleUids = personRoles.Select(pr => pr.RoleUid).ToList();
+        var hasPermission = await _dbContext.RolePermissions
+            .Include(rp => rp.Permission)
+            .AnyAsync(rp => roleUids.Contains(rp.RoleUid) && 
+                           rp.Permission.Name == permissionName);
 
-        foreach (var role in roles)
-        {
-            var permissions = await _permissionService.GetRolePermissionsAsync(role.Uid);
-      
-            foreach (var permission in permissions)
-            {
-                if (permission.Name == permissionName)
-                {
-                    return true;
-                }
-            }
-        }
-
-        return false;
+        return hasPermission;
     }
 
     /// <summary>
     /// Проверяет наличие определенной роли у пользователя
     /// </summary>
-    public async Task<bool> IsInRoleAsync(Guid userUid, string roleName)
+    public async Task<bool> IsInRoleAsync(Guid personUid, string roleName)
     {
-        var roles = await _roleService.GetUserRolesAsync(userUid);
-        return roles.Any(r => r.Name == roleName);
+        return await _dbContext.PersonRoles
+            .Include(pr => pr.Role)
+            .AnyAsync(pr => pr.PersonUid == personUid && 
+                           pr.Role.Name == roleName && 
+                           pr.IsActive);
     }
 
     /// <summary>
     /// Изменяет пароль пользователя
     /// </summary>
-    public async Task<bool> ChangePasswordAsync(Guid userUid, string currentPassword, string newPassword)
+    public async Task<bool> ChangePasswordAsync(Guid personUid, string currentPassword, string newPassword)
     {
-        var user = await _userService.GetUserAsync(userUid);
-       
-        if (user == null)
+        try
         {
+            var account = await GetAccountByPersonUidAsync(personUid);
+            if (account == null)
+                return false;
+
+            if (!BCrypt.Net.BCrypt.Verify(currentPassword, account.PasswordHash))
+                return false;
+
+            account.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+            account.LastModifiedAt = DateTime.UtcNow;
+
+            await _dbContext.SaveChangesAsync();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            StatusLogger.LogError($"Ошибка смены пароля: {ex.Message}", "AuthService");
             return false;
         }
-
-        if (!BCrypt.Net.BCrypt.Verify(currentPassword, user.PasswordHash))
-        {
-            return false;
-        }
-
-        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
-        user.LastModifiedAt = DateTime.UtcNow;
-
-        return await _userService.UpdateUserAsync(user);
     }
 
     /// <summary>
@@ -217,15 +356,21 @@ public class AuthService(
     /// </summary>
     public async Task<bool> RequestPasswordResetAsync(string email)
     {
-        var user = await _userService.GetUserByEmailAsync(email);
-       
-        if (user == null)
+        try
         {
+            var person = await _personService.GetPersonByEmailAsync(email);
+            if (person == null)
+                return false;
+
+            // TODO: Реализовать генерацию токена и отправку email
+            StatusLogger.LogInfo($"Запрос сброса пароля для {email}", "AuthService");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            StatusLogger.LogError($"Ошибка запроса сброса пароля: {ex.Message}", "AuthService");
             return false;
         }
-
-        // TODO: Реализовать генерацию токена и отправку email
-        return true;
     }
 
     /// <summary>
@@ -233,13 +378,16 @@ public class AuthService(
     /// </summary>
     public async Task<bool> ResetPasswordAsync(string token, string newPassword)
     {
-        // TODO: Реализовать проверку токена и сброс пароля
-        return true;
-    }
-
-    public async Task<Guid> GetCurrentUserUidAsync()
-    {
-        var user = await GetCurrentUserAsync();
-        return user?.Uid ?? Guid.Empty;
+        try
+        {
+            // TODO: Реализовать проверку токена и сброс пароля
+            StatusLogger.LogInfo($"Сброс пароля по токену", "AuthService");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            StatusLogger.LogError($"Ошибка сброса пароля: {ex.Message}", "AuthService");
+            return false;
+        }
     }
 }

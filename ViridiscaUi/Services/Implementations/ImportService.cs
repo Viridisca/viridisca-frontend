@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using ViridiscaUi.Domain.Models.Education;
 using ViridiscaUi.Services.Interfaces;
+using ViridiscaUi.Models;
 
 namespace ViridiscaUi.Services.Implementations;
 
@@ -291,7 +292,7 @@ public class ImportService : IImportService
 
     // === ДОПОЛНИТЕЛЬНЫЕ МЕТОДЫ (для обратной совместимости) ===
     
-    public async Task<IEnumerable<Course>?> ImportCoursesAsync(string filePath)
+    public async Task<IEnumerable<CourseInstance>?> ImportCoursesAsync(string filePath)
     {
         // TODO: Реализовать импорт курсов из файла
         await Task.Delay(1);
@@ -349,5 +350,31 @@ public class ImportService : IImportService
 
         // Заглушка - возвращаем пустой список
         return new List<Assignment>();
+    }
+
+    public async Task<ImportResult<CourseInstance>> ImportCoursesFromExcelAsync(string filePath)
+    {
+        // TODO: Реализовать импорт экземпляров курсов из Excel
+        await Task.Delay(100);
+        return new ImportResult<CourseInstance>
+        {
+            SuccessCount = 0,
+            FailureCount = 0,
+            ImportedItems = new List<CourseInstance>(),
+            Errors = new List<string> { "Импорт экземпляров курсов не реализован" }
+        };
+    }
+
+    public async Task<ImportResult<CourseInstance>> ImportCoursesFromCsvAsync(string filePath)
+    {
+        // TODO: Реализовать импорт экземпляров курсов из CSV
+        await Task.Delay(100);
+        return new ImportResult<CourseInstance>
+        {
+            SuccessCount = 0,
+            FailureCount = 0,
+            ImportedItems = new List<CourseInstance>(),
+            Errors = new List<string> { "Импорт экземпляров курсов не реализован" }
+        };
     }
 }

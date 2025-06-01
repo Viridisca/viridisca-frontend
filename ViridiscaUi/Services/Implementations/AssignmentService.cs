@@ -38,8 +38,8 @@ public class AssignmentService(ApplicationDbContext dbContext, INotificationServ
             a.Title.ToLower().Contains(lowerSearchTerm) ||
             a.Description.ToLower().Contains(lowerSearchTerm) ||
             a.Instructions.ToLower().Contains(lowerSearchTerm) ||
-            (a.Course != null && a.Course.Name.ToLower().Contains(lowerSearchTerm)) ||
-            (a.Course != null && a.Course.Code.ToLower().Contains(lowerSearchTerm))
+            (a.CourseInstance != null && a.CourseInstance.Subject != null && a.CourseInstance.Subject.Name.ToLower().Contains(lowerSearchTerm)) ||
+            (a.CourseInstance != null && a.CourseInstance.Code.ToLower().Contains(lowerSearchTerm))
         );
     }
 
@@ -58,7 +58,7 @@ public class AssignmentService(ApplicationDbContext dbContext, INotificationServ
         if (string.IsNullOrWhiteSpace(entity.Instructions))
             warnings.Add("Рекомендуется добавить инструкции к заданию");
 
-        if (entity.CourseUid == Guid.Empty)
+        if (entity.CourseInstanceUid == Guid.Empty)
             errors.Add("Курс обязателен для задания");
 
         // Проверка дат
@@ -85,19 +85,19 @@ public class AssignmentService(ApplicationDbContext dbContext, INotificationServ
             warnings.Add("Максимальный балл больше 1000 - это очень много");
 
         // Проверка существования курса
-        var courseExists = await _dbContext.Courses
-            .Where(c => c.Uid == entity.CourseUid)
+        var courseExists = await _dbContext.CourseInstances
+            .Where(c => c.Uid == entity.CourseInstanceUid)
             .AnyAsync();
 
         if (!courseExists)
-            errors.Add($"Курс с Uid {entity.CourseUid} не найден");
+            errors.Add($"Курс с Uid {entity.CourseInstanceUid} не найден");
 
         // Проверка уникальности названия в рамках курса
         if (!string.IsNullOrWhiteSpace(entity.Title))
         {
             var titleExists = await _dbSet
                 .Where(a => a.Uid != entity.Uid && 
-                           a.CourseUid == entity.CourseUid && 
+                           a.CourseInstanceUid == entity.CourseInstanceUid && 
                            a.Title.ToLower() == entity.Title.ToLower())
                 .AnyAsync();
 
@@ -115,13 +115,13 @@ public class AssignmentService(ApplicationDbContext dbContext, INotificationServ
     public async Task<Assignment?> GetAssignmentAsync(Guid uid)
     {
         return await GetByUidWithIncludesAsync(uid, 
-            a => a.Course, 
+            a => a.CourseInstance, 
             a => a.Submissions);
     }
 
     public async Task<IEnumerable<Assignment>> GetAllAssignmentsAsync()
     {
-        return await GetAllWithIncludesAsync(a => a.Course);
+        return await GetAllWithIncludesAsync(a => a.CourseInstance);
     }
 
     public async Task<IEnumerable<Assignment>> GetAssignmentsAsync()
@@ -149,19 +149,19 @@ public class AssignmentService(ApplicationDbContext dbContext, INotificationServ
         return await DeleteAsync(uid);
     }
 
-    public async Task<IEnumerable<Assignment>> GetAssignmentsByCourseAsync(Guid courseUid)
+    public async Task<IEnumerable<Assignment>> GetAssignmentsByCourseAsync(Guid courseInstanceUid)
     {
-        return await FindWithIncludesAsync(a => a.CourseUid == courseUid, a => a.Course, a => a.Submissions);
+        return await FindWithIncludesAsync(a => a.CourseInstanceUid == courseInstanceUid, a => a.CourseInstance, a => a.Submissions);
     }
 
     public async Task<IEnumerable<Assignment>> GetAssignmentsByStatusAsync(AssignmentStatus status)
     {
-        return await FindWithIncludesAsync(a => a.Status == status, a => a.Course);
+        return await FindWithIncludesAsync(a => a.Status == status, a => a.CourseInstance);
     }
 
     public async Task<IEnumerable<Assignment>> GetAssignmentsByTypeAsync(AssignmentType type)
     {
-        return await FindWithIncludesAsync(a => a.Type == type, a => a.Course);
+        return await FindWithIncludesAsync(a => a.Type == type, a => a.CourseInstance);
     }
 
     #endregion
@@ -176,9 +176,9 @@ public class AssignmentService(ApplicationDbContext dbContext, INotificationServ
         try
         {
             return await _dbContext.Assignments
-                .Include(a => a.Course)
+                .Include(a => a.CourseInstance)
                 .ThenInclude(c => c.Enrollments)
-                .Where(a => a.Course.Enrollments.Any(e => e.StudentUid == studentUid))
+                .Where(a => a.CourseInstance.Enrollments.Any(e => e.StudentUid == studentUid))
                 .OrderBy(a => a.DueDate)
                 .ToListAsync();
         }
@@ -197,8 +197,8 @@ public class AssignmentService(ApplicationDbContext dbContext, INotificationServ
         try
         {
             return await _dbContext.Assignments
-                .Include(a => a.Course)
-                .Where(a => a.Course.TeacherUid == teacherUid)
+                .Include(a => a.CourseInstance)
+                .Where(a => a.CourseInstance.TeacherUid == teacherUid)
                 .OrderBy(a => a.DueDate)
                 .ToListAsync();
         }
@@ -238,7 +238,7 @@ public class AssignmentService(ApplicationDbContext dbContext, INotificationServ
         {
             return await _dbContext.Submissions
                 .Include(s => s.Assignment)
-                .ThenInclude(a => a.Course)
+                .ThenInclude(a => a.CourseInstance)
                 .Where(s => s.StudentUid == studentUid)
                 .OrderByDescending(s => s.SubmissionDate)
                 .ToListAsync();
@@ -340,7 +340,7 @@ public class AssignmentService(ApplicationDbContext dbContext, INotificationServ
         try
         {
             var assignment = await _dbContext.Assignments
-                .Include(a => a.Course)
+                .Include(a => a.CourseInstance)
                 .ThenInclude(c => c.Enrollments)
                 .FirstOrDefaultAsync(a => a.Uid == assignmentUid);
 
@@ -351,7 +351,7 @@ public class AssignmentService(ApplicationDbContext dbContext, INotificationServ
                 .Where(s => s.AssignmentUid == assignmentUid)
                 .ToListAsync();
 
-            var totalStudents = assignment.Course.Enrollments.Count;
+            var totalStudents = assignment.CourseInstance.Enrollments.Count;
             var submittedCount = submissions.Count;
             var gradedCount = submissions.Count(s => s.Status == SubmissionStatus.Graded);
             var pendingCount = submissions.Count(s => s.Status == SubmissionStatus.Submitted);
@@ -479,7 +479,7 @@ public class AssignmentService(ApplicationDbContext dbContext, INotificationServ
         try
         {
             var query = _dbContext.Assignments
-                .Include(a => a.Course)
+                .Include(a => a.CourseInstance)
                 .AsQueryable();
 
             // Применяем фильтры
@@ -495,12 +495,12 @@ public class AssignmentService(ApplicationDbContext dbContext, INotificationServ
 
             if (courseFilter.HasValue)
             {
-                query = query.Where(a => a.CourseUid == courseFilter.Value);
+                query = query.Where(a => a.CourseInstanceUid == courseFilter.Value);
             }
 
             if (teacherFilter.HasValue)
             {
-                query = query.Where(a => a.Course.TeacherUid == teacherFilter.Value);
+                query = query.Where(a => a.CourseInstance.TeacherUid == teacherFilter.Value);
             }
 
             if (dueDateFrom.HasValue)
@@ -538,7 +538,7 @@ public class AssignmentService(ApplicationDbContext dbContext, INotificationServ
         try
         {
             return await _dbContext.Assignments
-                .Include(a => a.Course)
+                .Include(a => a.CourseInstance)
                 .Where(a => a.DueDate.HasValue && a.DueDate.Value < DateTime.UtcNow && a.Status == AssignmentStatus.Published)
                 .OrderBy(a => a.DueDate)
                 .ToListAsync();
@@ -558,13 +558,13 @@ public class AssignmentService(ApplicationDbContext dbContext, INotificationServ
         try
         {
             var query = _dbContext.Assignments
-                .Include(a => a.Course)
+                .Include(a => a.CourseInstance)
                 .Where(a => _dbContext.Submissions
                     .Any(s => s.AssignmentUid == a.Uid && s.Status == SubmissionStatus.Submitted));
 
             if (teacherUid.HasValue)
             {
-                query = query.Where(a => a.Course.TeacherUid == teacherUid.Value);
+                query = query.Where(a => a.CourseInstance.TeacherUid == teacherUid.Value);
             }
 
             return await query
@@ -630,7 +630,7 @@ public class AssignmentService(ApplicationDbContext dbContext, INotificationServ
         try
         {
             var assignment = await _dbContext.Assignments
-                .Include(a => a.Course)
+                .Include(a => a.CourseInstance)
                 .ThenInclude(c => c.Enrollments)
                 .ThenInclude(e => e.Student)
                 .FirstOrDefaultAsync(a => a.Uid == assignmentUid);
@@ -641,12 +641,14 @@ public class AssignmentService(ApplicationDbContext dbContext, INotificationServ
                 return;
             }
 
-            foreach (var enrollment in assignment.Course.Enrollments)
+            var courseInstance = await _dbContext.CourseInstances.FindAsync(assignment.CourseInstanceUid);
+
+            foreach (var enrollment in assignment.CourseInstance.Enrollments)
             {
                 await _notificationService.SendNotificationAsync(
                     enrollment.StudentUid,
                     "Напоминание о сроке сдачи",
-                    $"Напоминаем о приближающемся сроке сдачи задания '{assignment.Title}' по курсу '{assignment.Course.Name}'. Срок сдачи: {assignment.DueDate:dd.MM.yyyy HH:mm}",
+                    $"Напоминаем о приближающемся сроке сдачи задания '{assignment.Title}' по курсу '{courseInstance?.Name}'. Срок сдачи: {assignment.DueDate:dd.MM.yyyy HH:mm}",
                     NotificationType.Assignment);
             }
 
@@ -670,7 +672,7 @@ public class AssignmentService(ApplicationDbContext dbContext, INotificationServ
 
             if (courseUid.HasValue)
             {
-                query = query.Where(a => a.CourseUid == courseUid.Value);
+                query = query.Where(a => a.CourseInstanceUid == courseUid.Value);
             }
 
             if (fromDate.HasValue)
@@ -729,7 +731,7 @@ public class AssignmentService(ApplicationDbContext dbContext, INotificationServ
         try
         {
             return await _dbContext.Assignments
-                .Include(a => a.Course)
+                .Include(a => a.CourseInstance)
                 .Where(a => a.Status == AssignmentStatus.Published && 
                            (!a.DueDate.HasValue || a.DueDate.Value > DateTime.Now))
                 .OrderBy(a => a.DueDate)

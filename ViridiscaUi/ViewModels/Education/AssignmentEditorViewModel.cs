@@ -18,11 +18,11 @@ namespace ViridiscaUi.ViewModels.Education
     /// </summary>
     public class AssignmentEditorViewModel : ViewModelBase
     {
-        private readonly ICourseService _courseService;
-        private readonly SourceCache<Course, Guid> _coursesSource = new(c => c.Uid);
-        private ReadOnlyObservableCollection<Course> _courses;
+        private readonly ICourseInstanceService _courseInstanceService;
+        private readonly SourceCache<CourseInstance, Guid> _courseInstancesSource = new(c => c.Uid);
+        private ReadOnlyObservableCollection<CourseInstance> _courseInstances;
 
-        public ReadOnlyObservableCollection<Course> Courses => _courses;
+        public ReadOnlyObservableCollection<CourseInstance> CourseInstances => _courseInstances;
 
         [Reactive] public string Title { get; set; } = string.Empty;
         [Reactive] public string Description { get; set; } = string.Empty;
@@ -37,7 +37,7 @@ namespace ViridiscaUi.ViewModels.Education
         [Reactive] public bool AllowLateSubmission { get; set; } = true;
         [Reactive] public decimal? LatePenalty { get; set; }
         [Reactive] public Guid CourseId { get; set; }
-        [Reactive] public Course? SelectedCourse { get; set; }
+        [Reactive] public CourseInstance? SelectedCourseInstance { get; set; }
         [Reactive] public string? Resources { get; set; }
         [Reactive] public string? GradingCriteria { get; set; }
         [Reactive] public AssignmentDifficulty Difficulty { get; set; } = AssignmentDifficulty.Easy;
@@ -79,9 +79,9 @@ namespace ViridiscaUi.ViewModels.Education
             AssignmentStatus.Archived
         };
 
-        public AssignmentEditorViewModel(ICourseService courseService, Assignment? assignment = null)
+        public AssignmentEditorViewModel(ICourseInstanceService courseInstanceService, Assignment? assignment = null)
         {
-            _courseService = courseService;
+            _courseInstanceService = courseInstanceService ?? throw new ArgumentNullException(nameof(courseInstanceService));
             Assignment = assignment;
 
             // Инициализация из существующего задания
@@ -95,8 +95,8 @@ namespace ViridiscaUi.ViewModels.Education
                 Type = assignment.Type;
                 Difficulty = assignment.Difficulty;
                 Status = assignment.Status;
-                CourseId = assignment.CourseUid;
-                SelectedCourse = Courses.FirstOrDefault(c => c.Uid == assignment.CourseUid);
+                CourseId = assignment.CourseInstanceUid;
+                SelectedCourseInstance = CourseInstances.FirstOrDefault(c => c.Uid == assignment.CourseInstanceUid);
             }
 
             // Команды
@@ -110,7 +110,7 @@ namespace ViridiscaUi.ViewModels.Education
                     {
                         Assignment.Uid = Guid.NewGuid();
                         Assignment.CreatedAt = DateTime.UtcNow;
-                        await _courseService.AddCourseAsync(new Course()); // Заглушка
+                        await _courseInstanceService.AddCourseInstanceAsync(new CourseInstance()); // Заглушка
                     }
                     else
                     {
@@ -138,13 +138,13 @@ namespace ViridiscaUi.ViewModels.Education
         private void SetupSubscriptions()
         {
             // Sync CourseId and SelectedCourse
-            this.WhenAnyValue(x => x.SelectedCourse)
+            this.WhenAnyValue(x => x.SelectedCourseInstance)
                 .Subscribe(course => CourseId = course?.Uid ?? Guid.Empty);
 
             // Bind courses to observable collection
-            _coursesSource.Connect()
+            _courseInstancesSource.Connect()
                 .ObserveOn(RxApp.MainThreadScheduler)
-                .Bind(out _courses)
+                .Bind(out _courseInstances)
                 .Subscribe();
 
             // Auto-set start date when due date changes
@@ -158,7 +158,7 @@ namespace ViridiscaUi.ViewModels.Education
                 x => x.Description,
                 x => x.DueDate,
                 x => x.MaxScore,
-                x => x.SelectedCourse,
+                x => x.SelectedCourseInstance,
                 (title, description, dueDate, maxScore, course) =>
                     !string.IsNullOrWhiteSpace(title) &&
                     !string.IsNullOrWhiteSpace(description) &&
@@ -192,13 +192,13 @@ namespace ViridiscaUi.ViewModels.Education
         {
             try
             {
-                var courses = await _courseService.GetAllCoursesAsync();
-                _coursesSource.AddOrUpdate(courses);
+                var courses = await _courseInstanceService.GetAllCourseInstancesAsync();
+                _courseInstancesSource.AddOrUpdate(courses);
                 
                 // Set selected course if editing existing assignment
-                if (Assignment?.CourseUid != Guid.Empty)
+                if (Assignment?.CourseInstanceUid != Guid.Empty)
                 {
-                    SelectedCourse = courses.FirstOrDefault(c => c.Uid == Assignment.CourseUid);
+                    SelectedCourseInstance = courses.FirstOrDefault(c => c.Uid == Assignment.CourseInstanceUid);
                 }
             }
             catch (Exception ex)
@@ -237,7 +237,7 @@ namespace ViridiscaUi.ViewModels.Education
                 Assignment.Type = Type;
                 Assignment.Difficulty = Difficulty;
                 Assignment.Status = Status;
-                Assignment.CourseUid = SelectedCourse?.Uid ?? Guid.Empty;
+                Assignment.CourseInstanceUid = SelectedCourseInstance?.Uid ?? Guid.Empty;
 
                 Result = Assignment;
             }

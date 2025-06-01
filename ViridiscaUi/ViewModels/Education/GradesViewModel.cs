@@ -32,7 +32,7 @@ namespace ViridiscaUi.ViewModels.Education
         
 
         private readonly IGradeService _gradeService;
-        private readonly ICourseService _courseService;
+        private readonly ICourseInstanceService _courseInstanceService;
         private readonly IGroupService _groupService;
         private readonly IStudentService _studentService;
         private readonly IAssignmentService _assignmentService;
@@ -49,9 +49,9 @@ namespace ViridiscaUi.ViewModels.Education
         [Reactive] public bool IsRefreshing { get; set; }
         
         // Фильтры
-        [Reactive] public ObservableCollection<Course> Courses { get; set; } = new();
+        [Reactive] public ObservableCollection<CourseInstance> Courses { get; set; } = new();
         [Reactive] public ObservableCollection<Group> Groups { get; set; } = new();
-        [Reactive] public Course? SelectedCourseFilter { get; set; }
+        [Reactive] public CourseInstance? SelectedCourse { get; set; }
         [Reactive] public Group? SelectedGroupFilter { get; set; }
         [Reactive] public string? GradeRangeFilter { get; set; }
         [Reactive] public string? PeriodFilter { get; set; }
@@ -106,7 +106,7 @@ namespace ViridiscaUi.ViewModels.Education
             IScreen hostScreen,
             IGradeService gradeService,
             IStudentService studentService,
-            ICourseService courseService,
+            ICourseInstanceService courseInstanceService,
             IGroupService groupService,
             IAssignmentService assignmentService,
             IDialogService dialogService,
@@ -114,7 +114,7 @@ namespace ViridiscaUi.ViewModels.Education
             INotificationService notificationService) : base(hostScreen)
         {
             _gradeService = gradeService ?? throw new ArgumentNullException(nameof(gradeService));
-            _courseService = courseService ?? throw new ArgumentNullException(nameof(courseService));
+            _courseInstanceService = courseInstanceService ?? throw new ArgumentNullException(nameof(courseInstanceService));
             _groupService = groupService ?? throw new ArgumentNullException(nameof(groupService));
             _studentService = studentService ?? throw new ArgumentNullException(nameof(studentService));
             _assignmentService = assignmentService ?? throw new ArgumentNullException(nameof(assignmentService));
@@ -194,7 +194,7 @@ namespace ViridiscaUi.ViewModels.Education
                 .DisposeWith(Disposables);
 
             // Автоматическое применение фильтров - добавляем обработку ошибок
-            this.WhenAnyValue(x => x.SelectedCourseFilter, x => x.SelectedGroupFilter, x => x.GradeRangeFilter, x => x.PeriodFilter)
+            this.WhenAnyValue(x => x.SelectedCourse, x => x.SelectedGroupFilter, x => x.GradeRangeFilter, x => x.PeriodFilter)
                 .Throttle(TimeSpan.FromMilliseconds(300))
                 .ObserveOn(RxApp.MainThreadScheduler)
                 .Select(_ => Unit.Default)
@@ -227,7 +227,7 @@ namespace ViridiscaUi.ViewModels.Education
         {
             LogInfo("Loading filter data for grades");
             
-            var courses = await _courseService.GetAllCoursesAsync();
+            var courses = await _courseInstanceService.GetAllCoursesAsync();
             var groups = await _groupService.GetAllGroupsAsync();
 
             Courses.Clear();
@@ -247,7 +247,7 @@ namespace ViridiscaUi.ViewModels.Education
         private async Task LoadGradesAsync()
         {
             LogInfo("Loading grades with filters: SearchText={SearchText}, Course={CourseFilter}, Group={GroupFilter}", 
-                SearchText, SelectedCourseFilter?.Name, SelectedGroupFilter?.Name);
+                SearchText, SelectedCourse?.Name, SelectedGroupFilter?.Name);
             
             IsLoading = true;
             ShowInfo("Загрузка оценок...");
@@ -513,7 +513,7 @@ namespace ViridiscaUi.ViewModels.Education
 
         private async Task ClearFiltersAsync()
         {
-            SelectedCourseFilter = null;
+            SelectedCourse = null;
             SelectedGroupFilter = null;
             GradeRangeFilter = null;
             PeriodFilter = null;
