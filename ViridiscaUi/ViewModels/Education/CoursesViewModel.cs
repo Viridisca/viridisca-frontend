@@ -293,7 +293,7 @@ public class CoursesViewModel : RoutableViewModelBase
 
             TotalCourses = totalCount;
             TotalPages = (int)Math.Ceiling((double)totalCount / PageSize);
-            ActiveCourses = courses.Count(c => c.Status == CourseStatus.Active.ToString());
+            ActiveCourses = courses.Count(c => c.Status == CourseStatus.Active);
 
             ShowSuccess($"Загружено {CourseInstances.Count} курсов");
             LogInfo("Loaded {CourseCount} courses, total: {TotalCount}", CourseInstances.Count, totalCount);
@@ -350,15 +350,12 @@ public class CoursesViewModel : RoutableViewModelBase
         
         var newCourse = new CourseInstance
         {
-            Uid = Guid.NewGuid(),
             Name = string.Empty,
             Description = string.Empty,
-            Status = CourseStatus.Draft.ToString(),
+            Status = CourseStatus.Draft,
             StartDate = DateTime.Today,
             EndDate = DateTime.Today.AddMonths(3),
-            Credits = 3,
-            CreatedAt = DateTime.UtcNow,
-            LastModifiedAt = DateTime.UtcNow
+            MaxEnrollments = 30
         };
 
         var dialogResult = await _dialogService.ShowCourseEditDialogAsync(newCourse);

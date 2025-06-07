@@ -1,5 +1,6 @@
+using System;
 using ViridiscaUi.Domain.Models.Base;
-using ReactiveUI;
+using ViridiscaUi.Domain.Models.Auth;
 using ViridiscaUi.Domain.Models.Education.Enums;
 
 namespace ViridiscaUi.Domain.Models.Education;
@@ -7,98 +8,59 @@ namespace ViridiscaUi.Domain.Models.Education;
 /// <summary>
 /// Комментарий к оценке
 /// </summary>
-public class GradeComment : ViewModelBase
+public class GradeComment : AuditableEntity
 {
-    private Guid _gradeUid;
-    private Guid _authorUid;
-
-    private GradeCommentType _type;
-
-    private string _content = string.Empty;
-    private DateTime? _deletedAt;
-    private bool _isDeleted; 
-
-    private GradeCommentStatus _status;
-
     /// <summary>
     /// Идентификатор оценки
     /// </summary>
-    public Guid GradeUid
-    {
-        get => _gradeUid;
-        set => this.RaiseAndSetIfChanged(ref _gradeUid, value);
-    }
+    public Guid GradeUid { get; set; }
 
     /// <summary>
     /// Идентификатор автора комментария
     /// </summary>
-    public Guid AuthorUid
-    {
-        get => _authorUid;
-        set => this.RaiseAndSetIfChanged(ref _authorUid, value);
-    }
+    public Guid AuthorUid { get; set; }
 
     /// <summary>
     /// Тип комментария
     /// </summary>
-    public GradeCommentType Type
-    {
-        get => _type;
-        set => this.RaiseAndSetIfChanged(ref _type, value);
-    }
+    public GradeCommentType Type { get; set; }
 
     /// <summary>
     /// Содержание комментария
     /// </summary>
-    public string Content
-    {
-        get => _content;
-        set => this.RaiseAndSetIfChanged(ref _content, value);
-    }
+    public string Content { get; set; } = string.Empty;
 
     /// <summary>
     /// Флаг удаления комментария
     /// </summary>
-    public bool IsDeleted
-    {
-        get => _isDeleted;
-        set => this.RaiseAndSetIfChanged(ref _isDeleted, value);
-    }
+    public bool IsDeleted { get; set; }
 
     /// <summary>
     /// Дата удаления комментария
     /// </summary>
-    public DateTime? DeletedAt
-    {
-        get => _deletedAt;
-        set => this.RaiseAndSetIfChanged(ref _deletedAt, value);
-    }
+    public DateTime? DeletedAt { get; set; }
 
     /// <summary>
     /// Статус комментария
     /// </summary>
-    public GradeCommentStatus Status
-    {
-        get => _status;
-        set => this.RaiseAndSetIfChanged(ref _status, value);
-    }
+    public GradeCommentStatus Status { get; set; }
 
     /// <summary>
-    /// Отображаемый тип комментария
+    /// Оценка
     /// </summary>
-    public string TypeDisplayName => Type.GetDisplayName();
+    public Grade? Grade { get; set; }
 
     /// <summary>
-    /// Отображаемый статус комментария
+    /// Автор комментария
     /// </summary>
-    public string StatusDisplayName => Status.GetDisplayName();
+    public Person? Author { get; set; }
 
     /// <summary>
     /// Создает новый экземпляр комментария к оценке
     /// </summary>
     public GradeComment()
     {
-        _status = GradeCommentStatus.PendingReview;
+        Status = GradeCommentStatus.PendingReview;
     }
 
     /// <summary>
@@ -107,12 +69,12 @@ public class GradeComment : ViewModelBase
     public GradeComment(Guid uid, Guid gradeUid, Guid authorUid, GradeCommentType type, string content, GradeCommentStatus status = GradeCommentStatus.PendingReview)
     {
         Uid = uid;
-        _gradeUid = gradeUid;
-        _authorUid = authorUid;
-        _type = type;
-        _content = content;
-        _isDeleted = false;
-        _status = status;
+        GradeUid = gradeUid;
+        AuthorUid = authorUid;
+        Type = type;
+        Content = content;
+        IsDeleted = false;
+        Status = status;
     }
 
     /// <summary>

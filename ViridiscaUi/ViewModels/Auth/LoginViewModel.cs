@@ -19,6 +19,8 @@ public class LoginViewModel : RoutableViewModelBase
 {
     private readonly IAuthService _authService;
     private readonly IUnifiedNavigationService _navigationService;
+    private readonly IPersonSessionService _personSessionService;
+    private readonly INotificationService _notificationService;
 
     /// <summary>
     /// URL-сегмент для навигации
@@ -60,11 +62,20 @@ public class LoginViewModel : RoutableViewModelBase
     /// <param name="navigationService">Сервис навигации</param>
     /// <param name="hostScreen">Родительский экран</param>
     /// <param name="viewModelFactory">Фабрика ViewModel</param>
-    public LoginViewModel(IAuthService authService, IUnifiedNavigationService navigationService, IScreen hostScreen) 
+    /// <param name="personSessionService">Сервис сессии пользователя</param>
+    /// <param name="notificationService">Сервис уведомлений</param>
+    public LoginViewModel(
+        IScreen hostScreen,
+        IAuthService authService,
+        IUnifiedNavigationService navigationService,
+        IPersonSessionService personSessionService,
+        INotificationService notificationService) 
         : base(hostScreen)
     {
         _authService = authService ?? throw new ArgumentNullException(nameof(authService));
         _navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
+        _personSessionService = personSessionService ?? throw new ArgumentNullException(nameof(personSessionService));
+        _notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
 
         // Проверка возможности выполнения команды входа
         var canLogin = this.WhenAnyValue(

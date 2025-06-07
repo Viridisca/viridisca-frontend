@@ -89,7 +89,7 @@ namespace ViridiscaUi.ViewModels.Education
                 ActualEndDate = group.Status == GroupStatus.Completed ? group.EndDate : null;
                 IsActive = group.Status == GroupStatus.Active || group.Status == GroupStatus.Forming;
                 Curator = group.Curator;
-                Students = group.Students ?? new ObservableCollection<Student>();
+                Students = group.Students != null ? new ObservableCollection<Student>(group.Students) : new ObservableCollection<Student>();
                 CreatedAt = group.CreatedAt;
                 UpdatedAt = group.LastModifiedAt ?? group.CreatedAt;
                 Uid = group.Uid;
@@ -173,7 +173,7 @@ namespace ViridiscaUi.ViewModels.Education
                 group.EndDate = EndDate;
                 group.MaxStudents = MaxStudents;
                 group.CuratorUid = SelectedCurator?.Uid;
-                group.UpdateStatus(Status);
+                group.Status = Status;
                 group.DepartmentUid = DepartmentUid;
 
                 if (Group == null)

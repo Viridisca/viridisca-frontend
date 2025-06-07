@@ -9,15 +9,17 @@ using ViridiscaUi.Infrastructure;
 using ViridiscaUi.Services.Interfaces;
 using ViridiscaUi.Domain.Models.System.Enums;
 using ViridiscaUi.Domain.Models.Education.Enums;
+using Microsoft.Extensions.Logging;
 
 namespace ViridiscaUi.Services.Implementations;
 
 /// <summary>
 /// Реализация сервиса для работы с уведомлениями
 /// </summary>
-public class NotificationService(ApplicationDbContext dbContext) : INotificationService
+public class NotificationService(ApplicationDbContext dbContext, ILogger<NotificationService> logger) : INotificationService
 {
     private readonly ApplicationDbContext _dbContext = dbContext;
+    private readonly ILogger<NotificationService> _logger = logger;
 
     /// <summary>
     /// Создает новое уведомление
@@ -33,21 +35,21 @@ public class NotificationService(ApplicationDbContext dbContext) : INotification
     {
         var notification = new Notification
         {
-            Uid = Guid.NewGuid(),
-            RecipientUid = recipientUid,
+            PersonUid = recipientUid,
             Title = title,
             Message = message,
             Type = type,
             Priority = priority,
-            Category = category, // ParseCategoryToUid(category),
+            Category = category,
             ActionUrl = actionUrl,
-            CreatedAt = DateTime.UtcNow,
+            SentAt = DateTime.UtcNow,
             IsRead = false
         };
 
         _dbContext.Notifications.Add(notification);
         await _dbContext.SaveChangesAsync();
 
+        _logger.LogInformation("Notification created for user {UserId}: {Title}", recipientUid, title);
         return notification;
     }
 
@@ -67,15 +69,14 @@ public class NotificationService(ApplicationDbContext dbContext) : INotification
     {
         var notification = new Notification
         {
-            Uid = Guid.NewGuid(),
-            RecipientUid = recipientUid,
+            PersonUid = recipientUid,
             Title = title,
             Message = message,
             Type = type,
             Priority = priority,
-            Category = category, // ParseCategoryToUid(category),
+            Category = category,
             ActionUrl = actionUrl,
-            CreatedAt = DateTime.UtcNow,
+            SentAt = DateTime.UtcNow,
             IsRead = false,
             ExpiresAt = expiresAt
         };
@@ -99,7 +100,7 @@ public class NotificationService(ApplicationDbContext dbContext) : INotification
         string? categoryFilter = null)
     {
         var query = _dbContext.Notifications
-            .Where(n => n.RecipientUid == userUid)
+            .Where(n => n.PersonUid == userUid)
             .AsQueryable();
 
         if (!includeRead)
@@ -119,7 +120,7 @@ public class NotificationService(ApplicationDbContext dbContext) : INotification
 
         var totalCount = await query.CountAsync();
         var notifications = await query
-            .OrderByDescending(n => n.CreatedAt)
+            .OrderByDescending(n => n.SentAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
@@ -136,14 +137,14 @@ public class NotificationService(ApplicationDbContext dbContext) : INotification
         int? limit = null)
     {
         var query = _dbContext.Notifications
-            .Where(n => n.RecipientUid == userUid)
+            .Where(n => n.PersonUid == userUid)
             .Where(n => n.ExpiresAt == null || n.ExpiresAt > DateTime.UtcNow)
             .AsQueryable();
 
         if (!includeRead)
             query = query.Where(n => !n.IsRead);
 
-        query = query.OrderByDescending(n => n.CreatedAt);
+        query = query.OrderByDescending(n => n.SentAt);
 
         if (limit.HasValue)
             query = query.Take(limit.Value);
@@ -157,7 +158,7 @@ public class NotificationService(ApplicationDbContext dbContext) : INotification
     public async Task<int> GetUnreadCountAsync(Guid userUid)
     {
         return await _dbContext.Notifications
-            .Where(n => n.RecipientUid == userUid && !n.IsRead)
+            .Where(n => n.PersonUid == userUid && !n.IsRead)
             .Where(n => n.ExpiresAt == null || n.ExpiresAt > DateTime.UtcNow)
             .CountAsync();
     }
@@ -184,7 +185,7 @@ public class NotificationService(ApplicationDbContext dbContext) : INotification
     public async Task<int> MarkMultipleAsReadAsync(IEnumerable<Guid> notificationUids)
     {
         var notifications = await _dbContext.Notifications
-            .Where(n => notificationUids.Contains(n.Uid))
+            .Where(n => notificationUids.Contains(n.PersonUid))
             .ToListAsync();
 
         var count = 0;
@@ -208,7 +209,7 @@ public class NotificationService(ApplicationDbContext dbContext) : INotification
     public async Task<int> MarkAllAsReadAsync(Guid userUid)
     {
         var notifications = await _dbContext.Notifications
-            .Where(n => n.RecipientUid == userUid && !n.IsRead)
+            .Where(n => n.PersonUid == userUid && !n.IsRead)
             .Where(n => n.ExpiresAt == null || n.ExpiresAt > DateTime.UtcNow)
             .ToListAsync();
 
@@ -242,7 +243,7 @@ public class NotificationService(ApplicationDbContext dbContext) : INotification
     public async Task<int> DeleteMultipleNotificationsAsync(IEnumerable<Guid> notificationUids)
     {
         var notifications = await _dbContext.Notifications
-            .Where(n => notificationUids.Contains(n.Uid))
+            .Where(n => notificationUids.Contains(n.PersonUid))
             .ToListAsync();
 
         _dbContext.Notifications.RemoveRange(notifications);
@@ -274,15 +275,14 @@ public class NotificationService(ApplicationDbContext dbContext) : INotification
             {
                 var notification = new Notification
                 {
-                    Uid = Guid.NewGuid(),
-                    RecipientUid = recipientUid,
+                    PersonUid = recipientUid,
                     Title = title,
                     Message = message,
                     Type = type,
                     Priority = priority,
-                    Category = category, // ParseCategoryToUid(category),
+                    Category = category,
                     ActionUrl = actionUrl,
-                    CreatedAt = DateTime.UtcNow,
+                    SentAt = DateTime.UtcNow,
                     IsRead = false,
                     ExpiresAt = expiresAt
                 };
@@ -376,28 +376,28 @@ public class NotificationService(ApplicationDbContext dbContext) : INotification
         var monthAgo = today.AddMonths(-1);
 
         var totalNotifications = await _dbContext.Notifications
-            .Where(n => n.RecipientUid == userUid)
+            .Where(n => n.PersonUid == userUid)
             .CountAsync();
 
         var unreadNotifications = await _dbContext.Notifications
-            .Where(n => n.RecipientUid == userUid && !n.IsRead)
+            .Where(n => n.PersonUid == userUid && !n.IsRead)
             .Where(n => n.ExpiresAt == null || n.ExpiresAt > now)
             .CountAsync();
 
         var todayNotifications = await _dbContext.Notifications
-            .Where(n => n.RecipientUid == userUid && n.CreatedAt >= today)
+            .Where(n => n.PersonUid == userUid && n.SentAt >= today)
             .CountAsync();
 
         var weekNotifications = await _dbContext.Notifications
-            .Where(n => n.RecipientUid == userUid && n.CreatedAt >= weekAgo)
+            .Where(n => n.PersonUid == userUid && n.SentAt >= weekAgo)
             .CountAsync();
 
         var monthNotifications = await _dbContext.Notifications
-            .Where(n => n.RecipientUid == userUid && n.CreatedAt >= monthAgo)
+            .Where(n => n.PersonUid == userUid && n.SentAt >= monthAgo)
             .CountAsync();
 
         var importantNotifications = await _dbContext.Notifications
-            .Where(n => n.RecipientUid == userUid && n.Priority == NotificationPriority.High)
+            .Where(n => n.PersonUid == userUid && n.Priority == NotificationPriority.High)
             .Where(n => n.ExpiresAt == null || n.ExpiresAt > now)
             .CountAsync();
 
@@ -446,7 +446,7 @@ public class NotificationService(ApplicationDbContext dbContext) : INotification
         var cutoffDate = DateTime.UtcNow - maxAge;
         
         var oldNotifications = await _dbContext.Notifications
-            .Where(n => n.CreatedAt < cutoffDate && n.IsRead)
+            .Where(n => n.SentAt < cutoffDate && n.IsRead)
             .ToListAsync();
 
         _dbContext.Notifications.RemoveRange(oldNotifications);

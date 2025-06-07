@@ -25,7 +25,6 @@ public class GradeViewModel : ReactiveObject, IDisposable
     [Reactive] public string Comment { get; set; } = string.Empty;
     [Reactive] public GradeType Type { get; set; }
     [Reactive] public DateTime IssuedAt { get; set; }
-    [Reactive] public DateTime GradedAt { get; set; }
     [Reactive] public bool IsPublished { get; set; }
     [Reactive] public DateTime? PublishedAt { get; set; }
 
@@ -91,9 +90,6 @@ public class GradeViewModel : ReactiveObject, IDisposable
     private ObservableAsPropertyHelper<string> _formattedIssuedAt;
     public string FormattedIssuedAt => _formattedIssuedAt.Value;
 
-    private ObservableAsPropertyHelper<string> _formattedGradedAt;
-    public string FormattedGradedAt => _formattedGradedAt.Value;
-
     private ObservableAsPropertyHelper<string> _formattedDueDate;
     public string FormattedDueDate => _formattedDueDate.Value;
 
@@ -131,7 +127,6 @@ public class GradeViewModel : ReactiveObject, IDisposable
         // Инициализация значений по умолчанию
         Uid = Guid.NewGuid();
         IssuedAt = DateTime.Now;
-        GradedAt = DateTime.Now;
         Type = GradeType.Homework;
         Value = 0;
 
@@ -175,11 +170,6 @@ public class GradeViewModel : ReactiveObject, IDisposable
         _formattedIssuedAt = this.WhenAnyValue(x => x.IssuedAt)
             .Select(date => date.ToString("dd.MM.yyyy HH:mm"))
             .ToProperty(this, x => x.FormattedIssuedAt)
-            .DisposeWith(_disposables);
-
-        _formattedGradedAt = this.WhenAnyValue(x => x.GradedAt)
-            .Select(date => date.ToString("dd.MM.yyyy HH:mm"))
-            .ToProperty(this, x => x.FormattedGradedAt)
             .DisposeWith(_disposables);
 
         _formattedDueDate = this.WhenAnyValue(x => x.AssignmentDueDate)
@@ -293,7 +283,6 @@ public class GradeViewModel : ReactiveObject, IDisposable
             Comment = Comment,
             Type = Type,
             IssuedAt = IssuedAt,
-            GradedAt = GradedAt,
             IsPublished = IsPublished,
             PublishedAt = PublishedAt,
             StudentUid = StudentUid,
@@ -316,7 +305,6 @@ public class GradeViewModel : ReactiveObject, IDisposable
         Comment = grade.Comment;
         Type = grade.Type;
         IssuedAt = grade.IssuedAt;
-        GradedAt = grade.GradedAt;
         IsPublished = grade.IsPublished;
         PublishedAt = grade.PublishedAt;
         StudentUid = grade.StudentUid;
@@ -365,7 +353,6 @@ public class GradeViewModel : ReactiveObject, IDisposable
             Comment = Comment,
             Type = Type,
             IssuedAt = IssuedAt,
-            GradedAt = GradedAt,
             IsPublished = IsPublished,
             PublishedAt = PublishedAt,
             StudentUid = StudentUid,
@@ -415,7 +402,6 @@ public class GradeViewModel : ReactiveObject, IDisposable
             SubjectUid = subjectUid,
             TeacherUid = teacherUid,
             IssuedAt = DateTime.Now,
-            GradedAt = DateTime.Now,
             Type = GradeType.Homework,
             Value = 0
         };

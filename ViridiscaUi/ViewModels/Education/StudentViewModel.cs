@@ -374,7 +374,6 @@ public class StudentViewModel : ViewModelBase
             Status = Status,
             GroupUid = GroupUid,
             GPA = GPA ?? 0m,
-            Address = Address ?? string.Empty,
             CreatedAt = CreatedAt,
         };
 

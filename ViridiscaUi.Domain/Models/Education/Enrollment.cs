@@ -1,5 +1,5 @@
+using System;
 using ViridiscaUi.Domain.Models.Base;
-using ReactiveUI;
 using ViridiscaUi.Domain.Models.Education.Enums;
 
 namespace ViridiscaUi.Domain.Models.Education;
@@ -7,123 +7,59 @@ namespace ViridiscaUi.Domain.Models.Education;
 /// <summary>
 /// Запись студента на курс
 /// </summary>
-public class Enrollment : ViewModelBase
+public class Enrollment : AuditableEntity
 {
-    private Guid _studentUid;
-    private Guid _courseInstanceUid;
-    private DateTime _enrollmentDate;
-    private DateTime? _completionDate;
-    private EnrollmentStatus _status = EnrollmentStatus.Active;
-    private decimal? _finalGrade;
-    private string _notes = string.Empty;
-
-    private Student? _student;
-    private CourseInstance? _courseInstance;
-
     /// <summary>
     /// ID студента
     /// </summary>
-    public Guid StudentUid
-    {
-        get => _studentUid;
-        set => this.RaiseAndSetIfChanged(ref _studentUid, value);
-    }
+    public Guid StudentUid { get; set; }
 
     /// <summary>
     /// ID экземпляра курса
     /// </summary>
-    public Guid CourseInstanceUid
-    {
-        get => _courseInstanceUid;
-        set => this.RaiseAndSetIfChanged(ref _courseInstanceUid, value);
-    }
+    public Guid CourseInstanceUid { get; set; }
 
     /// <summary>
     /// Дата записи
     /// </summary>
-    public DateTime EnrollmentDate
-    {
-        get => _enrollmentDate;
-        set => this.RaiseAndSetIfChanged(ref _enrollmentDate, value);
-    }
+    public DateTime EnrollmentDate { get; set; }
 
     /// <summary>
     /// Дата завершения
     /// </summary>
-    public DateTime? CompletionDate
-    {
-        get => _completionDate;
-        set => this.RaiseAndSetIfChanged(ref _completionDate, value);
-    }
+    public DateTime? CompletionDate { get; set; }
 
     /// <summary>
-    /// Алиас для CompletionDate (для совместимости со старым кодом)
+    /// Дата завершения (алиас для совместимости)
     /// </summary>
-    public DateTime? CompletedAt
-    {
-        get => _completionDate;
-        set => this.RaiseAndSetIfChanged(ref _completionDate, value);
+    public DateTime? CompletedAt 
+    { 
+        get => CompletionDate; 
+        set => CompletionDate = value; 
     }
-
-    /// <summary>
-    /// Дата записи (алиас для EnrollmentDate)
-    /// </summary>
-    public DateTime EnrolledAt
-    {
-        get => _enrollmentDate;
-        set => this.RaiseAndSetIfChanged(ref _enrollmentDate, value);
-    }
-
+    
     /// <summary>
     /// Статус записи
     /// </summary>
-    public EnrollmentStatus Status
-    {
-        get => _status;
-        set => this.RaiseAndSetIfChanged(ref _status, value);
-    }
+    public EnrollmentStatus Status { get; set; } = EnrollmentStatus.Active;
 
     /// <summary>
     /// Итоговая оценка
     /// </summary>
-    public decimal? FinalGrade
-    {
-        get => _finalGrade;
-        set => this.RaiseAndSetIfChanged(ref _finalGrade, value);
-    }
+    public decimal? FinalGrade { get; set; }
 
     /// <summary>
     /// Заметки
     /// </summary>
-    public string Notes
-    {
-        get => _notes;
-        set => this.RaiseAndSetIfChanged(ref _notes, value);
-    }
+    public string? Notes { get; set; }
 
     /// <summary>
     /// Студент
     /// </summary>
-    public Student? Student
-    {
-        get => _student;
-        set => this.RaiseAndSetIfChanged(ref _student, value);
-    }
+    public Student? Student { get; set; }
 
     /// <summary>
     /// Экземпляр курса
     /// </summary>
-    public CourseInstance? CourseInstance
-    {
-        get => _courseInstance;
-        set => this.RaiseAndSetIfChanged(ref _courseInstance, value);
-    }
-
-    public Enrollment()
-    {
-        Uid = Guid.NewGuid();
-        CreatedAt = DateTime.UtcNow;
-        LastModifiedAt = DateTime.UtcNow;
-        EnrollmentDate = DateTime.UtcNow;
-    }
+    public CourseInstance? CourseInstance { get; set; }
 }

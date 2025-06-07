@@ -1,62 +1,37 @@
 using System;
-using ReactiveUI;
-using ViridiscaUi.Domain.Models.Base;
 
 namespace ViridiscaUi.Domain.Models.Auth;
 
 /// <summary>
 /// Модель с информацией о токене авторизации
 /// </summary>
-public class AuthTokenInfo : ViewModelBase
+public class AuthTokenInfo
 {
-    private string _refreshToken = string.Empty;
-    private string _token = string.Empty;
-
-    private DateTime _expiresAt;
-    private bool _isValid;
-
     /// <summary>
     /// JWT токен доступа
     /// </summary>
-    public string Token
-    {
-        get => _token;
-        set => this.RaiseAndSetIfChanged(ref _token, value);
-    }
+    public string Token { get; set; } = string.Empty;
 
     /// <summary>
     /// Токен обновления
     /// </summary>
-    public string RefreshToken
-    {
-        get => _refreshToken;
-        set => this.RaiseAndSetIfChanged(ref _refreshToken, value);
-    }
+    public string RefreshToken { get; set; } = string.Empty;
 
     /// <summary>
     /// Время истечения токена
     /// </summary>
-    public DateTime ExpiresAt
-    {
-        get => _expiresAt;
-        set => this.RaiseAndSetIfChanged(ref _expiresAt, value);
-    }
+    public DateTime ExpiresAt { get; set; }
 
     /// <summary>
     /// Флаг действительности токена
     /// </summary>
-    public bool IsValid
-    {
-        get => _isValid;
-        set => this.RaiseAndSetIfChanged(ref _isValid, value);
-    }
+    public bool IsValid { get; set; }
 
     /// <summary>
     /// Создает новый экземпляр информации о токене
     /// </summary>
     public AuthTokenInfo()
     {
-        Uid = Guid.NewGuid();
     }
 
     /// <summary>

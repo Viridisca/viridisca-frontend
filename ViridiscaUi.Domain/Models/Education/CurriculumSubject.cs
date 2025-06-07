@@ -1,104 +1,54 @@
+using System;
 using ViridiscaUi.Domain.Models.Base;
-using ReactiveUI;
 
 namespace ViridiscaUi.Domain.Models.Education;
 
 /// <summary>
 /// Предмет в учебном плане
 /// </summary>
-public class CurriculumSubject : ViewModelBase
+public class CurriculumSubject : AuditableEntity
 {
-    private Guid _curriculumUid;
-    private Guid _subjectUid;
-    private int _semester;
-    private int _credits;
-    private bool _isRequired = true;
-    private bool _isActive = true;
-
-    private Curriculum? _curriculum;
-    private Subject? _subject;
-
     /// <summary>
     /// ID учебного плана
     /// </summary>
-    public Guid CurriculumUid
-    {
-        get => _curriculumUid;
-        set => this.RaiseAndSetIfChanged(ref _curriculumUid, value);
-    }
+    public Guid CurriculumUid { get; set; }
 
     /// <summary>
     /// ID предмета
     /// </summary>
-    public Guid SubjectUid
-    {
-        get => _subjectUid;
-        set => this.RaiseAndSetIfChanged(ref _subjectUid, value);
-    }
+    public Guid SubjectUid { get; set; }
 
     /// <summary>
     /// Семестр изучения
     /// </summary>
-    public int Semester
-    {
-        get => _semester;
-        set => this.RaiseAndSetIfChanged(ref _semester, value);
-    }
+    public int Semester { get; set; }
 
     /// <summary>
     /// Количество кредитов
     /// </summary>
-    public int Credits
-    {
-        get => _credits;
-        set => this.RaiseAndSetIfChanged(ref _credits, value);
-    }
+    public int Credits { get; set; }
 
     /// <summary>
     /// Обязательный ли предмет
     /// </summary>
-    public bool IsRequired
-    {
-        get => _isRequired;
-        set => this.RaiseAndSetIfChanged(ref _isRequired, value);
-    }
+    public bool IsRequired { get; set; } = true;
 
     /// <summary>
-    /// Активен ли предмет в плане
+    /// Обязательный ли предмет (алиас для совместимости)
     /// </summary>
-    public bool IsActive
-    {
-        get => _isActive;
-        set => this.RaiseAndSetIfChanged(ref _isActive, value);
+    public bool IsMandatory 
+    { 
+        get => IsRequired; 
+        set => IsRequired = value; 
     }
-
+    
     /// <summary>
     /// Учебный план
     /// </summary>
-    public Curriculum? Curriculum
-    {
-        get => _curriculum;
-        set => this.RaiseAndSetIfChanged(ref _curriculum, value);
-    }
+    public Curriculum? Curriculum { get; set; }
 
     /// <summary>
     /// Предмет
     /// </summary>
-    public Subject? Subject
-    {
-        get => _subject;
-        set => this.RaiseAndSetIfChanged(ref _subject, value);
-    }
-
-    /// <summary>
-    /// Тип предмета (обязательный/элективный)
-    /// </summary>
-    public string SubjectType => IsRequired ? "Обязательный" : "Элективный";
-
-    public CurriculumSubject()
-    {
-        Uid = Guid.NewGuid();
-        CreatedAt = DateTime.UtcNow;
-        LastModifiedAt = DateTime.UtcNow;
-    }
+    public Subject? Subject { get; set; }
 } 

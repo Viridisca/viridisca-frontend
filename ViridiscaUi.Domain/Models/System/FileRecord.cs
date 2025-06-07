@@ -1,123 +1,73 @@
+using System;
 using ViridiscaUi.Domain.Models.Base;
-using ReactiveUI;
+using ViridiscaUi.Domain.Models.Auth;
 
 namespace ViridiscaUi.Domain.Models.System;
 
 /// <summary>
 /// Запись о файле в системе
 /// </summary>
-public class FileRecord : ViewModelBase
+public class FileRecord : AuditableEntity
 {
-    private string _originalFileName = string.Empty;
-    private string _storedFileName = string.Empty;
-    private string _filePath = string.Empty;
-    private string _contentType = string.Empty;
-    private long _fileSize;
-    private Guid _uploadedByUid;
-    private string? _entityType;
-    private Guid? _entityUid;
-    private string _description = string.Empty;
-    private bool _isPublic;
-    private DateTime? _expiresAt;
-
     /// <summary>
     /// Оригинальное имя файла
     /// </summary>
-    public string OriginalFileName
-    {
-        get => _originalFileName;
-        set => this.RaiseAndSetIfChanged(ref _originalFileName, value);
-    }
+    public string OriginalFileName { get; set; } = string.Empty;
 
     /// <summary>
     /// Имя файла в хранилище
     /// </summary>
-    public string StoredFileName
-    {
-        get => _storedFileName;
-        set => this.RaiseAndSetIfChanged(ref _storedFileName, value);
-    }
+    public string StoredFileName { get; set; } = string.Empty;
 
     /// <summary>
     /// Путь к файлу
     /// </summary>
-    public string FilePath
-    {
-        get => _filePath;
-        set => this.RaiseAndSetIfChanged(ref _filePath, value);
-    }
+    public string FilePath { get; set; } = string.Empty;
 
     /// <summary>
     /// MIME-тип файла
     /// </summary>
-    public string ContentType
-    {
-        get => _contentType;
-        set => this.RaiseAndSetIfChanged(ref _contentType, value);
-    }
+    public string ContentType { get; set; } = string.Empty;
 
     /// <summary>
     /// Размер файла в байтах
     /// </summary>
-    public long FileSize
-    {
-        get => _fileSize;
-        set => this.RaiseAndSetIfChanged(ref _fileSize, value);
-    }
+    public long FileSize { get; set; }
 
     /// <summary>
     /// Идентификатор пользователя, загрузившего файл
     /// </summary>
-    public Guid UploadedByUid
-    {
-        get => _uploadedByUid;
-        set => this.RaiseAndSetIfChanged(ref _uploadedByUid, value);
-    }
+    public Guid UploadedByUid { get; set; }
 
     /// <summary>
     /// Тип сущности, к которой привязан файл
     /// </summary>
-    public string? EntityType
-    {
-        get => _entityType;
-        set => this.RaiseAndSetIfChanged(ref _entityType, value);
-    }
+    public string? EntityType { get; set; }
 
     /// <summary>
     /// Идентификатор сущности, к которой привязан файл
     /// </summary>
-    public Guid? EntityUid
-    {
-        get => _entityUid;
-        set => this.RaiseAndSetIfChanged(ref _entityUid, value);
-    }
+    public Guid? EntityUid { get; set; }
 
     /// <summary>
     /// Описание файла
     /// </summary>
-    public string Description
-    {
-        get => _description;
-        set => this.RaiseAndSetIfChanged(ref _description, value);
-    }
+    public string? Description { get; set; }
 
     /// <summary>
     /// Флаг публичного доступа к файлу
     /// </summary>
-    public bool IsPublic
-    {
-        get => _isPublic;
-        set => this.RaiseAndSetIfChanged(ref _isPublic, value);
-    }
+    public bool IsPublic { get; set; }
 
     /// <summary>
     /// Дата истечения срока действия файла
     /// </summary>
-    public DateTime? ExpiresAt
-    {
-        get => _expiresAt;
-        set => this.RaiseAndSetIfChanged(ref _expiresAt, value);
-    }
+    public DateTime? ExpiresAt { get; set; }
+
+    /// <summary>
+    /// Пользователь, загрузивший файл
+    /// </summary>
+    public Person? UploadedBy { get; set; }
 
     /// <summary>
     /// Создает новый экземпляр записи о файле
@@ -135,12 +85,12 @@ public class FileRecord : ViewModelBase
                      string contentType, long fileSize, Guid uploadedByUid)
     {
         Uid = Guid.NewGuid();
-        _originalFileName = originalFileName;
-        _storedFileName = storedFileName;
-        _filePath = filePath;
-        _contentType = contentType;
-        _fileSize = fileSize;
-        _uploadedByUid = uploadedByUid;
+        OriginalFileName = originalFileName;
+        StoredFileName = storedFileName;
+        FilePath = filePath;
+        ContentType = contentType;
+        FileSize = fileSize;
+        UploadedByUid = uploadedByUid;
         CreatedAt = DateTime.UtcNow;
     }
 } 

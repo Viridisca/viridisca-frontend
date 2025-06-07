@@ -22,6 +22,9 @@ public enum EnrollmentStatus
     [Description("Провалена")]
     Failed = 5,
 
+    [Description("Отчислена")]
+    Dropped = 6,
+
     [Description("В ожидании")]
-    Pending = 6
+    Pending = 7
 } 

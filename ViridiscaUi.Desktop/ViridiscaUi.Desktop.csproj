@@ -16,11 +16,25 @@
 		<PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.0" />
 		<PackageReference Include="Avalonia.Fonts.Inter" Version="11.2.0" />
 		<PackageReference Include="Avalonia.ReactiveUI" Version="11.2.0" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.5">
+		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		  <PrivateAssets>all</PrivateAssets>
+		</PackageReference>
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.5" />
 	</ItemGroup>
 
 	<ItemGroup>
 		<ProjectReference Include="..\ViridiscaUi\ViridiscaUi.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- Копирование файлов конфигурации в выходную директорию -->
+		<None Include="appsettings.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+		<None Include="appsettings.Development.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
 	</ItemGroup>
 
 </Project>

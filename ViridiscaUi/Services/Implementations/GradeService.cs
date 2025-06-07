@@ -117,7 +117,7 @@ public class GradeService : GenericCrudService<Grade>, IGradeService
 
             if (assignment != null && assignment.DueDate.HasValue)
             {
-                if (entity.GradedAt > assignment.DueDate.Value)
+                if (entity.IssuedAt > assignment.DueDate.Value)
                     warnings.Add("Задание оценено после срока сдачи");
             }
         }
@@ -347,16 +347,16 @@ public class GradeService : GenericCrudService<Grade>, IGradeService
             if (period.HasValue)
             {
                 if (period.Value.start.HasValue)
-                    query = query.Where(g => g.CreatedAt >= period.Value.start.Value);
+                    query = query.Where(g => g.IssuedAt >= period.Value.start.Value);
                 
                 if (period.Value.end.HasValue)
-                    query = query.Where(g => g.CreatedAt <= period.Value.end.Value);
+                    query = query.Where(g => g.IssuedAt <= period.Value.end.Value);
             }
 
             var totalCount = await query.CountAsync();
 
             var grades = await query
-                .OrderByDescending(g => g.CreatedAt)
+                .OrderByDescending(g => g.IssuedAt)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
@@ -410,7 +410,7 @@ public class GradeService : GenericCrudService<Grade>, IGradeService
                 .ThenInclude(a => a.CourseInstance)
                 .Include(g => g.Teacher)
                 .Where(g => g.StudentUid == studentUid)
-                .OrderByDescending(g => g.CreatedAt)
+                .OrderByDescending(g => g.IssuedAt)
                 .Take(count)
                 .ToListAsync();
         }
@@ -458,7 +458,7 @@ public class GradeService : GenericCrudService<Grade>, IGradeService
             foreach (var grade in gradesList)
             {
                 grade.Uid = Guid.NewGuid();
-                grade.CreatedAt = DateTime.UtcNow;
+                grade.IssuedAt = DateTime.UtcNow;
                 grade.LastModifiedAt = DateTime.UtcNow;
             }
 
@@ -501,10 +501,10 @@ public class GradeService : GenericCrudService<Grade>, IGradeService
             if (period.HasValue)
             {
                 if (period.Value.start.HasValue)
-                    query = query.Where(g => g.CreatedAt >= period.Value.start.Value);
+                    query = query.Where(g => g.IssuedAt >= period.Value.start.Value);
                 
                 if (period.Value.end.HasValue)
-                    query = query.Where(g => g.CreatedAt <= period.Value.end.Value);
+                    query = query.Where(g => g.IssuedAt <= period.Value.end.Value);
             }
 
             var grades = await query.ToListAsync();
@@ -568,8 +568,8 @@ public class GradeService : GenericCrudService<Grade>, IGradeService
                 .Include(g => g.Assignment)
                 .ThenInclude(a => a.CourseInstance)
                 .Include(g => g.Teacher)
-                .Where(g => g.CreatedAt >= fromDate)
-                .OrderByDescending(g => g.CreatedAt)
+                .Where(g => g.IssuedAt >= fromDate)
+                .OrderByDescending(g => g.IssuedAt)
                 .ToListAsync();
         }
         catch (Exception ex)
@@ -606,10 +606,10 @@ public class GradeService : GenericCrudService<Grade>, IGradeService
             if (period.HasValue)
             {
                 if (period.Value.start.HasValue)
-                    query = query.Where(g => g.CreatedAt >= period.Value.start.Value);
+                    query = query.Where(g => g.IssuedAt >= period.Value.start.Value);
                 
                 if (period.Value.end.HasValue)
-                    query = query.Where(g => g.CreatedAt <= period.Value.end.Value);
+                    query = query.Where(g => g.IssuedAt <= period.Value.end.Value);
             }
 
             var grades = await query.ToListAsync();
@@ -628,7 +628,7 @@ public class GradeService : GenericCrudService<Grade>, IGradeService
                 .ToList();
 
             var gradesByMonth = grades
-                .GroupBy(g => new { g.CreatedAt.Year, g.CreatedAt.Month })
+                .GroupBy(g => new { g.IssuedAt.Year, g.IssuedAt.Month })
                 .Select(g => new
                 {
                     Period = $"{g.Key.Year}-{g.Key.Month:D2}",
@@ -689,7 +689,7 @@ public class GradeService : GenericCrudService<Grade>, IGradeService
                 .ThenInclude(a => a != null ? a.CourseInstance : null)
                 .Include(g => g.Teacher)
                 .Where(g => g.Assignment != null && g.Assignment.CourseInstanceUid == courseInstanceUid && g.StudentUid == studentUid)
-                .OrderByDescending(g => g.CreatedAt)
+                .OrderByDescending(g => g.IssuedAt)
                 .ToListAsync();
         }
         catch (Exception ex)

@@ -376,11 +376,11 @@ namespace ViridiscaUi.Services.Implementations
 
                 var subjects = new[]
                 {
-                    new Subject("CS101", "Программирование на C#", "Основы программирования на языке C#", 4, 3, SubjectType.Required, department?.Uid ?? Guid.Empty),
-                    new Subject("DB101", "Базы данных", "Проектирование и работа с базами данных", 3, 2, SubjectType.Required, department?.Uid ?? Guid.Empty),
-                    new Subject("WEB101", "Веб-разработка", "Создание веб-приложений", 4, 3, SubjectType.Specialized, department?.Uid ?? Guid.Empty),
-                    new Subject("MATH101", "Математический анализ", "Основы математического анализа", 5, 4, SubjectType.Required, department?.Uid ?? Guid.Empty),
-                    new Subject("ENG101", "Английский язык", "Английский язык для IT специалистов", 2, 2, SubjectType.Elective, department?.Uid ?? Guid.Empty)
+                    new Subject("CS101", "Программирование на C#", "Основы программирования на языке C#", 4, SubjectType.Required, "Программирование", department?.Uid),
+                    new Subject("DB101", "Базы данных", "Проектирование и работа с базами данных", 3, SubjectType.Required, "Базы данных", department?.Uid),
+                    new Subject("WEB101", "Веб-разработка", "Создание веб-приложений", 4, SubjectType.Specialized, "Веб-технологии", department?.Uid),
+                    new Subject("MATH101", "Математический анализ", "Основы математического анализа", 5, SubjectType.Required, "Математика", department?.Uid),
+                    new Subject("ENG101", "Английский язык", "Английский язык для IT специалистов", 2, SubjectType.Elective, "Языки", department?.Uid)
                 };
 
                 await _dbContext.Subjects.AddRangeAsync(subjects);

@@ -1,226 +1,113 @@
-using System.Collections.ObjectModel;
+using System;
+using System.Collections.Generic;
 using ViridiscaUi.Domain.Models.Base;
-using ReactiveUI;
 using ViridiscaUi.Domain.Models.Education.Enums;
 using ViridiscaUi.Domain.Models.Auth;
-using ViridiscaUi.Domain.Models.System;
 
 namespace ViridiscaUi.Domain.Models.Education;
 
 /// <summary>
 /// Студент
 /// </summary>
-public class Student : ViewModelBase
+public class Student : AuditableEntity
 {
-    private Guid _personUid;
-    private string _studentCode = string.Empty;
-    private DateTime _enrollmentDate;
-    private DateTime? _graduationDate;
-    private StudentStatus _status = StudentStatus.Active;
-    private bool _isActive = true;
-    private string _emergencyContactName = string.Empty;
-    private string _emergencyContactPhone = string.Empty;
-    private string _medicalInformation = string.Empty;
-    private string _address = string.Empty;
-    private decimal _gpa;
-
-    private Guid? _groupUid;
-    private Guid? _curriculumUid;
-
-    private Person? _person;
-    private Group? _group;
-    private Curriculum? _curriculum;
-
-    private ObservableCollection<Enrollment> _enrollments = [];
-    private ObservableCollection<Grade> _grades = [];
-    private ObservableCollection<Attendance> _attendances = [];
-
     /// <summary>
     /// ID связанного человека
     /// </summary>
-    public Guid PersonUid
-    {
-        get => _personUid;
-        set => this.RaiseAndSetIfChanged(ref _personUid, value);
-    }
+    public Guid PersonUid { get; set; }
 
     /// <summary>
     /// Студенческий код
     /// </summary>
-    public string StudentCode
-    {
-        get => _studentCode;
-        set => this.RaiseAndSetIfChanged(ref _studentCode, value);
-    }
+    public string StudentCode { get; set; } = string.Empty;
 
     /// <summary>
     /// Дата поступления
     /// </summary>
-    public DateTime EnrollmentDate
-    {
-        get => _enrollmentDate;
-        set => this.RaiseAndSetIfChanged(ref _enrollmentDate, value);
-    }
+    public DateTime EnrollmentDate { get; set; }
 
     /// <summary>
     /// Дата выпуска
     /// </summary>
-    public DateTime? GraduationDate
-    {
-        get => _graduationDate;
-        set => this.RaiseAndSetIfChanged(ref _graduationDate, value);
-    }
+    public DateTime? GraduationDate { get; set; }
 
     /// <summary>
     /// Статус студента
     /// </summary>
-    public StudentStatus Status
-    {
-        get => _status;
-        set => this.RaiseAndSetIfChanged(ref _status, value);
-    }
-
-    /// <summary>
-    /// Активен ли студент
-    /// </summary>
-    public bool IsActive
-    {
-        get => _isActive;
-        set => this.RaiseAndSetIfChanged(ref _isActive, value);
-    }
-
-    /// <summary>
-    /// Контактное лицо для экстренных случаев
-    /// </summary>
-    public string EmergencyContactName
-    {
-        get => _emergencyContactName;
-        set => this.RaiseAndSetIfChanged(ref _emergencyContactName, value);
-    }
-
-    /// <summary>
-    /// Телефон экстренного контакта
-    /// </summary>
-    public string EmergencyContactPhone
-    {
-        get => _emergencyContactPhone;
-        set => this.RaiseAndSetIfChanged(ref _emergencyContactPhone, value);
-    }
-
-    /// <summary>
-    /// Медицинская информация
-    /// </summary>
-    public string MedicalInformation
-    {
-        get => _medicalInformation;
-        set => this.RaiseAndSetIfChanged(ref _medicalInformation, value);
-    }
-
-    /// <summary>
-    /// Адрес
-    /// </summary>
-    public string Address
-    {
-        get => _address;
-        set => this.RaiseAndSetIfChanged(ref _address, value);
-    }
+    public StudentStatus Status { get; set; } = StudentStatus.Active;
 
     /// <summary>
     /// Средний балл
     /// </summary>
-    public decimal GPA
-    {
-        get => _gpa;
-        set => this.RaiseAndSetIfChanged(ref _gpa, value);
-    }
+    public decimal GPA { get; set; }
 
     /// <summary>
     /// ID группы
     /// </summary>
-    public Guid? GroupUid
-    {
-        get => _groupUid;
-        set => this.RaiseAndSetIfChanged(ref _groupUid, value);
-    }
+    public Guid? GroupUid { get; set; }
 
     /// <summary>
     /// ID учебного плана
     /// </summary>
-    public Guid? CurriculumUid
-    {
-        get => _curriculumUid;
-        set => this.RaiseAndSetIfChanged(ref _curriculumUid, value);
-    }
+    public Guid? CurriculumUid { get; set; }
 
     /// <summary>
     /// Связанный человек
     /// </summary>
-    public Person? Person
-    {
-        get => _person;
-        set => this.RaiseAndSetIfChanged(ref _person, value);
-    }
+    public Person? Person { get; set; }
+
+    /// <summary>
+    /// Полное имя (алиас для совместимости)
+    /// </summary>
+    public string? FullName => Person != null ? $"{Person.LastName} {Person.FirstName} {Person.MiddleName}".Trim() : null;
+
+    /// <summary>
+    /// Адрес (алиас для совместимости)
+    /// </summary>
+    public string? Address => Person?.Address;
 
     /// <summary>
     /// Группа
     /// </summary>
-    public Group? Group
-    {
-        get => _group;
-        set => this.RaiseAndSetIfChanged(ref _group, value);
-    }
+    public Group? Group { get; set; }
 
     /// <summary>
     /// Учебный план
     /// </summary>
-    public Curriculum? Curriculum
-    {
-        get => _curriculum;
-        set => this.RaiseAndSetIfChanged(ref _curriculum, value);
-    }
+    public Curriculum? Curriculum { get; set; }
 
     /// <summary>
     /// Записи на курсы
     /// </summary>
-    public ObservableCollection<Enrollment> Enrollments
-    {
-        get => _enrollments;
-        set => this.RaiseAndSetIfChanged(ref _enrollments, value);
-    }
+    public ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
 
     /// <summary>
     /// Оценки
     /// </summary>
-    public ObservableCollection<Grade> Grades
-    {
-        get => _grades;
-        set => this.RaiseAndSetIfChanged(ref _grades, value);
-    }
+    public ICollection<Grade> Grades { get; set; } = new List<Grade>();
 
     /// <summary>
     /// Посещаемость
     /// </summary>
-    public ObservableCollection<Attendance> Attendances
-    {
-        get => _attendances;
-        set => this.RaiseAndSetIfChanged(ref _attendances, value);
-    }
-
+    public ICollection<Attendance> Attendances { get; set; } = new List<Attendance>();
+    
     /// <summary>
-    /// Полное имя студента
+    /// Результаты экзаменов
     /// </summary>
-    public string FullName => Person?.FullName ?? "Неизвестный студент";
-
+    public ICollection<ExamResult> ExamResults { get; set; } = new List<ExamResult>();
+    
     /// <summary>
-    /// Email студента
+    /// Сданные работы
     /// </summary>
-    public string Email => Person?.Email ?? string.Empty;
-
-    public Student()
-    {
-        Uid = Guid.NewGuid();
-        CreatedAt = DateTime.UtcNow;
-        LastModifiedAt = DateTime.UtcNow;
-        EnrollmentDate = DateTime.UtcNow;
-    }
+    public ICollection<Submission> Submissions { get; set; } = new List<Submission>();
+    
+    /// <summary>
+    /// Прогресс по занятиям
+    /// </summary>
+    public ICollection<LessonProgress> LessonProgresses { get; set; } = new List<LessonProgress>();
+    
+    /// <summary>
+    /// Является ли студент активным (не отчислен, не в академ. отпуске)
+    /// </summary>
+    public bool IsActive => Status == StudentStatus.Active;
 }

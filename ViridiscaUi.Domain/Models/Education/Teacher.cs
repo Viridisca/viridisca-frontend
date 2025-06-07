@@ -1,259 +1,154 @@
 using System;
-using System.Collections.ObjectModel;
-using System.Linq;
-using ReactiveUI;
+using System.Collections.Generic;
 using ViridiscaUi.Domain.Models.Base;
 using ViridiscaUi.Domain.Models.Auth;
 using ViridiscaUi.Domain.Models.System;
-using ViridiscaUi.Domain.Models.Education.Enums;
 
 namespace ViridiscaUi.Domain.Models.Education;
 
 /// <summary>
 /// Преподаватель
 /// </summary>
-public class Teacher : ViewModelBase
+public class Teacher : AuditableEntity
 {
-    private Guid _personUid;
-    private string _employeeCode = string.Empty;
-    private DateTime _hireDate;
-    private DateTime? _terminationDate;
-    private string _qualification = string.Empty;
-    private string _specialization = string.Empty;
-    private decimal _salary;
-    private bool _isActive = true;
-    private string _officeLocation = string.Empty;
-    private string _workingHours = string.Empty;
-
-    private Guid? _departmentUid;
-
-    private Person? _person;
-    private Department? _department;
-
-    private ObservableCollection<CourseInstance> _courseInstances = [];
-
     /// <summary>
     /// ID связанного человека
     /// </summary>
-    public Guid PersonUid
-    {
-        get => _personUid;
-        set => this.RaiseAndSetIfChanged(ref _personUid, value);
-    }
+    public Guid PersonUid { get; set; }
 
     /// <summary>
     /// Код сотрудника
     /// </summary>
-    public string EmployeeCode
-    {
-        get => _employeeCode;
-        set => this.RaiseAndSetIfChanged(ref _employeeCode, value);
-    }
+    public string EmployeeCode { get; set; } = string.Empty;
 
     /// <summary>
     /// Дата найма
     /// </summary>
-    public DateTime HireDate
-    {
-        get => _hireDate;
-        set => this.RaiseAndSetIfChanged(ref _hireDate, value);
-    }
+    public DateTime HireDate { get; set; }
 
     /// <summary>
     /// Дата увольнения
     /// </summary>
-    public DateTime? TerminationDate
-    {
-        get => _terminationDate;
-        set => this.RaiseAndSetIfChanged(ref _terminationDate, value);
-    }
+    public DateTime? TerminationDate { get; set; }
 
     /// <summary>
     /// Квалификация
     /// </summary>
-    public string Qualification
-    {
-        get => _qualification;
-        set => this.RaiseAndSetIfChanged(ref _qualification, value);
-    }
+    public string Qualification { get; set; } = string.Empty;
 
     /// <summary>
     /// Специализация
     /// </summary>
-    public string Specialization
-    {
-        get => _specialization;
-        set => this.RaiseAndSetIfChanged(ref _specialization, value);
-    }
+    public string? Specialization { get; set; }
 
     /// <summary>
     /// Зарплата
     /// </summary>
-    public decimal Salary
-    {
-        get => _salary;
-        set => this.RaiseAndSetIfChanged(ref _salary, value);
-    }
+    public decimal Salary { get; set; }
 
     /// <summary>
     /// Активен ли преподаватель
     /// </summary>
-    public bool IsActive
-    {
-        get => _isActive;
-        set => this.RaiseAndSetIfChanged(ref _isActive, value);
-    }
+    public bool IsActive { get; set; } = true;
 
     /// <summary>
     /// Расположение офиса
     /// </summary>
-    public string OfficeLocation
-    {
-        get => _officeLocation;
-        set => this.RaiseAndSetIfChanged(ref _officeLocation, value);
-    }
-
+    public string? OfficeLocation { get; set; }
+    
     /// <summary>
     /// Рабочие часы
     /// </summary>
-    public string WorkingHours
-    {
-        get => _workingHours;
-        set => this.RaiseAndSetIfChanged(ref _workingHours, value);
-    }
+    public string? WorkingHours { get; set; }
 
     /// <summary>
     /// ID департамента
     /// </summary>
-    public Guid? DepartmentUid
-    {
-        get => _departmentUid;
-        set => this.RaiseAndSetIfChanged(ref _departmentUid, value);
-    }
+    public Guid? DepartmentUid { get; set; }
 
     /// <summary>
     /// Связанный человек
     /// </summary>
-    public Person? Person
-    {
-        get => _person;
-        set => this.RaiseAndSetIfChanged(ref _person, value);
-    }
+    public Person? Person { get; set; }
+
+    /// <summary>
+    /// Имя (алиас для совместимости)
+    /// </summary>
+    public string? FirstName => Person?.FirstName;
+
+    /// <summary>
+    /// Фамилия (алиас для совместимости)
+    /// </summary>
+    public string? LastName => Person?.LastName;
+
+    /// <summary>
+    /// Отчество (алиас для совместимости)
+    /// </summary>
+    public string? MiddleName => Person?.MiddleName;
+
+    /// <summary>
+    /// Email (алиас для совместимости)
+    /// </summary>
+    public string? Email => Person?.Email;
+
+    /// <summary>
+    /// Полное имя (алиас для совместимости)
+    /// </summary>
+    public string? FullName => Person != null ? $"{Person.LastName} {Person.FirstName} {Person.MiddleName}".Trim() : null;
+
+    /// <summary>
+    /// Ученая степень
+    /// </summary>
+    public string? AcademicDegree { get; set; }
+
+    /// <summary>
+    /// Ученое звание
+    /// </summary>
+    public string? AcademicTitle { get; set; }
+
+    /// <summary>
+    /// Почасовая ставка
+    /// </summary>
+    public decimal? HourlyRate { get; set; }
 
     /// <summary>
     /// Департамент
     /// </summary>
-    public Department? Department
-    {
-        get => _department;
-        set => this.RaiseAndSetIfChanged(ref _department, value);
-    }
+    public Department? Department { get; set; }
 
     /// <summary>
     /// Экземпляры курсов, которые ведет преподаватель
     /// </summary>
-    public ObservableCollection<CourseInstance> CourseInstances
+    public ICollection<CourseInstance> CourseInstances { get; set; } = new List<CourseInstance>();
+    
+    /// <summary>
+    /// Оценки, выставленные преподавателем
+    /// </summary>
+    public ICollection<Grade> GradedMarks { get; set; } = new List<Grade>();
+
+    /// <summary>
+    /// Обновляет детали преподавателя
+    /// </summary>
+    public void UpdateDetails(string qualification, string? specialization, string? academicDegree, string? academicTitle, decimal? hourlyRate)
     {
-        get => _courseInstances;
-        set => this.RaiseAndSetIfChanged(ref _courseInstances, value);
-    }
-
-    /// <summary>
-    /// Полное имя преподавателя
-    /// </summary>
-    public string FullName => Person?.FullName ?? "Неизвестный преподаватель";
-
-    /// <summary>
-    /// Email преподавателя
-    /// </summary>
-    public string Email => Person?.Email ?? string.Empty;
-
-    /// <summary>
-    /// Имя (получается из Person)
-    /// </summary>
-    public string FirstName => Person?.FirstName ?? string.Empty;
-    
-    /// <summary>
-    /// Фамилия (получается из Person)
-    /// </summary>
-    public string LastName => Person?.LastName ?? string.Empty;
-    
-    /// <summary>
-    /// Отчество (получается из Person)
-    /// </summary>
-    public string MiddleName => Person?.MiddleName ?? string.Empty;
-    
-    /// <summary>
-    /// Академическая степень
-    /// </summary>
-    public string AcademicDegree => Qualification;
-    
-    /// <summary>
-    /// Академическое звание
-    /// </summary>
-    public string AcademicTitle => Specialization;
-    
-    /// <summary>
-    /// Почасовая ставка (вычисляется из зарплаты)
-    /// </summary>
-    public decimal HourlyRate => Salary / 160; // Примерно 160 часов в месяц
-    
-    /// <summary>
-    /// Статус преподавателя
-    /// </summary>
-    public string Status => IsActive ? "Active" : "Inactive";
-
-    public Teacher()
-    {
-        Uid = Guid.NewGuid();
-        CreatedAt = DateTime.UtcNow;
-        LastModifiedAt = DateTime.UtcNow;
-        HireDate = DateTime.UtcNow;
-    }
-
-    /// <summary>
-    /// Обновляет данные преподавателя
-    /// </summary>
-    public void UpdateDetails(
-        string specialization,
-        decimal salary,
-        string? qualification,
-        string? officeLocation,
-        string? workingHours)
-    {
+        Qualification = qualification;
         Specialization = specialization;
-        Salary = salary;
-        Qualification = qualification ?? string.Empty;
-        OfficeLocation = officeLocation ?? string.Empty;
-        WorkingHours = workingHours ?? string.Empty;
+        AcademicDegree = academicDegree;
+        AcademicTitle = academicTitle;
+        HourlyRate = hourlyRate;
         LastModifiedAt = DateTime.UtcNow;
     }
 
     /// <summary>
     /// Обновляет статус преподавателя
     /// </summary>
-    public void UpdateStatus(bool isActive)
+    public void UpdateStatus(bool isActive, DateTime? terminationDate = null)
     {
         IsActive = isActive;
-        
-        if (!IsActive && !TerminationDate.HasValue)
+        if (!isActive && terminationDate.HasValue)
         {
-            TerminationDate = DateTime.UtcNow;
+            TerminationDate = terminationDate;
         }
-        
-        LastModifiedAt = DateTime.UtcNow;
-    }
-
-    /// <summary>
-    /// Устанавливает дату увольнения
-    /// </summary>
-    public void SetTerminationDate(DateTime terminationDate)
-    {
-        if (terminationDate <= HireDate)
-            return;
-
-        TerminationDate = terminationDate;
-        IsActive = false;
         LastModifiedAt = DateTime.UtcNow;
     }
 }

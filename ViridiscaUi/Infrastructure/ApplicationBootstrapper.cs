@@ -8,6 +8,7 @@ using ViridiscaUi.DI;
 using ReactiveUI;
 using System;
 using Splat;
+using System.IO;
 
 namespace ViridiscaUi.Infrastructure;
 
@@ -97,14 +98,35 @@ public static class ApplicationBootstrapper
     {
         try
         {
+            // Определяем базовый путь более надежно
+            var basePath = AppContext.BaseDirectory;
+            
+            // Логируем информацию о путях для отладки
+            Console.WriteLine($"Base directory: {basePath}");
+            Console.WriteLine($"Current directory: {Environment.CurrentDirectory}");
+            
+            // Проверяем существование файлов конфигурации
+            var appSettingsPath = Path.Combine(basePath, "appsettings.json");
+            var appSettingsDevPath = Path.Combine(basePath, "appsettings.Development.json");
+            
+            Console.WriteLine($"Looking for appsettings.json at: {appSettingsPath}");
+            Console.WriteLine($"appsettings.json exists: {File.Exists(appSettingsPath)}");
+            Console.WriteLine($"Looking for appsettings.Development.json at: {appSettingsDevPath}");
+            Console.WriteLine($"appsettings.Development.json exists: {File.Exists(appSettingsDevPath)}");
+
             var configuration = new ConfigurationBuilder()
-                .SetBasePath(AppContext.BaseDirectory)
-                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-                .AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"}.json", optional: true)
+                .SetBasePath(basePath)
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+                .AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: true)
                 .AddEnvironmentVariables()
                 .Build();
 
+            // Проверяем, что конфигурация загружена
+            var connectionString = configuration.GetConnectionString("DefaultConnection");
+            Console.WriteLine($"Loaded connection string: {connectionString}");
+
             var services = new ServiceCollection();
+            services.AddSingleton<IConfiguration>(configuration);
             services.AddViridiscaServices(configuration);
 
             _services = services.BuildServiceProvider();

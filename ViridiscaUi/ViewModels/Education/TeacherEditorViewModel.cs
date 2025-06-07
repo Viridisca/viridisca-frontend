@@ -370,16 +370,15 @@ public class TeacherEditorViewModel : RoutableViewModelBase
 
     public void PopulateForm(Teacher teacher)
     {
-        FirstName = teacher.FirstName;
-        LastName = teacher.LastName;
-        MiddleName = teacher.MiddleName;
+        FirstName = teacher.FirstName ?? string.Empty;
+        LastName = teacher.LastName ?? string.Empty;
+        MiddleName = teacher.MiddleName ?? string.Empty;
         EmployeeCode = teacher.EmployeeCode;
         Specialization = teacher.Specialization ?? string.Empty;
         AcademicDegree = teacher.AcademicDegree ?? string.Empty;
         AcademicTitle = teacher.AcademicTitle ?? string.Empty;
         HireDate = teacher.HireDate;
-        HourlyRate = teacher.HourlyRate;
-        Status = TeacherStatus.Active;
+        HourlyRate = teacher.HourlyRate ?? 0;
         
         // Для работы в диалогах добавляем дополнительные поля
         // TODO: Эти поля нужно будет добавить в модель Teacher при необходимости
@@ -499,7 +498,7 @@ public class TeacherEditorViewModel : RoutableViewModelBase
             Specialization = string.IsNullOrWhiteSpace(Specialization) ? null : Specialization.Trim(),
             DepartmentUid = null, // SelectedDepartment это строка, нужно найти Department по имени
             HireDate = HireDate,
-            Salary = HourlyRate,
+            HourlyRate = HourlyRate,
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
             LastModifiedAt = DateTime.UtcNow

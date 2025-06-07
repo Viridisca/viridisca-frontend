@@ -9,7 +9,7 @@ using ViridiscaUi.Infrastructure;
 using ViridiscaUi.Services.Interfaces;
 using System.Linq.Expressions;
 using ViridiscaUi.Domain.Models.Education.Enums;
-using ViridiscaUi.Domain.Models.Education.DTOs;
+using static ViridiscaUi.Services.Interfaces.IStudentService;
 
 namespace ViridiscaUi.Services.Implementations;
 
@@ -280,6 +280,25 @@ public class StudentService : GenericCrudService<Student>, IStudentService
         {
             _logger.LogError(ex, "Error getting student with details: {StudentUid}", uid);
             return null;
+        }
+    }
+
+    public async Task<Student> GetStudentDetailsAsync(Guid studentUid)
+    {
+        try
+        {
+            var student = await _dbContext.Students
+                .Include(s => s.Person)
+                .Include(s => s.Group)
+                .Include(s => s.Curriculum)
+                .FirstOrDefaultAsync(s => s.PersonUid == studentUid);
+
+            return student;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting student details: {StudentUid}", studentUid);
+            throw;
         }
     }
 
@@ -564,46 +583,6 @@ public class StudentService : GenericCrudService<Student>, IStudentService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting student overdue assignments: {StudentUid}", studentUid);
-            throw;
-        }
-    }
-
-    public async Task<StudentDetailsDto> GetStudentDetailsAsync(Guid studentUid)
-    {
-        try
-        {
-            var student = await _dbContext.Students
-                .Include(s => s.Person)
-                .FirstOrDefaultAsync(s => s.PersonUid == studentUid);
-
-            if (student?.Person == null)
-            {
-                return null;
-            }
-
-            return new StudentDetailsDto
-            {
-                Uid = student.Uid,
-                PersonUid = student.PersonUid,
-                StudentCode = student.StudentCode,
-                GPA = student.GPA,
-                Status = student.Status,
-                GroupUid = student.GroupUid,
-                CurriculumUid = student.CurriculumUid,
-                
-                // Данные из Person
-                FirstName = student.Person.FirstName,
-                LastName = student.Person.LastName,
-                MiddleName = student.Person.MiddleName,
-                Email = student.Person.Email,
-                PhoneNumber = student.Person.PhoneNumber,
-                BirthDate = student.Person.DateOfBirth,
-                Address = student.Person.Address
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting student details: {StudentUid}", studentUid);
             throw;
         }
     }

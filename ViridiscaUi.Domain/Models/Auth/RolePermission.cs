@@ -1,3 +1,4 @@
+using System;
 using ViridiscaUi.Domain.Models.Base;
 
 namespace ViridiscaUi.Domain.Models.Auth;
@@ -5,13 +6,8 @@ namespace ViridiscaUi.Domain.Models.Auth;
 /// <summary>
 /// Связь между ролью и разрешением
 /// </summary>
-public class RolePermission : ViewModelBase
+public class RolePermission : AuditableEntity
 {
-    /// <summary>
-    /// Уникальный идентификатор связи
-    /// </summary>
-    public new Guid Uid { get; set; }
-
     /// <summary>
     /// Идентификатор роли
     /// </summary>
@@ -31,14 +27,4 @@ public class RolePermission : ViewModelBase
     /// Разрешение
     /// </summary>
     public Permission? Permission { get; set; }
-
-    /// <summary>
-    /// Флаг активности
-    /// </summary>
-    public bool IsActive { get; set; } = true;
-
-    /// <summary>
-    /// Дата назначения
-    /// </summary>
-    public DateTime AssignedAt { get; set; } = DateTime.UtcNow;
 }

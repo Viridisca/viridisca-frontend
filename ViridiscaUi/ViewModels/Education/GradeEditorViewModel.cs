@@ -33,7 +33,7 @@ namespace ViridiscaUi.ViewModels.Education
 
         [Reactive] public decimal Value { get; set; } = 0;
         [Reactive] public string? Comment { get; set; }
-        [Reactive] public DateTime GradedAt { get; set; } = DateTime.Now;
+        [Reactive] public DateTime IssuedAt { get; set; } = DateTime.Now;
         [Reactive] public Guid StudentUid { get; set; }
         [Reactive] public Guid AssignmentUid { get; set; }
         [Reactive] public Guid TeacherUid { get; set; }
@@ -188,7 +188,7 @@ namespace ViridiscaUi.ViewModels.Education
                 Grade.StudentUid = SelectedStudent?.Uid ?? Guid.Empty;
                 Grade.AssignmentUid = SelectedAssignment?.Uid;
                 Grade.TeacherUid = SelectedTeacher?.Uid ?? Guid.Empty;
-                Grade.GradedAt = DateTime.UtcNow;
+                Grade.IssuedAt = DateTime.UtcNow;
 
                 return Grade;
             }

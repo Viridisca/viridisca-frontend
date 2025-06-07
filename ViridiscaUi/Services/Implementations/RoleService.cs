@@ -105,7 +105,7 @@ public class RoleService(ApplicationDbContext dbContext, ILogger<RoleService> lo
                 Uid = Guid.NewGuid(),
                 PersonUid = personUid,
                 RoleUid = roleUid,
-                AssignedBy = "System",
+                AssignedBy = null,
                 CreatedAt = DateTime.UtcNow,
                 LastModifiedAt = DateTime.UtcNow
             };

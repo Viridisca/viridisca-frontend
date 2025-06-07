@@ -6,9 +6,9 @@ using ViridiscaUi.ViewModels.Education;
 using ViridiscaUi.ViewModels.System;
 using ViridiscaUi.Views.Auth;
 using ViridiscaUi.Views.Common;
+using ViridiscaUi.Views.System;
 using ViridiscaUi.Views.Education;
 using ViridiscaUi.Windows;
-using ViridiscaUi.Views.Common.System;
 
 namespace ViridiscaUi.Infrastructure;
 

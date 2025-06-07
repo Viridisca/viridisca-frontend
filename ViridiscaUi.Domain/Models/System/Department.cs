@@ -1,126 +1,78 @@
-using ViridiscaUi.Domain.Models.Education;
-using System.Collections.ObjectModel;
+using System;
+using System.Collections.Generic;
 using ViridiscaUi.Domain.Models.Base;
-using ReactiveUI;
+using ViridiscaUi.Domain.Models.Education;
 
 namespace ViridiscaUi.Domain.Models.System;
 
 /// <summary>
 /// Департамент/Кафедра учебного заведения
 /// </summary>
-public class Department : ViewModelBase
+public class Department : AuditableEntity
 {
-    private string _name = string.Empty;
-    private string _description = string.Empty;
-    private string _code = string.Empty;
-
-    private Guid? _headOfDepartmentUid;
-    private Teacher? _headOfDepartment;
-    
-    private bool _isActive;
-
-    private ObservableCollection<Teacher> _teachers = [];
-    private ObservableCollection<Subject> _subjects = [];
-    private ObservableCollection<Group> _groups = [];
-
     /// <summary>
     /// Название департамента
     /// </summary>
-    public string Name
-    {
-        get => _name;
-        set => this.RaiseAndSetIfChanged(ref _name, value);
-    }
+    public string Name { get; set; } = string.Empty;
 
     /// <summary>
     /// Описание департамента
     /// </summary>
-    public string Description
-    {
-        get => _description;
-        set => this.RaiseAndSetIfChanged(ref _description, value);
-    }
+    public string Description { get; set; } = string.Empty;
 
     /// <summary>
     /// Код департамента
     /// </summary>
-    public string Code
-    {
-        get => _code;
-        set => this.RaiseAndSetIfChanged(ref _code, value);
-    }
+    public string Code { get; set; } = string.Empty;
 
     /// <summary>
     /// Идентификатор заведующего кафедрой
     /// </summary>
-    public Guid? HeadOfDepartmentUid
-    {
-        get => _headOfDepartmentUid;
-        set => this.RaiseAndSetIfChanged(ref _headOfDepartmentUid, value);
-    }
+    public Guid? HeadOfDepartmentUid { get; set; }
 
     /// <summary>
     /// Заведующий кафедрой
     /// </summary>
-    public Teacher? HeadOfDepartment
-    {
-        get => _headOfDepartment;
-        set => this.RaiseAndSetIfChanged(ref _headOfDepartment, value);
-    }
+    public Teacher? HeadOfDepartment { get; set; }
 
     /// <summary>
     /// Флаг активности департамента
     /// </summary>
-    public bool IsActive
-    {
-        get => _isActive;
-        set => this.RaiseAndSetIfChanged(ref _isActive, value);
-    }
+    public bool IsActive { get; set; }
 
     /// <summary>
-    /// Предметы департамента
+    /// Преподаватели, приписанные к департаменту
     /// </summary>
-    public ObservableCollection<Subject> Subjects
-    {
-        get => _subjects;
-        set => this.RaiseAndSetIfChanged(ref _subjects, value);
-    }
-
+    public ICollection<Teacher> Teachers { get; set; } = new List<Teacher>();
+    
     /// <summary>
-    /// Группы департамента
+    /// Предметы, закрепленные за департаментом
     /// </summary>
-    public ObservableCollection<Group> Groups
-    {
-        get => _groups;
-        set => this.RaiseAndSetIfChanged(ref _groups, value);
-    }
+    public ICollection<Subject> Subjects { get; set; } = new List<Subject>();
 
     /// <summary>
-    /// Преподаватели департамента
+    /// Группы, относящиеся к департаменту
     /// </summary>
-    public ObservableCollection<Teacher> Teachers
-    {
-        get => _teachers;
-        set => this.RaiseAndSetIfChanged(ref _teachers, value);
-    }
+    public ICollection<Group> Groups { get; set; } = new List<Group>();
 
     /// <summary>
-    /// Создает новый экземпляр департамента
+    /// Конструктор по умолчанию
     /// </summary>
     public Department()
     {
-        _isActive = true;
+        Uid = Guid.NewGuid();
+        CreatedAt = DateTime.UtcNow;
+        LastModifiedAt = DateTime.UtcNow;
+        IsActive = true;
     }
 
     /// <summary>
-    /// Создает новый экземпляр департамента с указанными параметрами
+    /// Конструктор с параметрами
     /// </summary>
-    public Department(string name, string code, string description = "")
+    public Department(string name, string code, string description) : this()
     {
-        Uid = Guid.NewGuid();
-        _name = name;
-        _code = code;
-        _description = description;
-        _isActive = true;
+        Name = name;
+        Code = code;
+        Description = description;
     }
 } 

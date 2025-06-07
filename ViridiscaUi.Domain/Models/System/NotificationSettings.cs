@@ -1,121 +1,56 @@
 using System;
-using System.Collections.Generic;
-using ReactiveUI;
 using ViridiscaUi.Domain.Models.Base;
 using ViridiscaUi.Domain.Models.System.Enums;
+using ViridiscaUi.Domain.Models.Auth;
 
 namespace ViridiscaUi.Domain.Models.System;
 
 /// <summary>
 /// Настройки уведомлений пользователя
 /// </summary>
-public class NotificationSettings : ViewModelBase
+public class NotificationSettings : AuditableEntity
 {
-    private Guid _userUid;
-    private bool _emailNotifications = true;
-    private bool _pushNotifications = true;
-    private bool _smsNotifications = false;
-    private TimeSpan _quietHoursStart = TimeSpan.FromHours(22);
-    private TimeSpan _quietHoursEnd = TimeSpan.FromHours(8);
-    private bool _weekendNotifications = false;
-    private NotificationPriority _minimumPriority = NotificationPriority.Low;
-
     /// <summary>
     /// Идентификатор пользователя
     /// </summary>
-    public Guid UserUid
-    {
-        get => _userUid;
-        set => this.RaiseAndSetIfChanged(ref _userUid, value);
+    public Guid PersonUid { get; set; }
+
+    /// <summary>
+    /// Идентификатор пользователя (алиас для совместимости)
+    /// </summary>
+    public Guid UserUid 
+    { 
+        get => PersonUid; 
+        set => PersonUid = value; 
     }
 
     /// <summary>
     /// Включены ли email уведомления
     /// </summary>
-    public bool EmailNotifications
-    {
-        get => _emailNotifications;
-        set => this.RaiseAndSetIfChanged(ref _emailNotifications, value);
-    }
-
-    /// <summary>
-    /// Включены ли push уведомления
-    /// </summary>
-    public bool PushNotifications
-    {
-        get => _pushNotifications;
-        set => this.RaiseAndSetIfChanged(ref _pushNotifications, value);
-    }
+    public bool EmailNotifications { get; set; } = true;
 
     /// <summary>
     /// Включены ли SMS уведомления
     /// </summary>
-    public bool SmsNotifications
-    {
-        get => _smsNotifications;
-        set => this.RaiseAndSetIfChanged(ref _smsNotifications, value);
-    }
+    public bool SmsNotifications { get; set; } = false;
 
     /// <summary>
-    /// Начало тихих часов
+    /// Включены ли push уведомления
     /// </summary>
-    public TimeSpan QuietHoursStart
-    {
-        get => _quietHoursStart;
-        set => this.RaiseAndSetIfChanged(ref _quietHoursStart, value);
-    }
+    public bool PushNotifications { get; set; } = true;
 
     /// <summary>
-    /// Конец тихих часов
+    /// Минимальный приоритет уведомлений для отправки
     /// </summary>
-    public TimeSpan QuietHoursEnd
-    {
-        get => _quietHoursEnd;
-        set => this.RaiseAndSetIfChanged(ref _quietHoursEnd, value);
-    }
+    public NotificationPriority MinimumPriority { get; set; } = NotificationPriority.Low;
 
     /// <summary>
-    /// Включены ли уведомления в выходные
+    /// JSON-строка для хранения настроек по типам уведомлений
     /// </summary>
-    public bool WeekendNotifications
-    {
-        get => _weekendNotifications;
-        set => this.RaiseAndSetIfChanged(ref _weekendNotifications, value);
-    }
-
+    public string? TypeSettingsJson { get; set; }
+    
     /// <summary>
-    /// Минимальный приоритет уведомлений
+    /// Пользователь
     /// </summary>
-    public NotificationPriority MinimumPriority
-    {
-        get => _minimumPriority;
-        set => this.RaiseAndSetIfChanged(ref _minimumPriority, value);
-    }
-
-    /// <summary>
-    /// Настройки по типам уведомлений
-    /// </summary>
-    public Dictionary<NotificationType, bool> TypeSettings { get; set; } = new();
-
-    /// <summary>
-    /// Настройки по категориям уведомлений
-    /// </summary>
-    public Dictionary<string, bool> CategorySettings { get; set; } = new();
-
-    /// <summary>
-    /// Создает новый экземпляр настроек уведомлений
-    /// </summary>
-    public NotificationSettings()
-    {
-        Uid = Guid.NewGuid();
-    }
-
-    /// <summary>
-    /// Создает новый экземпляр настроек уведомлений для пользователя
-    /// </summary>
-    public NotificationSettings(Guid userUid)
-    {
-        Uid = Guid.NewGuid();
-        _userUid = userUid;
-    }
+    public Person? Person { get; set; }
 } 

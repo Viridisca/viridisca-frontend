@@ -1,210 +1,107 @@
-using System.Collections.ObjectModel;
+using System;
+using System.Collections.Generic;
 using ViridiscaUi.Domain.Models.Base;
 using ViridiscaUi.Domain.Models.System;
-using ReactiveUI;
 
 namespace ViridiscaUi.Domain.Models.Education;
 
 /// <summary>
 /// Учебный предмет
 /// </summary>
-public class Subject : ViewModelBase
+public class Subject : AuditableEntity
 {
-    private string _code = string.Empty;
-    private string _name = string.Empty;
-    private string _description = string.Empty;
-    private string _prerequisites = string.Empty;
-    private string _learningOutcomes = string.Empty;
-
-    private int _credits;
-    private int _lessonsPerWeek;
-
-    private SubjectType _type;
-
-    private bool _isActive;
-
-    private Guid? _departmentUid;
-    private Department? _department;
-
     /// <summary>
     /// Код предмета
     /// </summary>
-    public string Code
-    {
-        get => _code;
-        set => this.RaiseAndSetIfChanged(ref _code, value);
-    }
+    public string Code { get; set; } = string.Empty;
 
     /// <summary>
     /// Название предмета
     /// </summary>
-    public string Name
-    {
-        get => _name;
-        set => this.RaiseAndSetIfChanged(ref _name, value);
-    }
+    public string Name { get; set; } = string.Empty;
 
     /// <summary>
     /// Описание предмета
     /// </summary>
-    public string Description
-    {
-        get => _description;
-        set => this.RaiseAndSetIfChanged(ref _description, value);
-    }
+    public string? Description { get; set; }
+
+    /// <summary>
+    /// Категория предмета
+    /// </summary>
+    public string? Category { get; set; }
 
     /// <summary>
     /// Пререквизиты (предварительные требования)
     /// </summary>
-    public string Prerequisites
-    {
-        get => _prerequisites;
-        set => this.RaiseAndSetIfChanged(ref _prerequisites, value);
-    }
+    public string? Prerequisites { get; set; }
 
     /// <summary>
     /// Результаты обучения
     /// </summary>
-    public string LearningOutcomes
-    {
-        get => _learningOutcomes;
-        set => this.RaiseAndSetIfChanged(ref _learningOutcomes, value);
-    }
+    public string? LearningOutcomes { get; set; }
 
     /// <summary>
     /// Количество кредитов
     /// </summary>
-    public int Credits
-    {
-        get => _credits;
-        set => this.RaiseAndSetIfChanged(ref _credits, value);
-    }
+    public int Credits { get; set; }
 
     /// <summary>
-    /// Количество уроков в неделю
+    /// Количество занятий в неделю
     /// </summary>
-    public int LessonsPerWeek
-    {
-        get => _lessonsPerWeek;
-        set => this.RaiseAndSetIfChanged(ref _lessonsPerWeek, value);
-    }
-
+    public int LessonsPerWeek { get; set; } = 1;
+    
     /// <summary>
     /// Тип предмета
     /// </summary>
-    public SubjectType Type
-    {
-        get => _type;
-        set => this.RaiseAndSetIfChanged(ref _type, value);
-    }
+    public SubjectType Type { get; set; }
 
     /// <summary>
     /// Идентификатор кафедры/отдела
     /// </summary>
-    public Guid? DepartmentUid
-    {
-        get => _departmentUid;
-        set => this.RaiseAndSetIfChanged(ref _departmentUid, value);
-    }
+    public Guid? DepartmentUid { get; set; }
 
     /// <summary>
     /// Кафедра/отдел
     /// </summary>
-    public Department? Department
-    {
-        get => _department;
-        set => this.RaiseAndSetIfChanged(ref _department, value);
-    }
+    public Department? Department { get; set; }
 
     /// <summary>
     /// Флаг активности предмета
     /// </summary>
-    public bool IsActive
-    {
-        get => _isActive;
-        set => this.RaiseAndSetIfChanged(ref _isActive, value);
-    }
-
+    public bool IsActive { get; set; } = true;
+    
     /// <summary>
-    /// Отображаемый тип предмета
+    /// Экземпляры курса по этому предмету
     /// </summary>
-    public string TypeDisplayName => Type.GetDisplayName();
+    public ICollection<CourseInstance> CourseInstances { get; set; } = new List<CourseInstance>();
+    
+    /// <summary>
+    /// Предметы в учебных планах
+    /// </summary>
+    public ICollection<CurriculumSubject> CurriculumSubjects { get; set; } = new List<CurriculumSubject>();
 
     /// <summary>
-    /// Создает новый экземпляр предмета
+    /// Конструктор по умолчанию
     /// </summary>
     public Subject()
     {
         Uid = Guid.NewGuid();
         CreatedAt = DateTime.UtcNow;
         LastModifiedAt = DateTime.UtcNow;
-        _isActive = true;
+        IsActive = true;
     }
 
     /// <summary>
-    /// Создает новый экземпляр предмета с указанными параметрами
+    /// Конструктор с параметрами
     /// </summary>
-    public Subject(
-        string code,
-        string name,
-        string description,
-        int credits,
-        int lessonsPerWeek,
-        SubjectType type,
-        Guid departmentUid)
+    public Subject(string code, string name, string description, int credits, SubjectType type, string category, Guid? departmentUid) : this()
     {
-        Uid = Guid.NewGuid();
-        CreatedAt = DateTime.UtcNow;
-        LastModifiedAt = DateTime.UtcNow;
-        _code = code.Trim();
-        _name = name.Trim();
-        _description = description;
-        _credits = credits;
-        _lessonsPerWeek = lessonsPerWeek;
-        _type = type;
-        _departmentUid = departmentUid;
-        _isActive = true;
-    }
-
-    /// <summary>
-    /// Обновляет основную информацию о предмете
-    /// </summary>
-    public void UpdateDetails(
-        string name,
-        string description,
-        int credits,
-        int lessonsPerWeek,
-        SubjectType type)
-    {
-        if (string.IsNullOrWhiteSpace(name))
-            return;
-
-        if (credits <= 0 || lessonsPerWeek <= 0)
-            return;
-
-        Name = name.Trim();
+        Code = code;
+        Name = name;
         Description = description;
         Credits = credits;
-        LessonsPerWeek = lessonsPerWeek;
         Type = type;
-        LastModifiedAt = DateTime.UtcNow;
-    }
-
-    /// <summary>
-    /// Активирует предмет
-    /// </summary>
-    public void Activate()
-    {
-        IsActive = true;
-        LastModifiedAt = DateTime.UtcNow;
-    }
-
-    /// <summary>
-    /// Деактивирует предмет
-    /// </summary>
-    public void Deactivate()
-    {
-        IsActive = false;
-        LastModifiedAt = DateTime.UtcNow;
+        Category = category;
+        DepartmentUid = departmentUid;
     }
 } 

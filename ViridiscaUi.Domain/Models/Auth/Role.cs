@@ -1,79 +1,40 @@
+using System.Collections.Generic;
 using ViridiscaUi.Domain.Models.Base;
-using ReactiveUI;
 
 namespace ViridiscaUi.Domain.Models.Auth;
 
 /// <summary>
 /// Роль в системе
 /// </summary>
-public class Role : ViewModelBase
+public class Role : AuditableEntity
 {
-    private RoleType _roleType;
-
-    private string _name = string.Empty;
-    private string _description = string.Empty;
-
-    /// <summary>
-    /// Тип роли
-    /// </summary>
-    public RoleType RoleType
-    {
-        get => _roleType;
-        set => this.RaiseAndSetIfChanged(ref _roleType, value);
-    }
-
     /// <summary>
     /// Название роли
     /// </summary>
-    public string Name
-    {
-        get => _name;
-        set => this.RaiseAndSetIfChanged(ref _name, value);
-    }
-
-    /// <summary>
-    /// Описание роли
-    /// </summary>
-    public string Description
-    {
-        get => _description;
-        set => this.RaiseAndSetIfChanged(ref _description, value);
-    }
+    public string Name { get; set; } = string.Empty;
 
     /// <summary>
     /// Отображаемое название роли
     /// </summary>
-    public string DisplayName => RoleType.GetDisplayName();
+    public string DisplayName { get; set; } = string.Empty;
 
     /// <summary>
-    /// Создает новый экземпляр роли
+    /// Описание роли
     /// </summary>
-    public Role()
-    {
-    }
+    public string Description { get; set; } = string.Empty;
 
     /// <summary>
-    /// Создает новый экземпляр роли с указанными параметрами
+    /// Тип роли (для совместимости)
     /// </summary>
-    public Role(Guid uid, RoleType roleType, string name, string description)
-    {
-        Uid = uid;
-        _roleType = roleType;
-        _name = name;
-        _description = description;
-    }
+    public string? RoleType { get; set; }
 
     /// <summary>
-    /// Создает новый экземпляр роли с типом
+    /// Связи с разрешениями
     /// </summary>
-    public static Role Create(RoleType roleType)
-    {
-        return new Role
-        {
-            Uid = Guid.NewGuid(),
-            RoleType = roleType,
-            Name = roleType.ToString(),
-            Description = roleType.GetDisplayName()
-        };
-    }
+    public ICollection<RolePermission> RolePermissions { get; set; } = new List<RolePermission>();
+
+    /// <summary>
+    /// Роли пользователей
+    /// </summary>
+    public ICollection<PersonRole> PersonRoles { get; set; } = new List<PersonRole>();
 } 

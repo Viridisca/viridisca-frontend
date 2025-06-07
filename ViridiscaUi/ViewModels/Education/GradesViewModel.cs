@@ -312,7 +312,7 @@ namespace ViridiscaUi.ViewModels.Education
                 TeacherUid = Guid.NewGuid(), // Заглушка
                 Value = 0,
                 Comment = "Новая оценка",
-                GradedAt = DateTime.UtcNow,
+                IssuedAt = DateTime.UtcNow,
                 CreatedAt = DateTime.UtcNow,
                 LastModifiedAt = DateTime.UtcNow
             };

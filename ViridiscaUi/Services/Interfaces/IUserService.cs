@@ -53,7 +53,7 @@ public interface IPersonService
     /// <summary>
     /// Назначает роль человеку
     /// </summary>
-    Task<bool> AssignRoleAsync(Guid personUid, Guid roleUid, string? context = null, DateTime? validUntil = null, string? assignedBy = null);
+    Task<bool> AssignRoleAsync(Guid personUid, Guid roleUid, string? context = null, DateTime? validUntil = null, Guid? assignedBy = null);
     
     /// <summary>
     /// Отзывает роль у человека
@@ -79,4 +79,9 @@ public interface IPersonService
     /// Поиск людей по имени или email
     /// </summary>
     Task<IEnumerable<Person>> SearchPersonsAsync(string searchTerm);
+    
+    /// <summary>
+    /// Получает аккаунт человека
+    /// </summary>
+    Task<Account?> GetPersonAccountAsync(Guid personUid);
 }

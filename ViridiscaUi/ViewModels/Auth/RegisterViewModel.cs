@@ -22,6 +22,8 @@ namespace ViridiscaUi.ViewModels.Auth
         private readonly IAuthService _authService;
         private readonly IUnifiedNavigationService _navigationService;
         private readonly IRoleService _roleService;
+        private readonly INotificationService _notificationService;
+        private readonly IPersonSessionService _personSessionService;
 
         /// <summary>
         /// URL-сегмент для навигации
@@ -91,12 +93,12 @@ namespace ViridiscaUi.ViewModels.Auth
         /// <summary>
         /// Команда для регистрации пользователя
         /// </summary>
-        public ReactiveCommand<Unit, Unit> RegisterCommand { get; private set; }
+        public ReactiveCommand<Unit, Unit> RegisterCommand { get; private set; } = null!;
 
         /// <summary>
         /// Команда для перехода на страницу входа
         /// </summary>
-        public ReactiveCommand<Unit, Unit> GoToLoginCommand { get; private set; }
+        public ReactiveCommand<Unit, Unit> GoToLoginCommand { get; private set; } = null!;
 
         /// <summary>
         /// Создает новый экземпляр ViewModel для регистрации пользователя
@@ -106,12 +108,20 @@ namespace ViridiscaUi.ViewModels.Auth
         /// <param name="roleService">Сервис ролей</param>
         /// <param name="hostScreen">Родительский экран</param>
         /// <param name="viewModelFactory">Фабрика ViewModel</param>
-        public RegisterViewModel(IAuthService authService, IUnifiedNavigationService navigationService, IRoleService roleService, IScreen hostScreen) 
+        public RegisterViewModel(
+            IScreen hostScreen, 
+            IAuthService authService,
+            IUnifiedNavigationService navigationService,
+            IRoleService roleService,
+            INotificationService notificationService,
+            IPersonSessionService personSessionService) 
             : base(hostScreen)
         {
             _authService = authService ?? throw new ArgumentNullException(nameof(authService));
             _navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
             _roleService = roleService ?? throw new ArgumentNullException(nameof(roleService));
+            _notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
+            _personSessionService = personSessionService ?? throw new ArgumentNullException(nameof(personSessionService));
 
             InitializeCommands();
             
@@ -236,3 +246,4 @@ namespace ViridiscaUi.ViewModels.Auth
         }
     }
 }
+

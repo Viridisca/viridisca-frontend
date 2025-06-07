@@ -1,130 +1,80 @@
+using System;
+using System.Collections.Generic;
 using ViridiscaUi.Domain.Models.Base;
-using ReactiveUI;
-using System.Collections.ObjectModel;
 
 namespace ViridiscaUi.Domain.Models.Auth;
 
 /// <summary>
 /// Базовая сущность для всех людей в системе
 /// </summary>
-public class Person : ViewModelBase
+public class Person : AuditableEntity
 {
-    private string _firstName = string.Empty;
-    private string _lastName = string.Empty;
-    private string _middleName = string.Empty;
-    private string _email = string.Empty;
-    private string _phoneNumber = string.Empty;
-    private DateTime _dateOfBirth;
-    private string _profileImageUrl = string.Empty;
-    private string _address = string.Empty;
-    private bool _isActive = true;
-
-    private ObservableCollection<PersonRole> _personRoles = [];
-
     /// <summary>
     /// Имя
     /// </summary>
-    public string FirstName
-    {
-        get => _firstName;
-        set => this.RaiseAndSetIfChanged(ref _firstName, value);
-    }
+    public string FirstName { get; set; } = string.Empty;
 
     /// <summary>
     /// Фамилия
     /// </summary>
-    public string LastName
-    {
-        get => _lastName;
-        set => this.RaiseAndSetIfChanged(ref _lastName, value);
-    }
+    public string LastName { get; set; } = string.Empty;
 
     /// <summary>
     /// Отчество
     /// </summary>
-    public string MiddleName
-    {
-        get => _middleName;
-        set => this.RaiseAndSetIfChanged(ref _middleName, value);
-    }
+    public string? MiddleName { get; set; }
 
     /// <summary>
     /// Email
     /// </summary>
-    public string Email
-    {
-        get => _email;
-        set => this.RaiseAndSetIfChanged(ref _email, value);
-    }
+    public string Email { get; set; } = string.Empty;
 
     /// <summary>
     /// Телефон
     /// </summary>
-    public string PhoneNumber
-    {
-        get => _phoneNumber;
-        set => this.RaiseAndSetIfChanged(ref _phoneNumber, value);
+    public string? PhoneNumber { get; set; }
+
+    /// <summary>
+    /// Телефон (алиас для совместимости)
+    /// </summary>
+    public string? Phone 
+    { 
+        get => PhoneNumber; 
+        set => PhoneNumber = value; 
     }
 
     /// <summary>
     /// Дата рождения
     /// </summary>
-    public DateTime DateOfBirth
-    {
-        get => _dateOfBirth;
-        set => this.RaiseAndSetIfChanged(ref _dateOfBirth, value);
-    }
+    public DateTime? DateOfBirth { get; set; }
 
     /// <summary>
     /// URL изображения профиля
     /// </summary>
-    public string ProfileImageUrl
-    {
-        get => _profileImageUrl;
-        set => this.RaiseAndSetIfChanged(ref _profileImageUrl, value);
-    }
+    public string? ProfileImageUrl { get; set; }
 
     /// <summary>
     /// Адрес
     /// </summary>
-    public string Address
-    {
-        get => _address;
-        set => this.RaiseAndSetIfChanged(ref _address, value);
-    }
+    public string? Address { get; set; }
 
     /// <summary>
     /// Активен ли человек
     /// </summary>
-    public bool IsActive
-    {
-        get => _isActive;
-        set => this.RaiseAndSetIfChanged(ref _isActive, value);
-    }
+    public bool IsActive { get; set; } = true;
 
     /// <summary>
     /// Роли человека в системе
     /// </summary>
-    public ObservableCollection<PersonRole> PersonRoles
-    {
-        get => _personRoles;
-        set => this.RaiseAndSetIfChanged(ref _personRoles, value);
-    }
+    public ICollection<PersonRole> PersonRoles { get; set; } = new List<PersonRole>();
+    
+    /// <summary>
+    /// Аккаунт для аутентификации
+    /// </summary>
+    public Account? Account { get; set; }
 
     /// <summary>
     /// Полное имя
     /// </summary>
     public string FullName => $"{LastName} {FirstName} {MiddleName}".Trim();
-
-    /// <summary>
-    /// Возраст
-    /// </summary>
-    public int Age => DateTime.Now.Year - DateOfBirth.Year;
-
-    public Person()
-    {
-        Uid = Guid.NewGuid();
-        CreatedAt = DateTime.UtcNow;
-        LastModifiedAt = DateTime.UtcNow;
-    }
 } 

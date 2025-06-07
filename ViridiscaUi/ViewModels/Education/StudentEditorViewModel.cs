@@ -297,19 +297,21 @@ public class StudentEditorViewModel : RoutableViewModelBase
 
     private void PopulateForm(Student student)
     {
+        // Основные свойства из Person
         FirstName = student.Person?.FirstName ?? string.Empty;
         LastName = student.Person?.LastName ?? string.Empty;
         MiddleName = student.Person?.MiddleName ?? string.Empty;
         Email = student.Person?.Email ?? string.Empty;
         PhoneNumber = student.Person?.PhoneNumber ?? string.Empty;
+        BirthDate = student.Person?.DateOfBirth ?? DateTime.Now.AddYears(-18);
+
+        // Свойства Student
         StudentCode = student.StudentCode;
         EnrollmentDate = student.EnrollmentDate;
-        BirthDate = student.Person?.DateOfBirth ?? DateTime.Now;
         SelectedStatus = student.Status;
-        Address = student.Address ?? string.Empty;
-        EmergencyContactName = student.EmergencyContactName ?? string.Empty;
-        EmergencyContactPhone = student.EmergencyContactPhone ?? string.Empty;
-        MedicalInformation = student.MedicalInformation ?? string.Empty;
+
+        // Примечание: EmergencyContactName, EmergencyContactPhone, MedicalInformation 
+        // не существуют в модели Student - эти данные должны храниться отдельно
         
         // Выбираем группу из загруженного списка
         SelectedGroup = AvailableGroups.FirstOrDefault(g => g.Uid == student.GroupUid);
@@ -385,75 +387,68 @@ public class StudentEditorViewModel : RoutableViewModelBase
     {
         if (CurrentStudent == null || SelectedGroup == null) return;
 
-        // Update the existing Student object
-        CurrentStudent.StudentCode = StudentCode.Trim();
-        CurrentStudent.EnrollmentDate = EnrollmentDate;
-        CurrentStudent.GroupUid = SelectedGroup.Uid;
-        CurrentStudent.Status = SelectedStatus;
-        CurrentStudent.IsActive = SelectedStatus == StudentStatus.Active;
-        CurrentStudent.Address = Address.Trim();
-        CurrentStudent.EmergencyContactName = EmergencyContactName.Trim();
-        CurrentStudent.EmergencyContactPhone = EmergencyContactPhone.Trim();
-        CurrentStudent.MedicalInformation = MedicalInformation.Trim();
-        CurrentStudent.LastModifiedAt = DateTime.UtcNow;
-
-        // Update Person information if Person exists
         if (CurrentStudent.Person != null)
         {
-            CurrentStudent.Person.FirstName = FirstName.Trim();
-            CurrentStudent.Person.LastName = LastName.Trim();
-            CurrentStudent.Person.MiddleName = string.IsNullOrWhiteSpace(MiddleName) ? null : MiddleName.Trim();
-            CurrentStudent.Person.Email = Email.Trim();
-            CurrentStudent.Person.PhoneNumber = string.IsNullOrWhiteSpace(PhoneNumber) ? null : PhoneNumber.Trim();
+            // Обновляем данные Person
+            CurrentStudent.Person.FirstName = FirstName;
+            CurrentStudent.Person.LastName = LastName;
+            CurrentStudent.Person.MiddleName = MiddleName;
+            CurrentStudent.Person.Email = Email;
+            CurrentStudent.Person.PhoneNumber = PhoneNumber;
             CurrentStudent.Person.DateOfBirth = BirthDate;
-            CurrentStudent.Person.Address = Address.Trim();
-            CurrentStudent.Person.LastModifiedAt = DateTime.UtcNow;
-        }
 
-        await _studentService.UpdateStudentAsync(CurrentStudent);
-        LogInfo("Updated student: {StudentName}", $"{CurrentStudent.Person?.LastName} {CurrentStudent.Person?.FirstName}");
+            // Обновляем данные Student
+            CurrentStudent.StudentCode = StudentCode;
+            CurrentStudent.EnrollmentDate = EnrollmentDate;
+            CurrentStudent.Status = SelectedStatus;
+            CurrentStudent.GroupUid = SelectedGroup.Uid;
+
+            // Примечание: IsActive - read-only свойство, вычисляется автоматически
+            // EmergencyContactName, EmergencyContactPhone, MedicalInformation не существуют
+
+            var success = await _studentService.UpdateStudentAsync(CurrentStudent);
+            if (success)
+            {
+                ShowSuccess($"Студент '{CurrentStudent.Person.FirstName} {CurrentStudent.Person.LastName}' обновлен");
+            }
+            else
+            {
+                SetError("Ошибка обновления студента");
+            }
+        }
     }
 
     private async Task CreateStudentAsync()
     {
         if (SelectedGroup == null) return;
 
-        // Create Person first
-        var person = new Person
-        {
-            Uid = Guid.NewGuid(),
-            FirstName = FirstName.Trim(),
-            LastName = LastName.Trim(),
-            MiddleName = string.IsNullOrWhiteSpace(MiddleName) ? null : MiddleName.Trim(),
-            Email = Email.Trim(),
-            PhoneNumber = string.IsNullOrWhiteSpace(PhoneNumber) ? null : PhoneNumber.Trim(),
-            DateOfBirth = BirthDate,
-            Address = Address.Trim(),
-            CreatedAt = DateTime.UtcNow,
-            LastModifiedAt = DateTime.UtcNow
-        };
-
-        // Create Student with Person
+        // Создаем нового студента
         var newStudent = new Student
         {
-            Uid = Guid.NewGuid(),
-            PersonUid = person.Uid,
-            Person = person,
-            StudentCode = StudentCode.Trim(),
+            StudentCode = StudentCode,
             EnrollmentDate = EnrollmentDate,
-            GroupUid = SelectedGroup.Uid,
             Status = SelectedStatus,
-            IsActive = SelectedStatus == StudentStatus.Active,
-            Address = Address.Trim(),
-            EmergencyContactName = EmergencyContactName.Trim(),
-            EmergencyContactPhone = EmergencyContactPhone.Trim(),
-            MedicalInformation = MedicalInformation.Trim(),
-            CreatedAt = DateTime.UtcNow,
-            LastModifiedAt = DateTime.UtcNow
+            GroupUid = SelectedGroup.Uid,
+            Person = new Person
+            {
+                FirstName = FirstName,
+                LastName = LastName,
+                MiddleName = MiddleName,
+                Email = Email,
+                PhoneNumber = PhoneNumber,
+                DateOfBirth = BirthDate
+            }
         };
 
-        await _studentService.CreateStudentAsync(newStudent);
-        LogInfo("Created student: {StudentName}", $"{newStudent.Person?.LastName} {newStudent.Person?.FirstName}");
+        var createdStudent = await _studentService.CreateStudentAsync(newStudent);
+        if (createdStudent != null)
+        {
+            ShowSuccess($"Студент '{createdStudent.Person?.FirstName} {createdStudent.Person?.LastName}' создан");
+        }
+        else
+        {
+            SetError("Ошибка создания студента");
+        }
     }
 
     private async Task DeleteAsync()

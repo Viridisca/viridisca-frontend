@@ -250,20 +250,20 @@ namespace ViridiscaUi.ViewModels.Education
 
         private void PopulateForm(CourseInstance courseInstance)
         {
+            // Основные свойства
             Name = courseInstance.Name;
             Code = courseInstance.Code;
-            Description = courseInstance.Description ?? string.Empty;
-            Category = courseInstance.Category;
-            StartDate = courseInstance.StartDate ?? DateTime.Now;
+            Description = courseInstance.Description;
+            StartDate = courseInstance.StartDate;
             EndDate = courseInstance.EndDate ?? DateTime.Now.AddMonths(4);
-            Credits = courseInstance.Credits;
-            SelectedStatus = ParseCourseStatus(courseInstance.Status);
-            Prerequisites = courseInstance.Prerequisites ?? string.Empty;
-            LearningOutcomes = courseInstance.LearningOutcomes ?? string.Empty;
             MaxEnrollments = courseInstance.MaxEnrollments;
-            
+            SelectedStatus = courseInstance.Status;
+
             // Выбираем преподавателя из загруженного списка
             SelectedTeacher = AvailableTeachers.FirstOrDefault(t => t.Uid == courseInstance.TeacherUid);
+
+            // Дополнительные свойства для диалога деталей
+            CurrentCourseInstance = courseInstance;
         }
 
         private void SetupForCreation()
@@ -303,7 +303,7 @@ namespace ViridiscaUi.ViewModels.Education
                 IsSaving = true;
                 ClearError();
 
-                if (IsEditMode && CurrentCourseInstance != null)
+                if (CurrentCourseInstance != null)
                 {
                     await UpdateCourseInstanceAsync();
                 }
@@ -312,7 +312,7 @@ namespace ViridiscaUi.ViewModels.Education
                     await CreateCourseInstanceAsync();
                 }
 
-                ShowSuccess(IsEditMode ? "Курс обновлен" : "Курс создан");
+                ShowSuccess(CurrentCourseInstance != null ? "Курс обновлен" : "Курс создан");
                 
                 // Для диалогов не используем навигацию
                 if (_navigationService != null)
@@ -334,54 +334,51 @@ namespace ViridiscaUi.ViewModels.Education
         {
             if (CurrentCourseInstance == null || SelectedTeacher == null) return;
 
-            var updatedCourseInstance = new CourseInstance
-            {
-                Uid = CurrentCourseInstance.Uid,
-                Name = Name.Trim(),
-                Code = Code.Trim(),
-                Description = string.IsNullOrWhiteSpace(Description) ? null : Description.Trim(),
-                Category = Category,
-                TeacherUid = SelectedTeacher.Uid,
-                StartDate = StartDate,
-                EndDate = EndDate,
-                Credits = Credits,
-                Status = SelectedStatus.ToString(),
-                Prerequisites = string.IsNullOrWhiteSpace(Prerequisites) ? null : Prerequisites.Trim(),
-                LearningOutcomes = string.IsNullOrWhiteSpace(LearningOutcomes) ? null : LearningOutcomes.Trim(),
-                MaxEnrollments = MaxEnrollments,
-                CreatedAt = CurrentCourseInstance.CreatedAt,
-                LastModifiedAt = DateTime.UtcNow
-            };
+            // Обновляем существующий экземпляр курса
+            CurrentCourseInstance.Name = Name;
+            CurrentCourseInstance.Code = Code;
+            CurrentCourseInstance.Description = Description;
+            CurrentCourseInstance.StartDate = StartDate;
+            CurrentCourseInstance.EndDate = EndDate;
+            CurrentCourseInstance.MaxEnrollments = MaxEnrollments;
+            CurrentCourseInstance.Status = SelectedStatus;
+            CurrentCourseInstance.TeacherUid = SelectedTeacher.Uid;
 
-            await _courseInstanceService.UpdateCourseInstanceAsync(updatedCourseInstance);
-            LogInfo("Updated course: {CourseName}", updatedCourseInstance.Name);
+            var success = await _courseInstanceService.UpdateAsync(CurrentCourseInstance);
+            if (success)
+            {
+                ShowSuccess($"Курс '{CurrentCourseInstance.Name}' обновлен");
+                // Для диалогов не используем навигацию
+            }
+            else
+            {
+                SetError("Ошибка обновления экземпляра курса");
+            }
         }
 
         private async Task CreateCourseInstanceAsync()
         {
             if (SelectedTeacher == null) return;
 
+            // Создаем новый экземпляр курса
             var newCourseInstance = new CourseInstance
             {
-                Uid = Guid.NewGuid(),
-                Name = Name.Trim(),
-                Code = Code.Trim(),
-                Description = string.IsNullOrWhiteSpace(Description) ? null : Description.Trim(),
-                Category = Category, // CategoryUid,
-                TeacherUid = SelectedTeacher.Uid,
+                Name = Name,
+                Code = Code,
+                Description = Description,
                 StartDate = StartDate,
                 EndDate = EndDate,
-                Credits = Credits,
-                Status = SelectedStatus.ToString(),
-                Prerequisites = string.IsNullOrWhiteSpace(Prerequisites) ? null : Prerequisites.Trim(),
-                LearningOutcomes = string.IsNullOrWhiteSpace(LearningOutcomes) ? null : LearningOutcomes.Trim(),
                 MaxEnrollments = MaxEnrollments,
-                CreatedAt = DateTime.UtcNow,
-                LastModifiedAt = DateTime.UtcNow
+                Status = SelectedStatus,
+                TeacherUid = SelectedTeacher.Uid
             };
 
-            await _courseInstanceService.AddCourseInstanceAsync(newCourseInstance);
-            LogInfo("Created course: {CourseName}", newCourseInstance.Name);
+            var createdCourseInstance = await _courseInstanceService.CreateAsync(newCourseInstance);
+            if (createdCourseInstance != null)
+            {
+                ShowSuccess($"Курс '{createdCourseInstance.Name}' создан");
+                // Для диалогов не используем навигацию
+            }
         }
 
         private async Task DeleteAsync()
@@ -540,9 +537,9 @@ namespace ViridiscaUi.ViewModels.Education
             }
 
             // Вычисляем продолжительность курса
-            if (courseInstance.StartDate.HasValue && courseInstance.EndDate.HasValue)
+            if (courseInstance.EndDate != null)
             {
-                var duration = courseInstance.EndDate.Value - courseInstance.StartDate.Value;
+                var duration = courseInstance.EndDate.Value - courseInstance.StartDate;
                 CourseDuration = $"{duration.Days} дней ({Math.Round(duration.TotalDays / 7, 1)} недель)";
             }
             else

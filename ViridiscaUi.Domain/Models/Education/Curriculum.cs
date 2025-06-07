@@ -1,124 +1,33 @@
+using System;
+using System.Collections.Generic;
 using ViridiscaUi.Domain.Models.Base;
-using ReactiveUI;
-using System.Collections.ObjectModel;
+using ViridiscaUi.Domain.Models.System;
 
 namespace ViridiscaUi.Domain.Models.Education;
 
 /// <summary>
 /// Учебный план
 /// </summary>
-public class Curriculum : ViewModelBase
+public class Curriculum : AuditableEntity
 {
-    private string _name = string.Empty;
-    private string _description = string.Empty;
-    private int _totalCredits;
-    private int _durationInSemesters;
-    private bool _isActive = true;
-    private DateTime _validFrom;
-    private DateTime? _validTo;
-
-    private ObservableCollection<CurriculumSubject> _curriculumSubjects = [];
-    private ObservableCollection<Student> _students = [];
-
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string? Code { get; set; }
+    public int TotalCredits { get; set; }
+    public int DurationSemesters { get; set; }
+    
     /// <summary>
-    /// Название учебного плана
+    /// Продолжительность в месяцах
     /// </summary>
-    public string Name
-    {
-        get => _name;
-        set => this.RaiseAndSetIfChanged(ref _name, value);
-    }
-
-    /// <summary>
-    /// Описание
-    /// </summary>
-    public string Description
-    {
-        get => _description;
-        set => this.RaiseAndSetIfChanged(ref _description, value);
-    }
-
-    /// <summary>
-    /// Общее количество кредитов
-    /// </summary>
-    public int TotalCredits
-    {
-        get => _totalCredits;
-        set => this.RaiseAndSetIfChanged(ref _totalCredits, value);
-    }
-
-    /// <summary>
-    /// Продолжительность в семестрах
-    /// </summary>
-    public int DurationInSemesters
-    {
-        get => _durationInSemesters;
-        set => this.RaiseAndSetIfChanged(ref _durationInSemesters, value);
-    }
-
-    /// <summary>
-    /// Активен ли план
-    /// </summary>
-    public bool IsActive
-    {
-        get => _isActive;
-        set => this.RaiseAndSetIfChanged(ref _isActive, value);
-    }
-
-    /// <summary>
-    /// Действует с
-    /// </summary>
-    public DateTime ValidFrom
-    {
-        get => _validFrom;
-        set => this.RaiseAndSetIfChanged(ref _validFrom, value);
-    }
-
-    /// <summary>
-    /// Действует до
-    /// </summary>
-    public DateTime? ValidTo
-    {
-        get => _validTo;
-        set => this.RaiseAndSetIfChanged(ref _validTo, value);
-    }
-
-    /// <summary>
-    /// Предметы в учебном плане
-    /// </summary>
-    public ObservableCollection<CurriculumSubject> CurriculumSubjects
-    {
-        get => _curriculumSubjects;
-        set => this.RaiseAndSetIfChanged(ref _curriculumSubjects, value);
-    }
-
-    /// <summary>
-    /// Студенты, обучающиеся по этому плану
-    /// </summary>
-    public ObservableCollection<Student> Students
-    {
-        get => _students;
-        set => this.RaiseAndSetIfChanged(ref _students, value);
-    }
-
-    /// <summary>
-    /// Количество предметов в плане
-    /// </summary>
-    public int SubjectsCount => CurriculumSubjects.Count;
-
-    /// <summary>
-    /// Действует ли план в указанную дату
-    /// </summary>
-    public bool IsValidForDate(DateTime date)
-    {
-        return date >= ValidFrom && (!ValidTo.HasValue || date <= ValidTo.Value);
-    }
-
-    public Curriculum()
-    {
-        Uid = Guid.NewGuid();
-        CreatedAt = DateTime.UtcNow;
-        LastModifiedAt = DateTime.UtcNow;
-        ValidFrom = DateTime.UtcNow;
-    }
+    public int DurationMonths { get; set; }
+    
+    public bool IsActive { get; set; } = true;
+    public DateTime ValidFrom { get; set; }
+    public DateTime? ValidTo { get; set; }
+    public Guid? DepartmentUid { get; set; }
+    
+    public Department? Department { get; set; }
+    public ICollection<CurriculumSubject> CurriculumSubjects { get; set; } = new List<CurriculumSubject>();
+    public ICollection<Student> Students { get; set; } = new List<Student>();
+    public ICollection<Group> Groups { get; set; } = new List<Group>();
 } 

@@ -1,83 +1,47 @@
-using ViridiscaUi.Domain.Models.Base;
-using ReactiveUI;
+using System;
 
 namespace ViridiscaUi.Domain.Models.Auth;
 
 /// <summary>
 /// Модель ответа на запрос аутентификации
 /// </summary>
-public class LoginResponse : ViewModelBase
+public class LoginResponse
 {
-    private string _refreshToken = string.Empty;
-    private string _token = string.Empty;
-
-    private string _errorMessage = string.Empty;
-
-    private DateTime _expiresAt;
-    private bool _success;
-    
-    private Person? _person;
-
     /// <summary>
     /// Флаг успешной авторизации
     /// </summary>
-    public bool Success
-    {
-        get => _success;
-        set => this.RaiseAndSetIfChanged(ref _success, value);
-    }
+    public bool Success { get; set; }
 
     /// <summary>
     /// JWT токен доступа
     /// </summary>
-    public string Token
-    {
-        get => _token;
-        set => this.RaiseAndSetIfChanged(ref _token, value);
-    }
+    public string Token { get; set; } = string.Empty;
 
     /// <summary>
     /// Токен обновления
     /// </summary>
-    public string RefreshToken
-    {
-        get => _refreshToken;
-        set => this.RaiseAndSetIfChanged(ref _refreshToken, value);
-    }
+    public string RefreshToken { get; set; } = string.Empty;
 
     /// <summary>
     /// Время истечения токена
     /// </summary>
-    public DateTime ExpiresAt
-    {
-        get => _expiresAt;
-        set => this.RaiseAndSetIfChanged(ref _expiresAt, value);
-    }
+    public DateTime ExpiresAt { get; set; }
 
     /// <summary>
     /// Сообщение об ошибке (если авторизация не удалась)
     /// </summary>
-    public string ErrorMessage
-    {
-        get => _errorMessage;
-        set => this.RaiseAndSetIfChanged(ref _errorMessage, value);
-    }
+    public string ErrorMessage { get; set; } = string.Empty;
 
     /// <summary>
     /// Информация о пользователе
     /// </summary>
-    public Person? Person
-    {
-        get => _person;
-        set => this.RaiseAndSetIfChanged(ref _person, value);
-    }
+    public Person? Person { get; set; }
 
     /// <summary>
     /// Создает новый экземпляр ответа на запрос авторизации
     /// </summary>
     public LoginResponse()
     {
-        Uid = Guid.NewGuid();
     }
 
     /// <summary>
@@ -87,7 +51,6 @@ public class LoginResponse : ViewModelBase
     {
         var response = new LoginResponse
         {
-            Uid = Guid.NewGuid(),
             Success = true,
             Token = token,
             RefreshToken = refreshToken,
@@ -104,7 +67,6 @@ public class LoginResponse : ViewModelBase
     {
         var response = new LoginResponse
         {
-            Uid = Guid.NewGuid(),
             Success = false,
             ErrorMessage = errorMessage
         };

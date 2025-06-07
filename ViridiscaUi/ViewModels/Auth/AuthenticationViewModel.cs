@@ -15,6 +15,7 @@ namespace ViridiscaUi.ViewModels.Auth;
 
 /// <summary>
 /// ViewModel для объединенного представления авторизации (вход + регистрация)
+/// Обновлен для использования Enhanced Navigation System
 /// </summary>
 [Route("auth", DisplayName = "Авторизация", IconKey = "Lock", Order = 0, ShowInMenu = false, Description = "Страница входа и регистрации в системе")]
 public class AuthenticationViewModel : RoutableViewModelBase
@@ -97,19 +98,19 @@ public class AuthenticationViewModel : RoutableViewModelBase
     public string? ActionButtonText { get; }
 
     /// <summary>
-    /// Команда основного действия (вход/регистрация)
+    /// Команда выполнения основного действия (вход или регистрация)
     /// </summary>
-    public ReactiveCommand<Unit, Unit> ActionCommand { get; private set; }
+    public ReactiveCommand<Unit, Unit> ActionCommand { get; private set; } = null!;
 
     /// <summary>
     /// Команда переключения на режим входа
     /// </summary>
-    public ReactiveCommand<Unit, Unit> SwitchToLoginCommand { get; private set; }
+    public ReactiveCommand<Unit, Unit> SwitchToLoginCommand { get; private set; } = null!;
 
     /// <summary>
     /// Команда переключения на режим регистрации
     /// </summary>
-    public ReactiveCommand<Unit, Unit> SwitchToRegisterCommand { get; private set; }
+    public ReactiveCommand<Unit, Unit> SwitchToRegisterCommand { get; private set; } = null!;
 
     /// <summary>
     /// Создает новый экземпляр ViewModel для авторизации
@@ -125,7 +126,7 @@ public class AuthenticationViewModel : RoutableViewModelBase
         InitializeCommands();
         SetupSubscriptions();
 
-        LogInfo("AuthenticationViewModel initialized");
+        LogInfo("AuthenticationViewModel initialized with Unified Navigation");
     }
 
     /// <summary>
@@ -138,12 +139,14 @@ public class AuthenticationViewModel : RoutableViewModelBase
         {
             IsRegistrationMode = false;
             ClearErrors();
+            UpdateBreadcrumbs();
         }, null, "Ошибка переключения на режим входа");
 
         SwitchToRegisterCommand = CreateSyncCommand(() =>
         {
             IsRegistrationMode = true;
             ClearErrors();
+            UpdateBreadcrumbs();
             // Загружаем роли при переключении на режим регистрации
             _ = LoadRolesAsync();
         }, null, "Ошибка переключения на режим регистрации");
@@ -260,7 +263,7 @@ public class AuthenticationViewModel : RoutableViewModelBase
     }
 
     /// <summary>
-    /// Выполняет вход в систему
+    /// Выполняет вход в систему с Enhanced Navigation
     /// </summary>
     private async Task ExecuteLoginAsync()
     {
@@ -273,8 +276,8 @@ public class AuthenticationViewModel : RoutableViewModelBase
             _personSessionService.SetCurrentPerson(loginResult.Person);
             ShowSuccess($"Добро пожаловать, {loginResult.Person.FirstName}!");
             
-            // Навигация к главной странице
-            await _navigationService.NavigateAndResetAsync("home");
+            // Переходим на главную страницу
+            await _navigationService.NavigateToAsync("home");
         }
         else
         {
@@ -283,7 +286,7 @@ public class AuthenticationViewModel : RoutableViewModelBase
     }
 
     /// <summary>
-    /// Выполняет регистрацию нового пользователя
+    /// Выполняет регистрацию нового пользователя с Enhanced Navigation
     /// </summary>
     private async Task ExecuteRegistrationAsync()
     {
@@ -302,8 +305,8 @@ public class AuthenticationViewModel : RoutableViewModelBase
             _personSessionService.SetCurrentPerson(registerResult.Person);
             ShowSuccess($"Регистрация успешна! Добро пожаловать, {registerResult.Person.FirstName}!");
             
-            // Навигация к главной странице
-            await _navigationService.NavigateAndResetAsync("home");
+            // Переходим на главную страницу
+            await _navigationService.NavigateToAsync("home");
         }
         else
         {
@@ -315,6 +318,15 @@ public class AuthenticationViewModel : RoutableViewModelBase
     }
 
     /// <summary>
+    /// Обновляет breadcrumbs в зависимости от режима
+    /// </summary>
+    private void UpdateBreadcrumbs()
+    {
+        // TODO: Реализовать breadcrumbs когда будет доступно в IUnifiedNavigationService
+        LogInfo("Breadcrumbs updated for mode: {Mode}", IsRegistrationMode ? "Register" : "Login");
+    }
+
+    /// <summary>
     /// Очищает форму
     /// </summary>
     private void ClearForm()
@@ -323,4 +335,27 @@ public class AuthenticationViewModel : RoutableViewModelBase
         ConfirmPassword = string.Empty;
         // Остаемся с пустыми полями для удобства пользователя
     }
+
+    #region Lifecycle
+
+    protected override void OnFirstTimeLoaded()
+    {
+        base.OnFirstTimeLoaded();
+        UpdateBreadcrumbs();
+    }
+
+    protected override void OnActivated()
+    {
+        base.OnActivated();
+        
+        // При активации загружаем роли если в режиме регистрации
+        if (IsRegistrationMode)
+        {
+            _ = LoadRolesAsync();
+        }
+        
+        UpdateBreadcrumbs();
+    }
+
+    #endregion
 }

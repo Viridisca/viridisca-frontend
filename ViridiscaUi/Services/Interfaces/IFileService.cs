@@ -108,6 +108,16 @@ public interface IFileService
     /// Получает статистику использования хранилища
     /// </summary>
     Task<StorageStatistics> GetStorageStatisticsAsync();
+    
+    /// <summary>
+    /// Выбирает файл изображения через диалог
+    /// </summary>
+    Task<SelectedFile?> SelectImageFileAsync();
+    
+    /// <summary>
+    /// Загружает изображение профиля
+    /// </summary>
+    Task<FileUploadResult> UploadProfileImageAsync(SelectedFile selectedFile, Guid personUid);
 }
 
 /// <summary>
@@ -177,4 +187,16 @@ public class StorageStatistics
     public long UsedSpaceBytes { get; set; }
     public Dictionary<string, long> FileTypeStatistics { get; set; } = new();
     public DateTime LastUpdated { get; set; }
+}
+
+/// <summary>
+/// Выбранный файл
+/// </summary>
+public class SelectedFile
+{
+    public string Name { get; set; } = string.Empty;
+    public string Path { get; set; } = string.Empty;
+    public long Size { get; set; }
+    public string ContentType { get; set; } = string.Empty;
+    public Stream? Stream { get; set; }
 }

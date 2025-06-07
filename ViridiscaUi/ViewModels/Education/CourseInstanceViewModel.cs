@@ -371,7 +371,7 @@ public class CourseInstanceViewModel : ReactiveObject
             StartDate = StartDate,
             EndDate = EndDate,
             MaxEnrollments = MaxEnrollments,
-            Status = Status.ToString(),
+            Status = Status,
             CreatedAt = DateTime.UtcNow,
             LastModifiedAt = DateTime.UtcNow
         };
@@ -384,10 +384,10 @@ public class CourseInstanceViewModel : ReactiveObject
         TeacherUid = courseInstance.TeacherUid;
         GroupUid = courseInstance.GroupUid;
         AcademicPeriodUid = courseInstance.AcademicPeriodUid;
-        StartDate = courseInstance.StartDate ?? DateTime.Today;
+        StartDate = courseInstance.StartDate;
         EndDate = courseInstance.EndDate ?? DateTime.Today.AddMonths(4);
         MaxEnrollments = courseInstance.MaxEnrollments;
-        Status = ParseCourseStatus(courseInstance.Status);
+        Status = courseInstance.Status;
 
         // Set related entity names if available
         if (courseInstance.Subject != null)
@@ -418,6 +418,9 @@ public class CourseInstanceViewModel : ReactiveObject
             AcademicPeriodName = courseInstance.AcademicPeriod.Name;
             PeriodType = courseInstance.AcademicPeriod.Type;
         }
+
+        // StatusDisplayName is computed property, no need to assign
+        // StatusDisplayName = GetStatusDisplayName(courseInstance.Status);
     }
 
     public CourseInstanceViewModel Clone()

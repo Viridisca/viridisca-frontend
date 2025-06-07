@@ -484,6 +484,112 @@ public class FileService : IFileService
         }
     }
 
+    public async Task<SelectedFile?> SelectImageFileAsync()
+    {
+        try
+        {
+            // Получаем главное окно для диалога
+            var mainWindow = Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+                ? desktop.MainWindow
+                : null;
+
+            if (mainWindow == null)
+            {
+                _logger.LogWarning("Main window not found for file dialog");
+                return null;
+            }
+
+            // Создаем диалог выбора файла
+            var dialog = new Avalonia.Platform.Storage.FilePickerOpenOptions
+            {
+                Title = "Выберите изображение",
+                AllowMultiple = false,
+                FileTypeFilter = new[]
+                {
+                    new Avalonia.Platform.Storage.FilePickerFileType("Изображения")
+                    {
+                        Patterns = new[] { "*.jpg", "*.jpeg", "*.png", "*.gif", "*.bmp" }
+                    }
+                }
+            };
+
+            var result = await mainWindow.StorageProvider.OpenFilePickerAsync(dialog);
+            if (result == null || result.Count == 0)
+            {
+                return null;
+            }
+
+            var selectedFile = result[0];
+            var fileInfo = new System.IO.FileInfo(selectedFile.Path.LocalPath);
+            
+            return new SelectedFile
+            {
+                Name = selectedFile.Name,
+                Path = selectedFile.Path.LocalPath,
+                Size = fileInfo.Length,
+                ContentType = GetContentType(selectedFile.Name),
+                Stream = await selectedFile.OpenReadAsync()
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error selecting image file");
+            return null;
+        }
+    }
+
+    public async Task<FileUploadResult> UploadProfileImageAsync(SelectedFile selectedFile, Guid personUid)
+    {
+        try
+        {
+            // Валидация изображения
+            if (selectedFile.Stream == null)
+            {
+                return new FileUploadResult
+                {
+                    Success = false,
+                    ErrorMessage = "Поток файла недоступен"
+                };
+            }
+
+            // Проверяем, что это изображение
+            var imageExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp" };
+            var extension = Path.GetExtension(selectedFile.Name).ToLowerInvariant();
+            if (!imageExtensions.Contains(extension))
+            {
+                return new FileUploadResult
+                {
+                    Success = false,
+                    ErrorMessage = "Выбранный файл не является изображением"
+                };
+            }
+
+            // Загружаем файл
+            var uploadResult = await UploadFileAsync(
+                selectedFile.Stream, 
+                selectedFile.Name, 
+                selectedFile.ContentType, 
+                personUid, 
+                "ProfileImage");
+
+            if (uploadResult.Success)
+            {
+                _logger.LogInformation("Profile image uploaded for person {PersonUid}: {FileName}", personUid, selectedFile.Name);
+            }
+
+            return uploadResult;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error uploading profile image for person {PersonUid}", personUid);
+            return new FileUploadResult
+            {
+                Success = false,
+                ErrorMessage = "Произошла ошибка при загрузке изображения профиля"
+            };
+        }
+    }
+
     private string GetContentType(string fileName)
     {
         var extension = Path.GetExtension(fileName).ToLowerInvariant();

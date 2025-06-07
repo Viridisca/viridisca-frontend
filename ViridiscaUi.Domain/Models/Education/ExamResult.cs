@@ -1,124 +1,65 @@
+using System;
 using ViridiscaUi.Domain.Models.Base;
-using ReactiveUI;
 
 namespace ViridiscaUi.Domain.Models.Education;
 
 /// <summary>
 /// Результат экзамена студента
 /// </summary>
-public class ExamResult : ViewModelBase
+public class ExamResult : AuditableEntity
 {
-    private Guid _examUid;
-    private Guid _studentUid;
-    private decimal _score;
-    private string _feedback = string.Empty;
-    private DateTime? _submittedAt;
-    private DateTime? _gradedAt;
-    private bool _isAbsent;
-    private string _notes = string.Empty;
-
-    private Exam? _exam;
-    private Student? _student;
-
     /// <summary>
     /// ID экзамена
     /// </summary>
-    public Guid ExamUid
-    {
-        get => _examUid;
-        set => this.RaiseAndSetIfChanged(ref _examUid, value);
-    }
+    public Guid ExamUid { get; set; }
 
     /// <summary>
     /// ID студента
     /// </summary>
-    public Guid StudentUid
-    {
-        get => _studentUid;
-        set => this.RaiseAndSetIfChanged(ref _studentUid, value);
-    }
+    public Guid StudentUid { get; set; }
 
     /// <summary>
     /// Полученный балл
     /// </summary>
-    public decimal Score
-    {
-        get => _score;
-        set => this.RaiseAndSetIfChanged(ref _score, value);
-    }
+    public decimal Score { get; set; }
 
     /// <summary>
     /// Обратная связь от преподавателя
     /// </summary>
-    public string Feedback
-    {
-        get => _feedback;
-        set => this.RaiseAndSetIfChanged(ref _feedback, value);
-    }
+    public string? Feedback { get; set; }
 
     /// <summary>
     /// Время сдачи экзамена
     /// </summary>
-    public DateTime? SubmittedAt
-    {
-        get => _submittedAt;
-        set => this.RaiseAndSetIfChanged(ref _submittedAt, value);
-    }
+    public DateTime? SubmittedAt { get; set; }
 
     /// <summary>
     /// Время выставления оценки
     /// </summary>
-    public DateTime? GradedAt
-    {
-        get => _gradedAt;
-        set => this.RaiseAndSetIfChanged(ref _gradedAt, value);
-    }
+    public DateTime? GradedAt { get; set; }
 
     /// <summary>
     /// Отсутствовал ли студент
     /// </summary>
-    public bool IsAbsent
-    {
-        get => _isAbsent;
-        set => this.RaiseAndSetIfChanged(ref _isAbsent, value);
-    }
+    public bool IsAbsent { get; set; }
 
     /// <summary>
     /// Дополнительные заметки
     /// </summary>
-    public string Notes
-    {
-        get => _notes;
-        set => this.RaiseAndSetIfChanged(ref _notes, value);
-    }
+    public string? Notes { get; set; }
 
     /// <summary>
     /// Экзамен
     /// </summary>
-    public Exam? Exam
-    {
-        get => _exam;
-        set => this.RaiseAndSetIfChanged(ref _exam, value);
-    }
+    public Exam? Exam { get; set; }
 
     /// <summary>
     /// Студент
     /// </summary>
-    public Student? Student
-    {
-        get => _student;
-        set => this.RaiseAndSetIfChanged(ref _student, value);
-    }
+    public Student? Student { get; set; }
 
     /// <summary>
     /// Процент от максимального балла
     /// </summary>
     public decimal Percentage => Exam?.MaxScore > 0 ? (Score / Exam.MaxScore) * 100 : 0;
-
-    public ExamResult()
-    {
-        Uid = Guid.NewGuid();
-        CreatedAt = DateTime.UtcNow;
-        LastModifiedAt = DateTime.UtcNow;
-    }
 } 

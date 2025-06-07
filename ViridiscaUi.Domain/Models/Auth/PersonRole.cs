@@ -1,104 +1,71 @@
+using System;
 using ViridiscaUi.Domain.Models.Base;
-using ReactiveUI;
 
 namespace ViridiscaUi.Domain.Models.Auth;
 
 /// <summary>
 /// Роль человека в системе
 /// </summary>
-public class PersonRole : ViewModelBase
+public class PersonRole : AuditableEntity
 {
-    private Guid _personUid;
-    private Guid _roleUid;
-    private DateTime _assignedAt;
-    private DateTime? _expiresAt;
-    private bool _isActive = true;
-    private string _assignedBy = string.Empty;
-    private string _context = string.Empty; // Контекст роли (например, для какой группы/департамента)
-
-    private Person? _person;
-    private Role? _role;
-
     /// <summary>
     /// ID человека
     /// </summary>
-    public Guid PersonUid
-    {
-        get => _personUid;
-        set => this.RaiseAndSetIfChanged(ref _personUid, value);
-    }
+    public Guid PersonUid { get; set; }
 
     /// <summary>
     /// ID роли
     /// </summary>
-    public Guid RoleUid
-    {
-        get => _roleUid;
-        set => this.RaiseAndSetIfChanged(ref _roleUid, value);
-    }
+    public Guid RoleUid { get; set; }
 
     /// <summary>
     /// Когда назначена роль
     /// </summary>
-    public DateTime AssignedAt
-    {
-        get => _assignedAt;
-        set => this.RaiseAndSetIfChanged(ref _assignedAt, value);
-    }
+    public DateTime AssignedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>
     /// Когда истекает роль
     /// </summary>
-    public DateTime? ExpiresAt
-    {
-        get => _expiresAt;
-        set => this.RaiseAndSetIfChanged(ref _expiresAt, value);
-    }
+    public DateTime? ExpiresAt { get; set; }
 
     /// <summary>
     /// Активна ли роль
     /// </summary>
-    public bool IsActive
-    {
-        get => _isActive;
-        set => this.RaiseAndSetIfChanged(ref _isActive, value);
+    public bool IsActive { get; set; } = true;
+    
+    /// <summary>
+    /// ID сущности, в контексте которой назначена роль (например, GroupId, CourseId)
+    /// </summary>
+    public Guid? ContextEntityUid { get; set; }
+
+    /// <summary>
+    /// Тип сущности, в контексте которой назначена роль (например, "Group", "Course")
+    /// </summary>
+    public string? ContextEntityType { get; set; }
+
+    /// <summary>
+    /// Контекст роли (алиас для совместимости)
+    /// </summary>
+    public string? Context 
+    { 
+        get => ContextEntityType; 
+        set => ContextEntityType = value; 
     }
 
     /// <summary>
-    /// Кем назначена роль
+    /// Идентификатор пользователя, назначившего роль
     /// </summary>
-    public string AssignedBy
-    {
-        get => _assignedBy;
-        set => this.RaiseAndSetIfChanged(ref _assignedBy, value);
-    }
-
-    /// <summary>
-    /// Контекст роли (группа, департамент и т.д.)
-    /// </summary>
-    public string Context
-    {
-        get => _context;
-        set => this.RaiseAndSetIfChanged(ref _context, value);
-    }
+    public Guid? AssignedBy { get; set; }
 
     /// <summary>
     /// Человек
     /// </summary>
-    public Person? Person
-    {
-        get => _person;
-        set => this.RaiseAndSetIfChanged(ref _person, value);
-    }
+    public Person? Person { get; set; }
 
     /// <summary>
     /// Роль
     /// </summary>
-    public Role? Role
-    {
-        get => _role;
-        set => this.RaiseAndSetIfChanged(ref _role, value);
-    }
+    public Role? Role { get; set; }
 
     /// <summary>
     /// Истекла ли роль

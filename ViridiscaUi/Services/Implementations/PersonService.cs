@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 using ViridiscaUi.Domain.Models.Auth;
 using ViridiscaUi.Services.Interfaces;
 using ViridiscaUi.Infrastructure;
@@ -46,7 +47,63 @@ namespace ViridiscaUi.Services.Implementations
 
         public async Task<bool> UpdatePersonAsync(Person person)
         {
-            return await UpdateAsync(person);
+            try
+            {
+                _logger.LogDebug("Updating person with UID: {PersonUid}", person.Uid);
+
+                // Получаем существующую сущность из базы данных
+                var existingPerson = await _dbSet
+                    .FirstOrDefaultAsync(p => p.Uid == person.Uid);
+
+                if (existingPerson == null)
+                {
+                    _logger.LogWarning("Person with UID {PersonUid} not found for update", person.Uid);
+                    return false;
+                }
+
+                // Обновляем только измененные поля
+                existingPerson.FirstName = person.FirstName;
+                existingPerson.LastName = person.LastName;
+                existingPerson.MiddleName = person.MiddleName;
+                existingPerson.Email = person.Email;
+                existingPerson.PhoneNumber = person.PhoneNumber;
+                existingPerson.DateOfBirth = person.DateOfBirth;
+                existingPerson.ProfileImageUrl = person.ProfileImageUrl;
+                existingPerson.Address = person.Address;
+                existingPerson.IsActive = person.IsActive;
+                existingPerson.LastModifiedAt = DateTime.UtcNow;
+
+                // Сохраняем изменения
+                var result = await _dbContext.SaveChangesAsync() > 0;
+
+                if (result)
+                {
+                    _logger.LogInformation("Successfully updated person with UID: {PersonUid}", person.Uid);
+                    
+                    // Копируем обновленные данные обратно в переданный объект
+                    person.FirstName = existingPerson.FirstName;
+                    person.LastName = existingPerson.LastName;
+                    person.MiddleName = existingPerson.MiddleName;
+                    person.Email = existingPerson.Email;
+                    person.PhoneNumber = existingPerson.PhoneNumber;
+                    person.DateOfBirth = existingPerson.DateOfBirth;
+                    person.ProfileImageUrl = existingPerson.ProfileImageUrl;
+                    person.Address = existingPerson.Address;
+                    person.IsActive = existingPerson.IsActive;
+                    person.LastModifiedAt = existingPerson.LastModifiedAt;
+                }
+                else
+                {
+                    _logger.LogWarning("No changes were made to person with UID: {PersonUid}", person.Uid);
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating person with UID: {PersonUid}", person.Uid);
+                return false;
+            }
         }
 
         public async Task<bool> DeletePersonAsync(Guid uid)
@@ -78,7 +135,7 @@ namespace ViridiscaUi.Services.Implementations
             return await query.ToListAsync();
         }
 
-        public async Task<bool> AssignRoleAsync(Guid personUid, Guid roleUid, string? context = null, DateTime? expiresAt = null, string? assignedBy = null)
+        public async Task<bool> AssignRoleAsync(Guid personUid, Guid roleUid, string? context = null, DateTime? expiresAt = null, Guid? assignedBy = null)
         {
             try
             {
@@ -89,7 +146,7 @@ namespace ViridiscaUi.Services.Implementations
                     RoleUid = roleUid,
                     Context = context,
                     ExpiresAt = expiresAt,
-                    AssignedBy = assignedBy ?? "System",
+                    AssignedBy = assignedBy,
                     AssignedAt = DateTime.UtcNow,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow,
@@ -196,15 +253,31 @@ namespace ViridiscaUi.Services.Implementations
 
             var lowerSearchTerm = searchTerm.ToLower();
 
-            return await _dbSet
+            var query = _dbSet
                 .Include(p => p.PersonRoles)
                 .ThenInclude(pr => pr.Role)
                 .Where(p => 
                     p.FirstName.ToLower().Contains(lowerSearchTerm) ||
                     p.LastName.ToLower().Contains(lowerSearchTerm) ||
                     p.Email.ToLower().Contains(lowerSearchTerm) ||
-                    (p.MiddleName != null && p.MiddleName.ToLower().Contains(lowerSearchTerm)))
-                .ToListAsync();
+                    (p.MiddleName != null && p.MiddleName.ToLower().Contains(lowerSearchTerm)));
+
+            // Поиск по ID - добавляем отдельное условие
+            if (Guid.TryParse(searchTerm, out var personId))
+            {
+                query = query.Union(_dbSet
+                    .Include(p => p.PersonRoles)
+                    .ThenInclude(pr => pr.Role)
+                    .Where(p => p.Uid == personId));
+            }
+
+            return await query.ToListAsync();
+        }
+
+        public async Task<Account?> GetPersonAccountAsync(Guid personUid)
+        {
+            return await _dbContext.Accounts
+                .FirstOrDefaultAsync(a => a.PersonUid == personUid);
         }
     }
 } 

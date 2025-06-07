@@ -1,137 +1,71 @@
-using ViridiscaUi.Domain.Models.Base;
-using ReactiveUI;
+using System;
 
 namespace ViridiscaUi.Domain.Models.Education;
 
 /// <summary>
 /// Детальная информация об уроке
 /// </summary>
-public class LessonDetail : ViewModelBase
+public class LessonDetail
 {
-    private Guid _lessonUid;
-
-    private string _topic = string.Empty;
-    private string _description = string.Empty;
-    
-    private DateTime _startTime;
-    private DateTime _endTime;
-    
-    private string _teacherFirstName = string.Empty;
-    private string _teacherLastName = string.Empty;
-    private string _teacherMiddleName = string.Empty;
-    private string _subjectName = string.Empty;
-    private string _groupName = string.Empty;
-    
-    private bool _isCancelled;
-    private bool _isCompleted;
-
     /// <summary>
     /// Идентификатор урока
     /// </summary>
-    public Guid LessonUid
-    {
-        get => _lessonUid;
-        set => this.RaiseAndSetIfChanged(ref _lessonUid, value);
-    }
+    public Guid LessonUid { get; set; }
 
     /// <summary>
     /// Тема урока
     /// </summary>
-    public string Topic
-    {
-        get => _topic;
-        set => this.RaiseAndSetIfChanged(ref _topic, value);
-    }
+    public string Topic { get; set; } = string.Empty;
 
     /// <summary>
     /// Описание урока
     /// </summary>
-    public string Description
-    {
-        get => _description;
-        set => this.RaiseAndSetIfChanged(ref _description, value);
-    }
-
+    public string? Description { get; set; }
+    
     /// <summary>
     /// Время начала урока
     /// </summary>
-    public DateTime StartTime
-    {
-        get => _startTime;
-        set => this.RaiseAndSetIfChanged(ref _startTime, value);
-    }
+    public DateTime StartTime { get; set; }
 
     /// <summary>
     /// Время окончания урока
     /// </summary>
-    public DateTime EndTime
-    {
-        get => _endTime;
-        set => this.RaiseAndSetIfChanged(ref _endTime, value);
-    }
-
+    public DateTime EndTime { get; set; }
+    
     /// <summary>
     /// Имя преподавателя
     /// </summary>
-    public string TeacherFirstName
-    {
-        get => _teacherFirstName;
-        set => this.RaiseAndSetIfChanged(ref _teacherFirstName, value);
-    }
+    public string TeacherFirstName { get; set; } = string.Empty;
 
     /// <summary>
     /// Фамилия преподавателя
     /// </summary>
-    public string TeacherLastName
-    {
-        get => _teacherLastName;
-        set => this.RaiseAndSetIfChanged(ref _teacherLastName, value);
-    }
+    public string TeacherLastName { get; set; } = string.Empty;
 
     /// <summary>
     /// Отчество преподавателя
     /// </summary>
-    public string TeacherMiddleName
-    {
-        get => _teacherMiddleName;
-        set => this.RaiseAndSetIfChanged(ref _teacherMiddleName, value);
-    }
-
+    public string? TeacherMiddleName { get; set; }
+    
     /// <summary>
     /// Название предмета
     /// </summary>
-    public string SubjectName
-    {
-        get => _subjectName;
-        set => this.RaiseAndSetIfChanged(ref _subjectName, value);
-    }
+    public string SubjectName { get; set; } = string.Empty;
 
     /// <summary>
     /// Название группы
     /// </summary>
-    public string GroupName
-    {
-        get => _groupName;
-        set => this.RaiseAndSetIfChanged(ref _groupName, value);
-    }
-
+    public string GroupName { get; set; } = string.Empty;
+    
     /// <summary>
     /// Признак отмены урока
     /// </summary>
-    public bool IsCancelled
-    {
-        get => _isCancelled;
-        set => this.RaiseAndSetIfChanged(ref _isCancelled, value);
-    }
+    public bool IsCancelled { get; set; }
 
     /// <summary>
     /// Признак завершения урока
     /// </summary>
-    public bool IsCompleted
-    {
-        get => _isCompleted;
-        set => this.RaiseAndSetIfChanged(ref _isCompleted, value);
-    }
+    public bool IsCompleted { get; set; }
 
     /// <summary>
     /// Полное имя преподавателя (Фамилия Имя Отчество)
@@ -160,26 +94,25 @@ public class LessonDetail : ViewModelBase
         DateTime endTime,
         string teacherLastName,
         string teacherFirstName,
-        string teacherMiddleName,
+        string? teacherMiddleName,
         string subjectName,
         string groupName,
-        string description = "",
+        string? description,
         bool isCancelled = false,
         bool isCompleted = false)
     {
-        Uid = Guid.NewGuid();
-        _lessonUid = lessonUid;
-        _topic = topic;
-        _startTime = startTime;
-        _endTime = endTime;
-        _teacherLastName = teacherLastName;
-        _teacherFirstName = teacherFirstName;
-        _teacherMiddleName = teacherMiddleName ?? string.Empty;
-        _subjectName = subjectName;
-        _groupName = groupName;
-        _description = description;
-        _isCancelled = isCancelled;
-        _isCompleted = isCompleted;
+        LessonUid = lessonUid;
+        Topic = topic;
+        StartTime = startTime;
+        EndTime = endTime;
+        TeacherLastName = teacherLastName;
+        TeacherFirstName = teacherFirstName;
+        TeacherMiddleName = teacherMiddleName;
+        SubjectName = subjectName;
+        GroupName = groupName;
+        Description = description;
+        IsCancelled = isCancelled;
+        IsCompleted = isCompleted;
     }
 
     /// <summary>

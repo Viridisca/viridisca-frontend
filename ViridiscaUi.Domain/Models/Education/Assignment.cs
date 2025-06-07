@@ -1,5 +1,6 @@
+using System;
+using System.Collections.Generic;
 using ViridiscaUi.Domain.Models.Base;
-using ReactiveUI;
 using ViridiscaUi.Domain.Models.Education.Enums;
 
 namespace ViridiscaUi.Domain.Models.Education;
@@ -7,144 +8,83 @@ namespace ViridiscaUi.Domain.Models.Education;
 /// <summary>
 /// Задание для студентов
 /// </summary>
-public class Assignment : ViewModelBase
+public class Assignment : AuditableEntity
 {
-    private string _title = string.Empty;
-    private string _description = string.Empty;
-
-    private DateTime? _dueDate;
-    private double _maxScore = 100.0;
-    
-    private AssignmentType _type = AssignmentType.Homework;
-     
-    private Guid _courseInstanceUid;
-    private Guid? _lessonUid;
-    
-    private CourseInstance? _courseInstance;
-    private Lesson? _lesson;
-    
-    private string _instructions = string.Empty;
-    
-    private AssignmentDifficulty _difficulty = AssignmentDifficulty.Medium;
-    private AssignmentStatus _status = AssignmentStatus.Draft;
-
     /// <summary>
     /// Название задания
     /// </summary>
-    public string Title
-    {
-        get => _title;
-        set => this.RaiseAndSetIfChanged(ref _title, value);
-    }
+    public string Title { get; set; } = string.Empty;
 
     /// <summary>
     /// Описание задания
     /// </summary>
-    public string Description
-    {
-        get => _description;
-        set => this.RaiseAndSetIfChanged(ref _description, value);
-    }
+    public string Description { get; set; } = string.Empty;
 
     /// <summary>
     /// Срок сдачи задания
     /// </summary>
-    public DateTime? DueDate
-    {
-        get => _dueDate;
-        set => this.RaiseAndSetIfChanged(ref _dueDate, value);
-    }
+    public DateTime? DueDate { get; set; }
 
     /// <summary>
     /// Максимальный балл за задание
     /// </summary>
-    public double MaxScore
-    {
-        get => _maxScore;
-        set => this.RaiseAndSetIfChanged(ref _maxScore, value);
-    }
-
-    /// <summary>
-    /// Максимальная оценка за задание (синоним для MaxScore)
-    /// </summary>
-    public double MaxGrade
-    {
-        get => _maxScore;
-        set => this.RaiseAndSetIfChanged(ref _maxScore, value);
-    }
-
+    public double MaxScore { get; set; } = 100.0;
+    
     /// <summary>
     /// Тип задания
     /// </summary>
-    public AssignmentType Type
-    {
-        get => _type;
-        set => this.RaiseAndSetIfChanged(ref _type, value);
-    }
-
+    public AssignmentType Type { get; set; } = AssignmentType.Homework;
+     
     /// <summary>
     /// Идентификатор экземпляра курса
     /// </summary>
-    public Guid CourseInstanceUid
-    {
-        get => _courseInstanceUid;
-        set => this.RaiseAndSetIfChanged(ref _courseInstanceUid, value);
-    }
+    public Guid CourseInstanceUid { get; set; }
 
     /// <summary>
     /// Идентификатор урока (опционально)
     /// </summary>
-    public Guid? LessonUid
-    {
-        get => _lessonUid;
-        set => this.RaiseAndSetIfChanged(ref _lessonUid, value);
-    }
-
+    public Guid? LessonUid { get; set; }
+    
     /// <summary>
     /// Экземпляр курса, к которому принадлежит задание
     /// </summary>
-    public CourseInstance? CourseInstance
-    {
-        get => _courseInstance;
-        set => this.RaiseAndSetIfChanged(ref _courseInstance, value);
-    }
+    public CourseInstance? CourseInstance { get; set; }
+
+    /// <summary>
+    /// Предмет (алиас для совместимости)
+    /// </summary>
+    public Subject? Subject => CourseInstance?.Subject;
+
+    /// <summary>
+    /// Преподаватель (алиас для совместимости)
+    /// </summary>
+    public Teacher? Teacher => CourseInstance?.Teacher;
+
+    /// <summary>
+    /// Создатель задания (алиас для совместимости)
+    /// </summary>
+    public Teacher? CreatedBy => CourseInstance?.Teacher;
 
     /// <summary>
     /// Урок, к которому принадлежит задание (опционально)
     /// </summary>
-    public Lesson? Lesson
-    {
-        get => _lesson;
-        set => this.RaiseAndSetIfChanged(ref _lesson, value);
-    }
-
+    public Lesson? Lesson { get; set; }
+    
     /// <summary>
     /// Инструкции к заданию
     /// </summary>
-    public string Instructions
-    {
-        get => _instructions;
-        set => this.RaiseAndSetIfChanged(ref _instructions, value);
-    }
-
+    public string Instructions { get; set; } = string.Empty;
+    
     /// <summary>
     /// Сложность задания
     /// </summary>
-    public AssignmentDifficulty Difficulty
-    {
-        get => _difficulty;
-        set => this.RaiseAndSetIfChanged(ref _difficulty, value);
-    }
+    public AssignmentDifficulty Difficulty { get; set; } = AssignmentDifficulty.Medium;
 
     /// <summary>
     /// Статус задания
     /// </summary>
-    public AssignmentStatus Status
-    {
-        get => _status;
-        set => this.RaiseAndSetIfChanged(ref _status, value);
-    }
-
+    public AssignmentStatus Status { get; set; } = AssignmentStatus.Draft;
+    
     /// <summary>
     /// Сданные работы по заданию
     /// </summary>
@@ -168,10 +108,10 @@ public class Assignment : ViewModelBase
         Uid = Guid.NewGuid();
         CreatedAt = DateTime.UtcNow;
         LastModifiedAt = DateTime.UtcNow;
-        _title = title.Trim();
-        _description = description;
-        _courseInstanceUid = courseInstanceUid;
-        _type = type;
+        Title = title.Trim();
+        Description = description;
+        CourseInstanceUid = courseInstanceUid;
+        Type = type;
     }
 
     /// <summary>
