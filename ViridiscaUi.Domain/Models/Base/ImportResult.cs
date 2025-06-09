@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace ViridiscaUi.Models;
+namespace ViridiscaUi.Domain.Models.Base;
 
 /// <summary>
 /// Результат операции импорта

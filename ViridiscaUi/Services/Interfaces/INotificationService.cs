@@ -253,6 +253,11 @@ public interface INotificationService
         NotificationPriority priority = NotificationPriority.Normal);
 
     /// <summary>
+    /// Получает последние уведомления
+    /// </summary>
+    Task<IEnumerable<Notification>> GetRecentNotificationsAsync(int count = 10);
+
+    /// <summary>
     /// Уведомляет родителей об оценках студентов
     /// </summary>
     Task NotifyParentsAboutGradesAsync(IEnumerable<Grade> grades);
@@ -276,6 +281,21 @@ public interface INotificationService
     /// Показывает предупреждение
     /// </summary>
     void ShowWarning(string message);
+
+    // Базовые CRUD операции
+    Task<IEnumerable<Notification>> GetAllAsync();
+    Task<Notification?> GetByIdAsync(Guid uid);
+    Task<IEnumerable<Notification>> GetByPersonAsync(Guid personUid);
+    Task<Notification> CreateAsync(Notification notification);
+    Task<Notification> UpdateAsync(Notification notification);
+    Task<bool> DeleteAsync(Guid uid);
+    Task<bool> ExistsAsync(Guid uid);
+    Task<int> GetCountAsync();
+    
+    // Дополнительные методы отправки
+    Task SendNotificationAsync(Guid personUid, string title, string message);
+    Task SendNotificationAsync(Guid personUid, string title, string message, string type);
+    Task SendBulkNotificationAsync(IEnumerable<Guid> personUids, string title, string message);
 }
 
 /// <summary>
@@ -318,6 +338,10 @@ public class NotificationStatistics
 public class SystemNotificationStatistics
 {
     public int TotalNotifications { get; set; }
+    public int UnreadNotifications { get; set; }
+    public int TodayNotifications { get; set; }
+    public int WeekNotifications { get; set; }
+    public int MonthNotifications { get; set; }
     public int TotalUsers { get; set; }
     public int ActiveUsers { get; set; }
     public double AverageNotificationsPerUser { get; set; }

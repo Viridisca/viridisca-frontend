@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using ViridiscaUi.Domain.Models.Education;
+using ViridiscaUi.Domain.Models.Education.Enums;
 using ViridiscaUi.Services.Interfaces;
 using ViridiscaUi.ViewModels.Education;
 using ViridiscaUi.Infrastructure;
@@ -1059,6 +1060,122 @@ public class GradeService : GenericCrudService<Grade>, IGradeService
             _logger.LogError(ex, "Error getting student grade statistics by subject: {StudentUid}, {CourseInstanceUid}, {GroupUid}, {SubjectInstanceUid}, {AssignmentUid}, {StudentGroupUid}, {StudentSubjectInstanceUid}, {StudentGroupSubjectInstanceUid}, {StudentGroupAssignmentUid}", studentUid, courseInstanceUid, groupUid, subjectInstanceUid, assignmentUid, studentGroupUid, studentSubjectInstanceUid, studentGroupSubjectInstanceUid, studentGroupAssignmentUid);
             throw;
         }
+    }
+
+    /// <summary>
+    /// Получает статистику оценок
+    /// </summary>
+    public async Task<object> GetStatisticsAsync()
+    {
+        var totalGrades = await _dbContext.Grades.CountAsync();
+        var averageGrade = await _dbContext.Grades.AverageAsync(g => g.Value);
+        
+        return new
+        {
+            TotalGrades = totalGrades,
+            AverageGrade = averageGrade,
+            GeneratedAt = DateTime.UtcNow
+        };
+    }
+
+    /// <summary>
+    /// Получает оценку по студенту и заданию
+    /// </summary>
+    public async Task<Grade?> GetByStudentAndAssignmentAsync(Guid studentUid, Guid assignmentUid)
+    {
+        return await _dbContext.Grades
+            .FirstOrDefaultAsync(g => g.StudentUid == studentUid && g.AssignmentUid == assignmentUid);
+    }
+
+    /// <summary>
+    /// Получает оценки с пагинацией и фильтрацией (расширенная версия)
+    /// </summary>
+    public async Task<(IEnumerable<Grade> grades, int totalCount)> GetPagedAsync(
+        int page, 
+        int pageSize, 
+        string? searchTerm = null,
+        Guid? studentUid = null,
+        Guid? courseInstanceUid = null,
+        Guid? assignmentUid = null,
+        GradeType? gradeType = null,
+        DateTime? fromDate = null,
+        DateTime? toDate = null)
+    {
+        var query = _dbContext.Grades
+            .Include(g => g.Student)
+                .ThenInclude(s => s.Person)
+            .Include(g => g.Assignment)
+            .AsQueryable();
+
+        // Применяем фильтры
+        if (studentUid.HasValue)
+            query = query.Where(g => g.StudentUid == studentUid.Value);
+
+        if (courseInstanceUid.HasValue)
+            query = query.Where(g => g.Assignment != null && g.Assignment.CourseInstanceUid == courseInstanceUid.Value);
+
+        if (assignmentUid.HasValue)
+            query = query.Where(g => g.AssignmentUid == assignmentUid.Value);
+
+        if (gradeType.HasValue)
+            query = query.Where(g => g.Type == gradeType.Value);
+
+        if (fromDate.HasValue)
+            query = query.Where(g => g.CreatedAt >= fromDate.Value);
+
+        if (toDate.HasValue)
+            query = query.Where(g => g.CreatedAt <= toDate.Value);
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            query = query.Where(g => 
+                g.Comment != null && g.Comment.Contains(searchTerm) ||
+                g.Student != null && g.Student.Person != null && 
+                (g.Student.Person.FirstName + " " + g.Student.Person.LastName).Contains(searchTerm));
+        }
+
+        var totalCount = await query.CountAsync();
+        var grades = await query
+            .OrderByDescending(g => g.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (grades, totalCount);
+    }
+
+    /// <summary>
+    /// Получает статистику оценок
+    /// </summary>
+    public async Task<object> GetStatisticsAsync(Guid? studentUid = null, Guid? courseInstanceUid = null)
+    {
+        var query = _dbContext.Grades.AsQueryable();
+
+        if (studentUid.HasValue)
+            query = query.Where(g => g.StudentUid == studentUid.Value);
+
+        if (courseInstanceUid.HasValue)
+            query = query.Where(g => g.Assignment != null && g.Assignment.CourseInstanceUid == courseInstanceUid.Value);
+
+        var totalGrades = await query.CountAsync();
+        var averageGrade = await query.AverageAsync(g => (double?)g.Value) ?? 0;
+        var maxGrade = await query.MaxAsync(g => (double?)g.Value) ?? 0;
+        var minGrade = await query.MinAsync(g => (double?)g.Value) ?? 0;
+
+        var gradeDistribution = await query
+            .GroupBy(g => g.Value)
+            .Select(g => new { Grade = g.Key, Count = g.Count() })
+            .OrderBy(g => g.Grade)
+            .ToListAsync();
+
+        return new
+        {
+            TotalGrades = totalGrades,
+            AverageGrade = Math.Round(averageGrade, 2),
+            MaxGrade = maxGrade,
+            MinGrade = minGrade,
+            GradeDistribution = gradeDistribution
+        };
     }
 
     #endregion

@@ -86,6 +86,16 @@ public class Assignment : AuditableEntity
     public AssignmentStatus Status { get; set; } = AssignmentStatus.Draft;
     
     /// <summary>
+    /// Опубликовано ли задание
+    /// </summary>
+    public bool IsPublished { get; set; } = false;
+    
+    /// <summary>
+    /// Путь к прикрепленным файлам
+    /// </summary>
+    public string AttachmentsPath { get; set; } = string.Empty;
+    
+    /// <summary>
     /// Сданные работы по заданию
     /// </summary>
     public ICollection<Submission> Submissions { get; set; } = new List<Submission>();

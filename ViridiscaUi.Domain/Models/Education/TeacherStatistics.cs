@@ -44,4 +44,19 @@ public class TeacherStatistics
     /// Процент завершенности курсов
     /// </summary>
     public double CompletionRate { get; set; }
+    
+    /// <summary>
+    /// Количество курируемых групп
+    /// </summary>
+    public int CuratedGroups { get; set; }
+    
+    /// <summary>
+    /// Количество завершенных курсов
+    /// </summary>
+    public int CompletedCourses { get; set; }
+    
+    /// <summary>
+    /// Количество заданий, ожидающих проверки
+    /// </summary>
+    public int PendingAssignments { get; set; }
 } 

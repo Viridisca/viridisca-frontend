@@ -6,8 +6,11 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using ViridiscaUi.Domain.Models.Base;
 using ViridiscaUi.Infrastructure;
 using ViridiscaUi.Services.Interfaces;
+using System.ComponentModel.DataAnnotations;
+using DomainValidationResult = ViridiscaUi.Domain.Models.Base.ValidationResult;
 
 namespace ViridiscaUi.Services.Implementations;
 
@@ -683,100 +686,35 @@ public class GenericCrudService<TEntity> : IGenericCrudService<TEntity> where TE
     /// <summary>
     /// Валидирует сущность перед сохранением
     /// </summary>
-    public virtual async Task<ValidationResult> ValidateAsync(TEntity entity)
+    public virtual async Task<DomainValidationResult> ValidateAsync(TEntity entity)
     {
-        try
+        var errors = new List<string>();
+        var warnings = new List<string>();
+
+        // Базовая валидация через DataAnnotations
+        var validationContext = new System.ComponentModel.DataAnnotations.ValidationContext(entity);
+        var validationResults = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
+        
+        if (!System.ComponentModel.DataAnnotations.Validator.TryValidateObject(entity, validationContext, validationResults, true))
         {
-            _logger.LogDebug("Validating {EntityName} entity for creation", _entityName);
-
-            var errors = new List<string>();
-            var warnings = new List<string>();
-
-            // Базовая валидация - проверка на null
-            if (entity == null)
-            {
-                errors.Add($"{_entityName} не может быть null");
-                return ValidationResult.Failure(errors);
-            }
-
-            // Проверка Uid
-            var uid = GetEntityUid(entity);
-            if (uid == Guid.Empty)
-            {
-                warnings.Add("Uid будет сгенерирован автоматически");
-            }
-
-            // Дополнительная валидация может быть переопределена в наследниках
-            await ValidateEntitySpecificRulesAsync(entity, errors, warnings, isCreate: true);
-
-            var result = errors.Count == 0 
-                ? ValidationResult.Success() 
-                : ValidationResult.Failure(errors, warnings);
-
-            _logger.LogDebug("Validation result for {EntityName}: {IsValid}, Errors: {ErrorCount}, Warnings: {WarningCount}", 
-                _entityName, result.IsValid, result.Errors.Count, result.Warnings.Count);
-
-            return result;
+            errors.AddRange(validationResults.Select(vr => vr.ErrorMessage ?? "Ошибка валидации"));
         }
-        catch (Exception ex)
+
+        return new DomainValidationResult
         {
-            _logger.LogError(ex, "Error validating {EntityName} entity", _entityName);
-            throw;
-        }
+            IsValid = errors.Count == 0,
+            Errors = errors,
+            Warnings = warnings
+        };
     }
 
     /// <summary>
     /// Валидирует сущность для обновления
     /// </summary>
-    public virtual async Task<ValidationResult> ValidateForUpdateAsync(TEntity entity)
+    public virtual async Task<DomainValidationResult> ValidateForUpdateAsync(TEntity entity)
     {
-        try
-        {
-            _logger.LogDebug("Validating {EntityName} entity for update", _entityName);
-
-            var errors = new List<string>();
-            var warnings = new List<string>();
-
-            // Базовая валидация - проверка на null
-            if (entity == null)
-            {
-                errors.Add($"{_entityName} не может быть null");
-                return ValidationResult.Failure(errors);
-            }
-
-            // Проверка Uid
-            var uid = GetEntityUid(entity);
-            if (uid == Guid.Empty)
-            {
-                errors.Add("Uid обязателен для обновления");
-            }
-            else
-            {
-                // Проверяем существование сущности
-                var exists = await ExistsAsync(e => GetEntityUid(e) == uid);
-                if (!exists)
-                {
-                    errors.Add($"{_entityName} с Uid {uid} не найден");
-                }
-            }
-
-            // Дополнительная валидация может быть переопределена в наследниках
-            await ValidateEntitySpecificRulesAsync(entity, errors, warnings, isCreate: false);
-
-            var result = errors.Count == 0 
-                ? ValidationResult.Success() 
-                : ValidationResult.Failure(errors, warnings);
-
-            _logger.LogDebug("Update validation result for {EntityName}: {IsValid}, Errors: {ErrorCount}, Warnings: {WarningCount}", 
-                _entityName, result.IsValid, result.Errors.Count, result.Warnings.Count);
-
-            return result;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error validating {EntityName} entity for update", _entityName);
-            throw;
-        }
+        // По умолчанию используем ту же валидацию, что и для создания
+        return await ValidateAsync(entity);
     }
 
     #endregion

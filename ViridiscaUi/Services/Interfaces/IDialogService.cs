@@ -3,7 +3,10 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using ReactiveUI;
 using ViridiscaUi.Domain.Models.Education;
+using ViridiscaUi.Domain.Models.Auth;
 using ViridiscaUi.Domain.Models.System;
+using ViridiscaUi.Domain.Models.Library;
+using ViridiscaUi.Domain.Models.Base;
 using ViridiscaUi.ViewModels;
 
 namespace ViridiscaUi.Services.Interfaces;
@@ -13,132 +16,54 @@ namespace ViridiscaUi.Services.Interfaces;
 /// </summary>
 public interface IDialogService
 {
-    /// <summary>
-    /// Показывает диалог редактирования студента
-    /// </summary>
-    /// <param name="student">Студент для редактирования или null для создания нового</param>
-    /// <returns>Обновленный или новый студент, или null если операция отменена</returns>
-    Task<Student?> ShowStudentEditDialogAsync(Student? student = null);
-    
-    /// <summary>
-    /// Показывает диалог с подробной информацией о студенте
-    /// </summary>
-    /// <param name="student">Студент для отображения</param>
-    Task ShowStudentDetailsDialogAsync(Student student);
-    
-    /// <summary>
-    /// Показывает диалог редактора студентов
-    /// </summary>
-    /// <param name="student">Студент для редактирования или null для создания нового</param>
-    /// <returns>Результат редактирования</returns>
-    Task<Student?> ShowStudentEditorDialogAsync(Student? student = null);
-    
-    /// <summary>
-    /// Показывает диалог подтверждения
-    /// </summary>
-    /// <param name="title">Заголовок диалога</param>
-    /// <param name="message">Сообщение</param>
-    /// <param name="confirmText">Текст кнопки подтверждения</param>
-    /// <param name="cancelText">Текст кнопки отмены</param>
-    /// <returns>True если пользователь подтвердил, false если отменил</returns>
-    Task<bool> ShowConfirmationDialogAsync(string title, string message, string confirmText = "Да", string cancelText = "Нет");
-    
-    /// <summary>
-    /// Показывает диалог выбора файла для открытия
-    /// </summary>
-    /// <param name="title">Заголовок диалога</param>
-    /// <param name="fileTypes">Типы файлов для фильтра</param>
-    /// <returns>Путь к выбранному файлу или null если отменено</returns>
-    Task<string?> ShowFileOpenDialogAsync(string title, string[] fileTypes);
-    
-    /// <summary>
-    /// Показывает диалог сохранения файла
-    /// </summary>
-    /// <param name="title">Заголовок диалога</param>
-    /// <param name="defaultFileName">Имя файла по умолчанию</param>
-    /// <param name="fileTypes">Типы файлов для фильтра</param>
-    /// <returns>Путь для сохранения файла или null если отменено</returns>
-    Task<string?> ShowFileSaveDialogAsync(string title, string defaultFileName, string[] fileTypes);
-    
-    /// <summary>
-    /// Показывает информационное сообщение
-    /// </summary>
-    /// <param name="title">Заголовок</param>
-    /// <param name="message">Сообщение</param>
+    // Базовые диалоги - возвращают DialogResult
+    Task<DialogResult> ShowMessageAsync(string title, string message);
+    Task<DialogResult> ShowConfirmationAsync(string title, string message);
+    Task<DialogResult> ShowConfirmationAsync(string title, string message, DialogButtons buttons);
+    Task<string?> ShowInputAsync(string title, string message, string defaultValue = "");
+    Task ShowErrorAsync(string title, string message);
+    Task ShowWarningAsync(string title, string message);
     Task ShowInfoAsync(string title, string message);
     
-    /// <summary>
-    /// Показывает сообщение об ошибке
-    /// </summary>
-    /// <param name="title">Заголовок</param>
-    /// <param name="message">Сообщение об ошибке</param>
-    Task ShowErrorAsync(string title, string message);
+    // Диалоги валидации
+    Task ShowValidationErrorsAsync(string title, IEnumerable<string> errors);
+    Task ShowValidationErrorsAsync(ValidationResult validationResult);
     
-    /// <summary>
-    /// Показывает предупреждение
-    /// </summary>
-    /// <param name="title">Заголовок</param>
-    /// <param name="message">Предупреждение</param>
-    Task ShowWarningAsync(string title, string message);
+    // Специализированные диалоги редактирования - возвращают доменные объекты
+    Task<Student?> ShowStudentEditDialogAsync(Student? student = null);
+    Task<Teacher?> ShowTeacherEditDialogAsync(Teacher? teacher = null);
+    Task<Group?> ShowGroupEditDialogAsync(Group? group = null);
+    Task<Subject?> ShowSubjectEditDialogAsync(Subject? subject = null);
+    Task<Assignment?> ShowAssignmentEditDialogAsync(Assignment? assignment = null);
+    Task<Grade?> ShowGradeEditDialogAsync(Grade grade, IEnumerable<Student> students, IEnumerable<Assignment> assignments);
+    Task<Exam?> ShowExamEditDialogAsync(Exam? exam = null);
+    Task<ScheduleSlot?> ShowScheduleSlotEditDialogAsync(ScheduleSlot? scheduleSlot = null);
+    Task<Curriculum?> ShowCurriculumEditDialogAsync(Curriculum? curriculum = null);
+    Task<LibraryResource?> ShowLibraryResourceEditDialogAsync(LibraryResource? resource = null);
     
-    /// <summary>
-    /// Показывает запрос подтверждения
-    /// </summary>
-    Task<bool> ShowConfirmationAsync(string title, string message);
+    // Диалоги конфликтов
+    Task ShowScheduleConflictsDialogAsync(IEnumerable<object> conflicts);
     
-    /// <summary>
-    /// Показывает диалог с вводом текста
-    /// </summary>
+    // Диалоги выбора файлов
+    Task<string?> ShowOpenFileDialogAsync(string title, string filter = "");
+    Task<string?> ShowSaveFileDialogAsync(string title, string filter = "", string defaultFileName = "");
+    
+    // Дополнительные диалоги
+    Task<bool> ShowConfirmationDialogAsync(string title, string message, string confirmText = "Да", string cancelText = "Нет");
+    Task<string?> ShowFileOpenDialogAsync(string title, string[] fileTypes);
+    Task<string?> ShowFileSaveDialogAsync(string title, string defaultFileName, string[] fileTypes);
     Task<string?> ShowInputDialogAsync(string title, string message, string defaultValue = "");
-    
-    /// <summary>
-    /// Показывает диалог с вводом текста (альтернативное название)
-    /// </summary>
     Task<string?> ShowTextInputDialogAsync(string title, string message, string defaultValue = "");
-    
-    /// <summary>
-    /// Показывает диалог с выбором из списка
-    /// </summary>
     Task<T?> ShowSelectionDialogAsync<T>(string title, string message, T[] items);
-
-    Task<TResult?> ShowDialogAsync<TResult>(ViewModelBase viewModel);
+    Task<TResult?> ShowDialogAsync<TResult>(ViewModelBase viewModel) where TResult : class;
     
     // Диалоги для департаментов
     Task<Department?> ShowDepartmentEditDialogAsync(Department department);
     Task ShowDepartmentDetailsDialogAsync(Department department);
     
-    // Диалоги для предметов
-    Task<Subject?> ShowSubjectEditDialogAsync(Subject subject);
-    Task ShowSubjectDetailsDialogAsync(Subject subject);
-    
-    // Диалоги для групп
-    Task<Group?> ShowGroupEditDialogAsync(Group group);
-    Task<Teacher?> ShowTeacherSelectionDialogAsync(IEnumerable<Teacher> teachers);
-    Task<object?> ShowGroupStudentsManagementDialogAsync(Group group, IEnumerable<Student> allStudents);
-    
     // Диалоги для курсов
     Task<CourseInstance?> ShowCourseEditDialogAsync(CourseInstance courseInstance);
-    Task<object?> ShowCourseEnrollmentDialogAsync(CourseInstance courseInstance, IEnumerable<Student> allStudents);
-    Task<object?> ShowCourseContentManagementDialogAsync(CourseInstance courseInstance);
-    Task<object?> ShowCourseStudentsManagementDialogAsync(CourseInstance courseInstance, IEnumerable<Student> allStudents);
-    Task<object?> ShowCourseStatisticsDialogAsync(CourseInstanceStatistics statistics);
-    Task<Group?> ShowGroupSelectionDialogAsync(IEnumerable<Group> groups);
-    
-    // Диалоги для заданий
-    Task<Assignment?> ShowAssignmentEditDialogAsync(Assignment assignment);
-    Task<object?> ShowSubmissionsViewDialogAsync(Assignment assignment, IEnumerable<Submission> submissions);
-    Task<IEnumerable<object>?> ShowBulkGradingDialogAsync(IEnumerable<Submission> submissions);
-    
-    // Диалоги для оценок
-    Task<Grade?> ShowGradeEditDialogAsync(Grade grade, IEnumerable<Student> students, IEnumerable<Assignment> assignments);
-    Task<IEnumerable<Grade>?> ShowBulkGradingDialogAsync(IEnumerable<CourseInstance> courseInstances, IEnumerable<Assignment> assignments);
-    
-    // Диалоги для преподавателей
-    Task<Teacher?> ShowTeacherEditDialogAsync(Teacher? teacher = null);
-    Task<string?> ShowTeacherDetailsDialogAsync(Teacher teacher);
-    Task<object?> ShowTeacherCoursesManagementDialogAsync(Teacher teacher, IEnumerable<CourseInstance> allCourses);
-    Task<object?> ShowTeacherGroupsManagementDialogAsync(Teacher teacher, IEnumerable<Group> allGroups);
-    Task<object?> ShowTeacherStatisticsDialogAsync(string teacherName, object statistics);
+    Task<object?> ShowCourseDetailsDialogAsync(CourseInstance courseInstance);
     
     // Диалоги для уведомлений
     Task<NotificationTemplate?> ShowNotificationTemplateEditDialogAsync(NotificationTemplate template);
@@ -146,9 +71,99 @@ public interface IDialogService
     Task<ReminderData?> ShowCreateReminderDialogAsync();
 
     /// <summary>
-    /// Показывает диалог деталей экземпляра курса
+    /// Показывает диалог просмотра сдач заданий
     /// </summary>
-    Task<object?> ShowCourseDetailsDialogAsync(CourseInstance courseInstance);
+    Task<object?> ShowSubmissionsViewDialogAsync(Assignment assignment, IEnumerable<Submission> submissions);
+
+    /// <summary>
+    /// Показывает диалог массового оценивания сдач
+    /// </summary>
+    Task<IEnumerable<object>?> ShowBulkGradingDialogAsync(IEnumerable<Submission> submissions);
+
+    /// <summary>
+    /// Показывает диалог создания займа библиотеки
+    /// </summary>
+    Task<object?> ShowCreateLoanDialogAsync();
+
+    /// <summary>
+    /// Показывает диалог продления займа
+    /// </summary>
+    Task<object?> ShowExtendLoanDialogAsync(object loan);
+
+    /// <summary>
+    /// Показывает диалог просроченных займов
+    /// </summary>
+    Task ShowOverdueLoansDialogAsync();
+
+    /// <summary>
+    /// Показывает диалог выбора преподавателя
+    /// </summary>
+    Task<Teacher?> ShowTeacherSelectionDialogAsync(IEnumerable<Teacher> teachers);
+
+    /// <summary>
+    /// Показывает диалог управления курсами преподавателя
+    /// </summary>
+    Task<object?> ShowTeacherCoursesManagementDialogAsync(Teacher teacher, IEnumerable<CourseInstance> courseInstances);
+
+    /// <summary>
+    /// Показывает диалог управления группами преподавателя
+    /// </summary>
+    Task<object?> ShowTeacherGroupsManagementDialogAsync(Teacher teacher, IEnumerable<Group> groups);
+
+    /// <summary>
+    /// Показывает диалог статистики преподавателя
+    /// </summary>
+    Task<object?> ShowTeacherStatisticsDialogAsync(string title, object statistics);
+
+    /// <summary>
+    /// Показывает диалог деталей студента
+    /// </summary>
+    Task ShowStudentDetailsDialogAsync(Student student);
+
+    /// <summary>
+    /// Показывает диалог деталей преподавателя
+    /// </summary>
+    Task<string?> ShowTeacherDetailsDialogAsync(Teacher teacher);
+
+    /// <summary>
+    /// Показывает диалог статистики курса
+    /// </summary>
+    Task<object?> ShowCourseStatisticsDialogAsync(CourseInstance courseInstance);
+
+    /// <summary>
+    /// Показывает диалог записи на курс
+    /// </summary>
+    Task<object?> ShowCourseEnrollmentDialogAsync(CourseInstance courseInstance, IEnumerable<Student> allStudents);
+
+    /// <summary>
+    /// Показывает диалог управления содержимым курса
+    /// </summary>
+    Task<object?> ShowCourseContentManagementDialogAsync(CourseInstance courseInstance);
+
+    /// <summary>
+    /// Показывает диалог массового редактирования студентов
+    /// </summary>
+    Task<BulkEditResult?> ShowBulkEditDialogAsync(BulkEditOptions options);
+
+    /// <summary>
+    /// Показывает диалог выбора экземпляров курсов
+    /// </summary>
+    Task<IEnumerable<CourseInstance>?> ShowCourseInstanceSelectionDialogAsync(IEnumerable<CourseInstance> courseInstances);
+
+    /// <summary>
+    /// Показывает диалог выбора групп
+    /// </summary>
+    Task<IEnumerable<Group>?> ShowGroupSelectionDialogAsync(IEnumerable<Group> groups);
+
+    /// <summary>
+    /// Показывает диалог выбора файла
+    /// </summary>
+    Task<string?> ShowFilePickerAsync(string title, string[] fileTypes);
+
+    /// <summary>
+    /// Показывает диалог редактирования слота расписания с дополнительными параметрами
+    /// </summary>
+    Task<ScheduleSlot?> ShowScheduleSlotEditDialogAsync(ScheduleSlot? scheduleSlot, IEnumerable<CourseInstance> courseInstances, IEnumerable<string> rooms);
 }
 
 /// <summary>

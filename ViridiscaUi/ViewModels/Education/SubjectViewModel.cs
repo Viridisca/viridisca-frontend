@@ -20,11 +20,12 @@ public class SubjectViewModel : ReactiveObject
     [Reactive] public string Name { get; set; } = string.Empty;
     [Reactive] public string Code { get; set; } = string.Empty;
     [Reactive] public string Description { get; set; } = string.Empty;
-    [Reactive] public bool IsActive { get; set; }
+    [Reactive] public bool IsActive { get; set; } = true;
     [Reactive] public int Credits { get; set; }
     [Reactive] public int LessonsPerWeek { get; set; }
     [Reactive] public SubjectType Type { get; set; }
     [Reactive] public SubjectCategory Category { get; set; }
+    [Reactive] public DateTime? LastModifiedAt { get; set; }
 
     #endregion
 

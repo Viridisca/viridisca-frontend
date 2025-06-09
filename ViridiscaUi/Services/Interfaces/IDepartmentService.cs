@@ -73,6 +73,54 @@ namespace ViridiscaUi.Services.Interfaces
         /// Активирует/деактивирует департамент
         /// </summary>
         Task<bool> SetDepartmentActiveStatusAsync(Guid uid, bool isActive);
+
+        /// <summary>
+        /// Получает департамент по идентификатору
+        /// </summary>
+        Task<Department?> GetByUidAsync(Guid uid);
+
+        /// <summary>
+        /// Получает все департаменты
+        /// </summary>
+        Task<IEnumerable<Department>> GetAllAsync();
+
+        /// <summary>
+        /// Удаляет департамент
+        /// </summary>
+        Task<bool> DeleteAsync(Guid uid);
+
+        /// <summary>
+        /// Обновляет департамент
+        /// </summary>
+        Task<bool> UpdateAsync(Department department);
+
+        /// <summary>
+        /// Создает новый департамент
+        /// </summary>
+        Task<Department> CreateAsync(Department department);
+
+        /// <summary>
+        /// Получает департамент по коду
+        /// </summary>
+        Task<Department?> GetByCodeAsync(string code);
+
+        /// <summary>
+        /// Получает все департаменты с пагинацией
+        /// </summary>
+        Task<(IEnumerable<Department> Departments, int TotalCount)> GetPagedAsync(
+            int page = 1, 
+            int pageSize = 20, 
+            string? searchTerm = null);
+
+        /// <summary>
+        /// Проверяет существование департамента
+        /// </summary>
+        Task<bool> ExistsAsync(Guid uid);
+
+        /// <summary>
+        /// Получает статистику департаментов
+        /// </summary>
+        Task<object> GetStatisticsAsync();
     }
 
     /// <summary>

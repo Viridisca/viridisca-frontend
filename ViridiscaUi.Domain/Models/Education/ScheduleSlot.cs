@@ -21,12 +21,12 @@ public class ScheduleSlot : AuditableEntity
     /// <summary>
     /// Время начала
     /// </summary>
-    public TimeOnly StartTime { get; set; }
+    public TimeSpan StartTime { get; set; }
 
     /// <summary>
     /// Время окончания
     /// </summary>
-    public TimeOnly EndTime { get; set; }
+    public TimeSpan EndTime { get; set; }
 
     /// <summary>
     /// Аудитория/комната
@@ -41,12 +41,22 @@ public class ScheduleSlot : AuditableEntity
     /// <summary>
     /// Действует с (дата)
     /// </summary>
-    public DateOnly EffectiveFrom { get; set; }
+    public DateTime EffectiveFrom { get; set; }
 
     /// <summary>
     /// Действует до (дата)
     /// </summary>
-    public DateOnly EffectiveTo { get; set; }
+    public DateTime EffectiveTo { get; set; }
+    
+    /// <summary>
+    /// Период действия с (для совместимости)
+    /// </summary>
+    public DateTime ValidFrom { get; set; }
+    
+    /// <summary>
+    /// Период действия до (для совместимости)
+    /// </summary>
+    public DateTime ValidTo { get; set; }
     
     /// <summary>
     /// Экземпляр курса

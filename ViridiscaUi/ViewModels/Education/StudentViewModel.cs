@@ -1,21 +1,26 @@
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
+using System.Collections.ObjectModel;
 using System.Linq;
+using System.Reactive;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
+using System.Threading.Tasks;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using ViridiscaUi.Domain.Models.Education;
-using ViridiscaUi.ViewModels;
-using System.Reactive.Disposables;
-using System.Threading.Tasks;
-using ViridiscaUi.Services.Interfaces;
-using ViridiscaUi.ViewModels.Bases.Navigations;
-using ViridiscaUi.Infrastructure.Navigation;
-using ViridiscaUi.Infrastructure;
-using System.Text.RegularExpressions;
 using ViridiscaUi.Domain.Models.Education.Enums;
 using ViridiscaUi.Domain.Models.Auth;
+using ViridiscaUi.Domain.Models.Base;
+using ViridiscaUi.Services.Interfaces;
+using ViridiscaUi.Infrastructure.Navigation;
+using ViridiscaUi.ViewModels.Bases.Navigations;
+using ViridiscaUi.ViewModels.System;
+using DynamicData;
+using DynamicData.Binding;
+using System.ComponentModel.DataAnnotations;
+using Microsoft.Extensions.Logging;
+using DomainValidationResult = ViridiscaUi.Domain.Models.Base.ValidationResult;
 
 namespace ViridiscaUi.ViewModels.Education;
 
@@ -41,7 +46,7 @@ public class StudentViewModel : ViewModelBase
     [Reactive] public DateTime? EnrollmentDate { get; set; }
     [Reactive] public DateTime? GraduationDate { get; set; }
     [Reactive] public int AcademicYear { get; set; } = 1;
-    [Reactive] public decimal? GPA { get; set; }
+    [Reactive] public double? GPA { get; set; }
     
     // Group Information
     [Reactive] public Guid? GroupUid { get; set; }
@@ -57,7 +62,7 @@ public class StudentViewModel : ViewModelBase
     
     // Audit Information
     public DateTime CreatedAt { get; }
-    public DateTime UpdatedAt { get; private set; }
+    public DateTime? LastModifiedAt { get; private set; }
     public Guid? CreatedBy { get; }
     public Guid? UpdatedBy { get; private set; }
 
@@ -249,7 +254,7 @@ public class StudentViewModel : ViewModelBase
         EnrollmentDate = student.EnrollmentDate;
         GraduationDate = student.GraduationDate;
         AcademicYear = DateTime.Now.Year;
-        GPA = 0.0m;
+        GPA = student.GPA;
         
         // Group information
         GroupUid = student.GroupUid;
@@ -261,7 +266,7 @@ public class StudentViewModel : ViewModelBase
         
         // Audit information
         CreatedAt = student.CreatedAt;
-        UpdatedAt = DateTime.UtcNow;
+        LastModifiedAt = student.LastModifiedAt;
         // CreatedBy = student.CreatedBy; // Doesn't exist in domain model
         // UpdatedBy = student.UpdatedBy; // Doesn't exist in domain model
         
@@ -276,7 +281,7 @@ public class StudentViewModel : ViewModelBase
     {
         Uid = Guid.NewGuid();
         CreatedAt = DateTime.UtcNow;
-        UpdatedAt = DateTime.UtcNow;
+        LastModifiedAt = DateTime.UtcNow;
         
         SetupPropertyChangeNotifications();
     }
@@ -373,7 +378,7 @@ public class StudentViewModel : ViewModelBase
             GraduationDate = GraduationDate,
             Status = Status,
             GroupUid = GroupUid,
-            GPA = GPA ?? 0m,
+            GPA = GPA ?? 0.0,
             CreatedAt = CreatedAt,
         };
 
@@ -422,7 +427,7 @@ public class StudentViewModel : ViewModelBase
         EnrollmentDate = student.EnrollmentDate;
         GraduationDate = student.GraduationDate;
         AcademicYear = DateTime.Now.Year;
-        GPA = 0.0m;
+        GPA = student.GPA;
         
         // Group information
         GroupUid = student.GroupUid;
@@ -433,7 +438,7 @@ public class StudentViewModel : ViewModelBase
         // DepartmentCode = student.Group?.Department?.Code;
         
         // Audit information
-        UpdatedAt = DateTime.UtcNow;
+        LastModifiedAt = student.LastModifiedAt;
         // CreatedBy = student.CreatedBy; // Doesn't exist in domain model
         // UpdatedBy = student.UpdatedBy; // Doesn't exist in domain model
     }
@@ -449,7 +454,7 @@ public class StudentViewModel : ViewModelBase
     /// <summary>
     /// Validates the student data
     /// </summary>
-    public ValidationResult Validate()
+    public DomainValidationResult Validate()
     {
         var errors = new List<string>();
         var warnings = new List<string>();
@@ -497,7 +502,7 @@ public class StudentViewModel : ViewModelBase
         if (AcademicYear < 1 || AcademicYear > 6)
             warnings.Add("Необычный курс обучения (обычно от 1 до 6)");
         
-        return new ValidationResult
+        return new DomainValidationResult
         {
             IsValid = errors.Count == 0,
             Errors = errors,
@@ -548,21 +553,4 @@ public class StudentViewModel : ViewModelBase
     {
         return Uid.GetHashCode();
     }
-}
-
-/// <summary>
-/// Validation result for student data
-/// </summary>
-public class ValidationResult
-{
-    public bool IsValid { get; set; }
-    public List<string> Errors { get; set; } = new();
-    public List<string> Warnings { get; set; } = new();
-    
-    public static ValidationResult Success() => new() { IsValid = true };
-    public static ValidationResult Failure(IEnumerable<string> errors) => new() 
-    { 
-        IsValid = false, 
-        Errors = errors.ToList() 
-    };
 } 

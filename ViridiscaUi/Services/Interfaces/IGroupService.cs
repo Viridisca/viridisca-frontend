@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using ViridiscaUi.Domain.Models.Education;
+using ViridiscaUi.Domain.Models.Base;
 
 namespace ViridiscaUi.Services.Interfaces;
 
@@ -89,6 +90,26 @@ public interface IGroupService : IGenericCrudService<Group>
     /// Получает все группы (алиас для GetAllGroupsAsync)
     /// </summary>
     Task<IEnumerable<Group>> GetGroupsAsync();
+    
+    /// <summary>
+    /// Получает группу по коду
+    /// </summary>
+    Task<Group?> GetByCodeAsync(string code);
+    
+    /// <summary>
+    /// Получает количество экземпляров курсов для группы
+    /// </summary>
+    Task<int> GetCourseInstancesCountAsync(Guid groupUid);
+
+    /// <summary>
+    /// Получает экземпляры курсов для группы
+    /// </summary>
+    Task<IEnumerable<CourseInstance>> GetGroupCourseInstancesAsync(Guid groupUid);
+
+    /// <summary>
+    /// Получает информацию о связанных данных группы для безопасного удаления
+    /// </summary>
+    Task<GroupRelatedDataInfo> GetGroupRelatedDataInfoAsync(Guid groupUid);
 }
 
 /// <summary>

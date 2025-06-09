@@ -56,6 +56,16 @@ public class AcademicPeriod : AuditableEntity
     public int AcademicYear { get; set; }
 
     /// <summary>
+    /// Флаг удаления (мягкое удаление)
+    /// </summary>
+    public bool IsDeleted { get; set; } = false;
+
+    /// <summary>
+    /// Дата удаления
+    /// </summary>
+    public DateTime? DeletedAt { get; set; }
+
+    /// <summary>
     /// Экземпляры курсов в этом периоде
     /// </summary>
     public ICollection<CourseInstance> CourseInstances { get; set; } = new List<CourseInstance>();

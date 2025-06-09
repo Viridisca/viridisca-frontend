@@ -17,16 +17,16 @@ public class Group : AuditableEntity
     public int Year { get; set; }
     public DateTime StartDate { get; set; }
     public DateTime? EndDate { get; set; }
-    public int MaxStudents { get; set; }
+    public int MaxStudents { get; set; } = 30;
     public Guid DepartmentUid { get; set; }
     public Guid? CuratorUid { get; set; }
-    public GroupStatus Status { get; set; }
+    public GroupStatus Status { get; set; } = GroupStatus.Active;
     
     /// <summary>
     /// Активна ли группа
     /// </summary>
     public bool IsActive { get; set; } = true;
-    
+        
     // Navigation properties
     public Department? Department { get; set; }
     public Teacher? Curator { get; set; }

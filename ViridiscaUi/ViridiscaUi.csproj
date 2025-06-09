@@ -61,6 +61,7 @@
 		<PackageReference Include="DynamicData" Version="9.0.4" />
 		<PackageReference Include="System.Reactive" Version="6.0.1" />
 		<PackageReference Include="Material.Icons.Avalonia" Version="2.1.10" />
+		<PackageReference Include="System.ComponentModel.Annotations" Version="5.0.0" />
 		
 		<!-- Code Analysis -->
 		<PackageReference Include="Microsoft.CodeAnalysis.Common" Version="4.8.0" />

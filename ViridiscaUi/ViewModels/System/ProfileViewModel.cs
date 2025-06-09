@@ -1,15 +1,20 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive;
+using System.Reactive.Disposables;
 using System.Threading.Tasks;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using Splat;
 using ViridiscaUi.Domain.Models.Auth;
+using ViridiscaUi.Domain.Models.Base;
 using ViridiscaUi.Services.Interfaces;
 using ViridiscaUi.Infrastructure.Navigation;
 using ViridiscaUi.ViewModels.Bases.Navigations;
+using System.ComponentModel.DataAnnotations;
+using Microsoft.Extensions.Logging;
 
 namespace ViridiscaUi.ViewModels.System;
 
@@ -355,7 +360,7 @@ public class ProfileViewModel : RoutableViewModelBase
                 "Отмена изменений",
                 "Вы уверены, что хотите отменить все изменения?");
 
-            if (result)
+            if (result == DialogResult.Yes)
             {
                 await LoadUserDataAsync();
                 ShowInfo("Изменения отменены");
@@ -495,7 +500,7 @@ public class ProfileViewModel : RoutableViewModelBase
                 "Удаление фото",
                 "Вы уверены, что хотите удалить фото профиля?");
 
-            if (result)
+            if (result == DialogResult.Yes)
             {
                 ProfileImageUrl = string.Empty;
                 await _dialogService.ShowInfoAsync("Успешно", "Фото профиля удалено");

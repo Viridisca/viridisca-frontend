@@ -74,6 +74,16 @@ public class CourseInstance : AuditableEntity
     /// Активен ли курс
     /// </summary>
     public bool IsActive { get; set; } = true;
+
+    /// <summary>
+    /// Флаг удаления (мягкое удаление)
+    /// </summary>
+    public bool IsDeleted { get; set; } = false;
+
+    /// <summary>
+    /// Дата удаления
+    /// </summary>
+    public DateTime? DeletedAt { get; set; }
     
     /// <summary>
     /// Предмет

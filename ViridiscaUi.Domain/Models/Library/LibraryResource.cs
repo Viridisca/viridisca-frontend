@@ -36,6 +36,11 @@ public class LibraryResource : AuditableEntity
     public DateTime? PublishedDate { get; set; }
     
     /// <summary>
+    /// Год публикации
+    /// </summary>
+    public int? PublicationYear { get; set; }
+    
+    /// <summary>
     /// Тип ресурса
     /// </summary>
     public ResourceType ResourceType { get; set; } = ResourceType.Book;

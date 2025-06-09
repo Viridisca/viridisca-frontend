@@ -1,150 +1,205 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations;
+using DynamicData;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using ViridiscaUi.Domain.Models.Education;
+using ViridiscaUi.Domain.Models.Education.Enums;
+using ViridiscaUi.Domain.Models.Auth;
+using ViridiscaUi.Domain.Models.System;
+using ViridiscaUi.Domain.Models.System.Enums;
 using ViridiscaUi.Services.Interfaces;
-using ViridiscaUi.Infrastructure.Navigation;
 using ViridiscaUi.ViewModels.Bases.Navigations;
+using ViridiscaUi.Infrastructure.Navigation;
+using ViridiscaUi.Infrastructure;
+using ViridiscaUi.ViewModels;
+using ViridiscaUi.ViewModels.System;
+using ViridiscaUi.Domain.Models.Base;
+using Microsoft.EntityFrameworkCore;
+using DynamicData.Binding;
+using Microsoft.Extensions.Logging;
+using DomainValidationResult = ViridiscaUi.Domain.Models.Base.ValidationResult;
 
-namespace ViridiscaUi.ViewModels.Education
+namespace ViridiscaUi.ViewModels.Education;
+
+/// <summary>
+/// ViewModel для управления предметами
+/// </summary>
+[Route("subjects", 
+    DisplayName = "Предметы", 
+    IconKey = "BookMultiple", 
+    Order = 5,
+    Group = "Образование",
+    ShowInMenu = true,
+    Description = "Управление учебными предметами")]
+public class SubjectsViewModel : RoutableViewModelBase
 {
-    /// <summary>
-    /// ViewModel для управления предметами
-    /// </summary>
-    [Route("subjects", 
-        DisplayName = "Предметы", 
-        IconKey = "BookMultiple", 
-        Order = 5,
-        Group = "Образование",
-        ShowInMenu = true,
-        Description = "Управление учебными предметами")]
-    public class SubjectsViewModel : RoutableViewModelBase
+    private readonly ISubjectService _subjectService;
+    private readonly IDepartmentService _departmentService;
+    private readonly IDialogService _dialogService;
+    private readonly IStatusService _statusService;
+    private readonly INotificationService _notificationService;
+    private readonly IPermissionService _permissionService;
+    private readonly IAuthService _authService;
+
+    [Reactive] public ObservableCollection<SubjectViewModel> Subjects { get; set; } = new();
+    [Reactive] public SubjectViewModel? SelectedSubject { get; set; }
+    [Reactive] public string SearchTerm { get; set; } = string.Empty;
+    [Reactive] public bool IsLoading { get; set; }
+    [Reactive] public bool IsRefreshing { get; set; }
+
+    // Пагинация
+    [Reactive] public int CurrentPage { get; set; } = 1;
+    [Reactive] public int PageSize { get; set; } = 20;
+    [Reactive] public int TotalPages { get; set; }
+    [Reactive] public int TotalSubjects { get; set; }
+
+    // Computed properties
+    public bool HasSelectedSubject => SelectedSubject != null;
+
+    // Команды
+    public ReactiveCommand<Unit, Unit> LoadSubjectsCommand { get; private set; }
+    public ReactiveCommand<Unit, Unit> RefreshCommand { get; private set; }
+    public ReactiveCommand<Unit, Unit> CreateSubjectCommand { get; private set; }
+    public ReactiveCommand<SubjectViewModel, Unit> EditSubjectCommand { get; private set; }
+    public ReactiveCommand<SubjectViewModel, Unit> DeleteSubjectCommand { get; private set; }
+    public ReactiveCommand<SubjectViewModel, Unit> ViewSubjectDetailsCommand { get; private set; }
+    public ReactiveCommand<string, Unit> SearchCommand { get; private set; }
+    public ReactiveCommand<int, Unit> GoToPageCommand { get; private set; }
+    public ReactiveCommand<Unit, Unit> NextPageCommand { get; private set; }
+    public ReactiveCommand<Unit, Unit> PreviousPageCommand { get; private set; }
+    public ReactiveCommand<Unit, Unit> FirstPageCommand { get; private set; }
+    public ReactiveCommand<Unit, Unit> LastPageCommand { get; private set; }
+
+    public SubjectsViewModel(
+        IScreen hostScreen,
+        ISubjectService subjectService,
+        IDepartmentService departmentService,
+        IDialogService dialogService,
+        IStatusService statusService,
+        INotificationService notificationService,
+        IPermissionService permissionService,
+        IAuthService authService)
+        : base(hostScreen)
     {
-        private readonly ISubjectService _subjectService;
-        private readonly IDepartmentService _departmentService;
-        private readonly IDialogService _dialogService;
-        private readonly IStatusService _statusService;
-        private readonly INotificationService _notificationService;
+        _subjectService = subjectService ?? throw new ArgumentNullException(nameof(subjectService));
+        _departmentService = departmentService ?? throw new ArgumentNullException(nameof(departmentService));
+        _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
+        _statusService = statusService ?? throw new ArgumentNullException(nameof(statusService));
+        _notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
+        _permissionService = permissionService ?? throw new ArgumentNullException(nameof(permissionService));
+        _authService = authService ?? throw new ArgumentNullException(nameof(authService));
 
-        [Reactive] public ObservableCollection<SubjectViewModel> Subjects { get; set; } = new();
-        [Reactive] public SubjectViewModel? SelectedSubject { get; set; }
-        [Reactive] public string SearchTerm { get; set; } = string.Empty;
-        [Reactive] public bool IsLoading { get; set; }
-        [Reactive] public bool IsRefreshing { get; set; }
+        InitializeCommands();
+        SetupSubscriptions();
+    }
 
-        // Команды
-        public ReactiveCommand<Unit, Unit> LoadSubjectsCommand { get; private set; }
-        public ReactiveCommand<Unit, Unit> RefreshCommand { get; private set; }
-        public ReactiveCommand<Unit, Unit> CreateSubjectCommand { get; private set; }
-        public ReactiveCommand<SubjectViewModel, Unit> EditSubjectCommand { get; private set; }
-        public ReactiveCommand<SubjectViewModel, Unit> DeleteSubjectCommand { get; private set; }
-        public ReactiveCommand<SubjectViewModel, Unit> ViewSubjectDetailsCommand { get; private set; }
-        public ReactiveCommand<string, Unit> SearchCommand { get; private set; }
+    private void InitializeCommands()
+    {
+        LoadSubjectsCommand = CreateCommand(async () => await LoadSubjectsAsync(), null, "Ошибка загрузки предметов");
+        RefreshCommand = CreateCommand(async () => await RefreshAsync(), null, "Ошибка обновления данных");
+        CreateSubjectCommand = CreateCommand(async () => await CreateSubjectAsync(), null, "Ошибка создания предмета");
+        EditSubjectCommand = CreateCommand<SubjectViewModel>(async (subject) => await EditSubjectAsync(subject), null, "Ошибка редактирования предмета");
+        DeleteSubjectCommand = CreateCommand<SubjectViewModel>(async (subject) => await DeleteSubjectAsync(subject), null, "Ошибка удаления предмета");
+        ViewSubjectDetailsCommand = CreateCommand<SubjectViewModel>(async (subject) => await ViewSubjectDetailsAsync(subject), null, "Ошибка просмотра деталей предмета");
+        SearchCommand = CreateCommand<string>(async (searchTerm) => await SearchSubjectsAsync(searchTerm), null, "Ошибка поиска предметов");
+        GoToPageCommand = CreateCommand<int>(async (page) => await GoToPageAsync(page), null, "Ошибка навигации по страницам");
+        
+        var canGoNext = this.WhenAnyValue(x => x.CurrentPage, x => x.TotalPages, (current, total) => current < total);
+        var canGoPrevious = this.WhenAnyValue(x => x.CurrentPage, current => current > 1);
+        
+        NextPageCommand = CreateCommand(async () => await NextPageAsync(), canGoNext, "Ошибка перехода на следующую страницу");
+        PreviousPageCommand = CreateCommand(async () => await PreviousPageAsync(), canGoPrevious, "Ошибка перехода на предыдущую страницу");
+        FirstPageCommand = CreateCommand(async () => await FirstPageAsync(), null, "Ошибка перехода на первую страницу");
+        LastPageCommand = CreateCommand(async () => await LastPageAsync(), null, "Ошибка перехода на последнюю страницу");
+    }
 
-        public SubjectsViewModel(
-            IScreen hostScreen,
-            ISubjectService subjectService,
-            IDepartmentService departmentService,
-            IDialogService dialogService,
-            IStatusService statusService,
-            INotificationService notificationService)
-            : base(hostScreen)
+    private void SetupSubscriptions()
+    {
+        // Автопоиск при изменении текста поиска
+        this.WhenAnyValue(x => x.SearchTerm)
+            .Throttle(TimeSpan.FromMilliseconds(500))
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(searchTerm => SearchCommand.Execute(searchTerm ?? string.Empty).Subscribe())
+            .DisposeWith(Disposables);
+
+        // Уведомления об изменении computed properties
+        this.WhenAnyValue(x => x.SelectedSubject)
+            .Subscribe(_ => this.RaisePropertyChanged(nameof(HasSelectedSubject)))
+            .DisposeWith(Disposables);
+    }
+
+    private async Task LoadSubjectsAsync()
+    {
+        // Предотвращаем множественные одновременные вызовы
+        if (IsLoading) return;
+        
+        LogInfo("Loading subjects with search term: {SearchTerm}", SearchTerm);
+        IsLoading = true;
+        ShowInfo("Загрузка предметов...");
+
+        try
         {
-            _subjectService = subjectService;
-            _departmentService = departmentService;
-            _dialogService = dialogService;
-            _statusService = statusService;
-            _notificationService = notificationService;
-
-            InitializeCommands();
-            SetupSubscriptions();
-        }
-
-        private void InitializeCommands()
-        {
-            LoadSubjectsCommand = CreateCommand(LoadSubjectsAsync, null, "Ошибка загрузки предметов");
-            RefreshCommand = CreateCommand(RefreshAsync, null, "Ошибка обновления данных");
-            CreateSubjectCommand = CreateCommand(CreateSubjectAsync, null, "Ошибка создания предмета");
-            EditSubjectCommand = CreateCommand<SubjectViewModel>(EditSubjectAsync, null, "Ошибка редактирования предмета");
-            DeleteSubjectCommand = CreateCommand<SubjectViewModel>(DeleteSubjectAsync, null, "Ошибка удаления предмета");
-            ViewSubjectDetailsCommand = CreateCommand<SubjectViewModel>(ViewSubjectDetailsAsync, null, "Ошибка просмотра деталей предмета");
-            SearchCommand = CreateCommand<string>(SearchSubjectsAsync, null, "Ошибка поиска предметов");
-        }
-
-        private void SetupSubscriptions()
-        {
-            // Автоматическая загрузка при активации - используем безопасный подход
-            this.WhenActivated(disposables =>
-            {
-                // Используем прямой вызов метода вместо команды для предотвращения вложенных подписок
-                LoadSubjectsAsync()
-                    .ContinueWith(task =>
-                    {
-                        if (task.IsFaulted)
-                        {
-                            LogError(task.Exception?.GetBaseException() ?? new Exception("Unknown error"), 
-                                "Ошибка при автоматической загрузке предметов");
-                            ShowError("Не удалось загрузить предметы при открытии страницы");
-                        }
-                    }, TaskScheduler.FromCurrentSynchronizationContext())
-                    .DisposeWith(disposables);
-            });
-        }
-
-        private async Task LoadSubjectsAsync()
-        {
-            // Предотвращаем множественные одновременные вызовы
-            if (IsLoading) return;
+            var (subjects, totalCount) = await _subjectService.GetPagedAsync(CurrentPage, PageSize, SearchTerm);
             
-            LogInfo("Loading subjects");
-            IsLoading = true;
-
-            try
+            Subjects.Clear();
+            foreach (var subject in subjects)
             {
-                var subjects = await _subjectService.GetAllSubjectsAsync();
-                Subjects.Clear();
-                
-                foreach (var subject in subjects)
-                {
-                    Subjects.Add(new SubjectViewModel(subject));
-                }
-
-                LogInfo("Loaded {SubjectCount} subjects", Subjects.Count);
-                ShowSuccess($"Загружено {Subjects.Count} предметов");
+                Subjects.Add(new SubjectViewModel(subject));
             }
-            catch (Exception ex)
-            {
-                LogError(ex, "Failed to load subjects");
-                ShowError("Не удалось загрузить список предметов");
-                Subjects.Clear();
-            }
-            finally
-            {
-                IsLoading = false;
-            }
+
+            TotalSubjects = totalCount;
+            TotalPages = (int)Math.Ceiling((double)totalCount / PageSize);
+
+            LogInfo("Loaded {SubjectCount} subjects, total: {TotalCount}", Subjects.Count, totalCount);
+            ShowSuccess($"Загружено {Subjects.Count} предметов");
+        }
+        catch (Exception ex)
+        {
+            LogError(ex, "Failed to load subjects");
+            ShowError("Не удалось загрузить список предметов");
+            Subjects.Clear();
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task RefreshAsync()
+    {
+        LogInfo("Refreshing subjects data");
+        IsRefreshing = true;
+        
+        await LoadSubjectsAsync();
+        ShowSuccess("Данные обновлены");
+        
+        IsRefreshing = false;
+    }
+
+    /// <summary>
+    /// Создание нового предмета с расширенной валидацией
+    /// </summary>
+    private async Task CreateSubjectAsync()
+    {
+        LogInfo("Creating new subject");
+        
+        // Проверка прав доступа
+        if (!await HasPermissionAsync("Subjects.Create"))
+        {
+            ShowError("У вас нет прав для создания предметов");
+            return;
         }
 
-        private async Task RefreshAsync()
+        try
         {
-            LogInfo("Refreshing subjects data");
-            IsRefreshing = true;
-            
-            await LoadSubjectsAsync();
-            ShowSuccess("Данные обновлены");
-            
-            IsRefreshing = false;
-        }
-
-        private async Task CreateSubjectAsync()
-        {
-            LogInfo("Creating new subject");
-            
             var newSubject = new Subject
             {
                 Uid = Guid.NewGuid(),
@@ -153,7 +208,8 @@ namespace ViridiscaUi.ViewModels.Education
                 Description = string.Empty,
                 IsActive = true,
                 Credits = 3,
-                LessonsPerWeek = 2
+                LessonsPerWeek = 2,
+                CreatedAt = DateTime.UtcNow
             };
 
             var dialogResult = await _dialogService.ShowSubjectEditDialogAsync(newSubject);
@@ -163,180 +219,384 @@ namespace ViridiscaUi.ViewModels.Education
                 return;
             }
 
-            try
+            // Валидация данных предмета
+            var validationResult = await ValidateSubjectAsync(dialogResult);
+            if (!validationResult.IsValid)
             {
-                await _subjectService.AddSubjectAsync(dialogResult);
-                Subjects.Add(new SubjectViewModel(dialogResult));
-                
-                LogInfo("Subject created successfully: {SubjectName}", dialogResult.Name);
-                ShowSuccess($"Предмет '{dialogResult.Name}' успешно создан");
-            }
-            catch (Exception ex)
-            {
-                LogError(ex, "Failed to create subject");
-                ShowError("Не удалось создать предмет");
-            }
-        }
-
-        private async Task EditSubjectAsync(SubjectViewModel subjectVm)
-        {
-            if (subjectVm == null) return;
-
-            LogInfo("Editing subject: {SubjectName}", subjectVm.Name);
-
-            try
-            {
-                var subject = await _subjectService.GetSubjectAsync(subjectVm.Uid);
-                if (subject == null)
-                {
-                    ShowError("Предмет не найден");
-                    return;
-                }
-
-                var dialogResult = await _dialogService.ShowSubjectEditDialogAsync(subject);
-                if (dialogResult == null)
-                {
-                    LogDebug("Subject editing cancelled by user");
-                    return;
-                }
-
-                await _subjectService.UpdateSubjectAsync(dialogResult);
-                
-                // Обновляем элемент в коллекции
-                var index = Subjects.IndexOf(subjectVm);
-                if (index >= 0)
-                {
-                    Subjects[index] = new SubjectViewModel(dialogResult);
-                }
-
-                LogInfo("Subject updated successfully: {SubjectName}", dialogResult.Name);
-                ShowSuccess($"Предмет '{dialogResult.Name}' успешно обновлен");
-            }
-            catch (Exception ex)
-            {
-                LogError(ex, "Failed to edit subject");
-                ShowError("Не удалось обновить предмет");
-            }
-        }
-
-        private async Task DeleteSubjectAsync(SubjectViewModel subjectVm)
-        {
-            if (subjectVm == null) return;
-
-            LogInfo("Deleting subject: {SubjectName}", subjectVm.Name);
-
-            var confirmResult = await _dialogService.ShowConfirmationDialogAsync(
-                "Удаление предмета",
-                $"Вы уверены, что хотите удалить предмет '{subjectVm.Name}'?\n\nЭто действие нельзя отменить.",
-                "Удалить",
-                "Отмена");
-
-            if (!confirmResult)
-            {
-                LogDebug("Subject deletion cancelled by user");
+                await _dialogService.ShowValidationErrorsAsync("Ошибки валидации", validationResult.Errors);
                 return;
             }
 
-            try
-            {
-                var success = await _subjectService.DeleteSubjectAsync(subjectVm.Uid);
-                if (success)
-                {
-                    Subjects.Remove(subjectVm);
-                    if (SelectedSubject == subjectVm)
-                    {
-                        SelectedSubject = null;
-                    }
-
-                    LogInfo("Subject deleted successfully: {SubjectName}", subjectVm.Name);
-                    ShowSuccess($"Предмет '{subjectVm.Name}' успешно удален");
-                }
-                else
-                {
-                    ShowError("Не удалось удалить предмет");
-                }
-            }
-            catch (Exception ex)
-            {
-                LogError(ex, "Failed to delete subject");
-                ShowError("Не удалось удалить предмет");
-            }
-        }
-
-        private async Task ViewSubjectDetailsAsync(SubjectViewModel subjectVm)
-        {
-            if (subjectVm == null) return;
-
-            LogInfo("Viewing subject details: {SubjectName}", subjectVm.Name);
-
-            try
-            {
-                var subject = await _subjectService.GetSubjectAsync(subjectVm.Uid);
-                if (subject == null)
-                {
-                    ShowError("Предмет не найден");
-                    return;
-                }
-
-                await _dialogService.ShowSubjectDetailsDialogAsync(subject);
-            }
-            catch (Exception ex)
-            {
-                LogError(ex, "Failed to view subject details");
-                ShowError("Не удалось загрузить детали предмета");
-            }
-        }
-
-        private async Task SearchSubjectsAsync(string searchTerm)
-        {
-            if (string.IsNullOrWhiteSpace(searchTerm))
-            {
-                await LoadSubjectsAsync();
-                return;
-            }
-
-            LogInfo("Searching subjects with term: {SearchTerm}", searchTerm);
-
-            try
-            {
-                var subjects = await _subjectService.SearchSubjectsAsync(searchTerm);
-                Subjects.Clear();
-                
-                foreach (var subject in subjects)
-                {
-                    Subjects.Add(new SubjectViewModel(subject));
-                }
-
-                LogInfo("Found {SubjectCount} subjects matching search term", Subjects.Count);
-            }
-            catch (Exception ex)
-            {
-                LogError(ex, "Failed to search subjects");
-                ShowError("Ошибка при поиске предметов");
-            }
-        }
-
-        private new void ShowSuccess(string message)
-        {
-            _notificationService.ShowSuccess(message);
-        }
-
-        private new void ShowError(string message)
-        {
-            _notificationService.ShowError(message);
-        }
-
-        #region Lifecycle Methods
-
-        protected override async Task OnFirstTimeLoadedAsync()
-        {
-            await base.OnFirstTimeLoadedAsync();
-            LogInfo("SubjectsViewModel loaded for the first time");
+            // Создание предмета
+            var createdSubject = await _subjectService.CreateAsync(dialogResult);
             
-            // Load subjects when view is loaded for the first time
+            // Обновление UI
+            Subjects.Add(new SubjectViewModel(createdSubject));
+            TotalSubjects++;
+            
+            // Автоматическое обновление статистики
+            await UpdateStatisticsAsync();
+            
+            LogInfo("Subject created successfully: {SubjectName}", createdSubject.Name);
+            ShowSuccess($"Предмет '{createdSubject.Name}' успешно создан");
+            
+            // Уведомление
+            await _notificationService.SendNotificationAsync(
+                "Создан новый предмет",
+                $"Предмет '{createdSubject.Name}' был успешно создан",
+                NotificationType.Info);
+        }
+        catch (InvalidOperationException ex)
+        {
+            LogError(ex, "Duplicate subject code");
+            ErrorMessage = "Предмет с таким кодом уже существует";
+        }
+        catch (Exception ex)
+        {
+            LogError(ex, "Failed to create subject");
+            ShowError("Не удалось создать предмет. Попробуйте еще раз.");
+        }
+    }
+
+    /// <summary>
+    /// Редактирование предмета с optimistic locking
+    /// </summary>
+    private async Task EditSubjectAsync(SubjectViewModel subjectVm)
+    {
+        if (subjectVm == null) return;
+
+        LogInfo("Editing subject: {SubjectName}", subjectVm.Name);
+
+        // Проверка прав доступа
+        if (!await HasPermissionAsync("Subjects.Update"))
+        {
+            ShowError("У вас нет прав для редактирования предметов");
+            return;
+        }
+
+        try
+        {
+            // Получение актуальных данных с проверкой версии
+            var subject = await _subjectService.GetByUidAsync(subjectVm.Uid);
+            if (subject == null)
+            {
+                ShowError("Предмет не найден");
+                await LoadSubjectsAsync(); // Обновляем список
+                return;
+            }
+
+            // Проверка optimistic locking
+            if (subject.LastModifiedAt != subjectVm.LastModifiedAt)
+            {
+                var result = await _dialogService.ShowConfirmationAsync(
+                    "Конфликт версий",
+                    "Предмет был изменен другим пользователем. Хотите перезаписать изменения?",
+                    DialogButtons.YesNo);
+                
+                if (result != DialogResult.Yes)
+                {
+                    await LoadSubjectsAsync(); // Обновляем список
+                    return;
+                }
+            }
+
+            var dialogResult = await _dialogService.ShowSubjectEditDialogAsync(subject);
+            if (dialogResult == null)
+            {
+                LogDebug("Subject editing cancelled by user");
+                return;
+            }
+
+            // Валидация изменений
+            var validationResult = await ValidateSubjectAsync(dialogResult);
+            if (!validationResult.IsValid)
+            {
+                await _dialogService.ShowValidationErrorsAsync("Ошибки валидации", validationResult.Errors);
+                return;
+            }
+
+            // Обновление предмета
+            var updatedSubject = await _subjectService.UpdateAsync(dialogResult);
+            
+            // Обновление UI
+            var index = Subjects.IndexOf(subjectVm);
+            if (index >= 0)
+            {
+                Subjects[index] = new SubjectViewModel(updatedSubject);
+                if (SelectedSubject?.Uid == updatedSubject.Uid)
+                {
+                    SelectedSubject = Subjects[index];
+                }
+            }
+            
+            // Автоматическое обновление статистики
+            await UpdateStatisticsAsync();
+            
+            LogInfo("Subject updated successfully: {SubjectName}", updatedSubject.Name);
+            ShowSuccess($"Предмет '{updatedSubject.Name}' успешно обновлен");
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            ShowError($"Конфликт одновременного редактирования: {ex.Message}");
+            LogError(ex, "Concurrency conflict while updating subject");
+        }
+        catch (Exception ex)
+        {
+            LogError(ex, "Failed to update subject");
+            ShowError("Не удалось обновить предмет. Попробуйте еще раз.");
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    /// <summary>
+    /// Удаление предмета с проверкой связанных данных
+    /// </summary>
+    private async Task DeleteSubjectAsync(SubjectViewModel subjectVm)
+    {
+        if (subjectVm == null) return;
+
+        LogInfo("Deleting subject: {SubjectName}", subjectVm.Name);
+
+        // Проверка прав доступа
+        if (!await HasPermissionAsync("Subjects.Delete"))
+        {
+            ShowError("У вас нет прав для удаления предметов");
+            return;
+        }
+
+        try
+        {
+            // Подтверждение удаления
+            var confirmed = await _dialogService.ShowConfirmationAsync(
+                "Подтверждение удаления",
+                $"Вы уверены, что хотите удалить предмет '{subjectVm.Name}'?");
+
+            if (confirmed == DialogResult.Yes)
+            {
+                await _subjectService.DeleteAsync(subjectVm.Uid);
+                await LoadSubjectsAsync(); // Обновляем список
+
+                var currentPerson = await _authService.GetCurrentPersonAsync();
+                await _notificationService.SendNotificationAsync(
+                    currentPerson?.Uid ?? Guid.Empty,
+                    $"Предмет '{subjectVm.Name}' успешно удален",
+                    "Предмет удален",
+                    ViridiscaUi.Domain.Models.System.Enums.NotificationType.Success,
+                    ViridiscaUi.Domain.Models.System.Enums.NotificationPriority.Normal);
+
+                ShowSuccess($"Предмет '{subjectVm.Name}' удален");
+                LogInfo("Subject deleted successfully: {SubjectName}", subjectVm.Name);
+            }
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("foreign key") || ex.Message.Contains("связанных данных"))
+        {
+            ShowError("Невозможно удалить предмет, так как он используется в курсах или учебных планах. Сначала удалите связанные записи.");
+            LogError(ex, "Foreign key constraint violation while deleting subject");
+        }
+        catch (Exception ex)
+        {
+            LogError(ex, "Failed to delete subject");
+            ShowError("Не удалось удалить предмет. Попробуйте еще раз.");
+        }
+    }
+
+    private async Task ViewSubjectDetailsAsync(SubjectViewModel subjectVm)
+    {
+        if (subjectVm == null) return;
+
+        LogInfo("Viewing subject details: {SubjectName}", subjectVm.Name);
+        
+        try
+        {
+            await NavigateToAsync($"subject-details/{subjectVm.Uid}");
+        }
+        catch (Exception ex)
+        {
+            LogError(ex, "Failed to navigate to subject details");
+            ShowError("Не удалось открыть детали предмета");
+        }
+    }
+
+    private async Task SearchSubjectsAsync(string searchTerm)
+    {
+        LogInfo("Searching subjects with term: {SearchTerm}", searchTerm);
+        CurrentPage = 1; // Сброс на первую страницу при поиске
+        await LoadSubjectsAsync();
+    }
+
+    private async Task GoToPageAsync(int page)
+    {
+        if (page < 1 || page > TotalPages) return;
+        
+        CurrentPage = page;
+        await LoadSubjectsAsync();
+    }
+
+    private async Task NextPageAsync()
+    {
+        if (CurrentPage < TotalPages)
+        {
+            CurrentPage++;
             await LoadSubjectsAsync();
         }
+    }
 
-        #endregion
+    private async Task PreviousPageAsync()
+    {
+        if (CurrentPage > 1)
+        {
+            CurrentPage--;
+            await LoadSubjectsAsync();
+        }
+    }
+
+    private async Task FirstPageAsync()
+    {
+        CurrentPage = 1;
+        await LoadSubjectsAsync();
+    }
+
+    private async Task LastPageAsync()
+    {
+        CurrentPage = TotalPages;
+        await LoadSubjectsAsync();
+    }
+
+    /// <summary>
+    /// Валидация данных предмета
+    /// </summary>
+    private async Task<DomainValidationResult> ValidateSubjectAsync(Subject subject)
+    {
+        var result = new DomainValidationResult();
+
+        // Проверка обязательных полей
+        if (string.IsNullOrWhiteSpace(subject.Name))
+        {
+            result.AddError("Name", "Название предмета обязательно для заполнения");
+        }
+
+        if (string.IsNullOrWhiteSpace(subject.Code))
+        {
+            result.AddError("Code", "Код предмета обязателен для заполнения");
+        }
+
+        if (subject.Credits <= 0)
+        {
+            result.AddError("Credits", "Количество кредитов должно быть больше нуля");
+        }
+
+        if (subject.LessonsPerWeek <= 0)
+        {
+            result.AddError("LessonsPerWeek", "Количество занятий в неделю должно быть больше нуля");
+        }
+
+        // Проверка уникальности кода предмета
+        if (!string.IsNullOrWhiteSpace(subject.Code))
+        {
+            var existingSubject = await _subjectService.GetByCodeAsync(subject.Code);
+            if (existingSubject != null && existingSubject.Uid != subject.Uid)
+            {
+                result.AddError("Code", $"Предмет с кодом '{subject.Code}' уже существует");
+            }
+        }
+
+        // Проверка уникальности названия предмета
+        if (!string.IsNullOrWhiteSpace(subject.Name))
+        {
+            var existingSubject = await _subjectService.GetByNameAsync(subject.Name);
+            if (existingSubject != null && existingSubject.Uid != subject.Uid)
+            {
+                result.AddError("Name", $"Предмет с названием '{subject.Name}' уже существует");
+            }
+        }
+
+        // Проверка валидности департамента
+        if (subject.DepartmentUid.HasValue)
+        {
+            var department = await _departmentService.GetByUidAsync(subject.DepartmentUid.Value);
+            if (department == null)
+            {
+                result.AddError("DepartmentUid", "Указанный департамент не найден");
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Проверка связанных данных перед удалением
+    /// </summary>
+    private async Task<SubjectRelatedDataInfo> CheckRelatedDataAsync(Guid subjectUid)
+    {
+        var relatedData = new SubjectRelatedDataInfo();
+
+        try
+        {
+            // Проверяем связанные курсы
+            var courses = await _subjectService.GetSubjectCoursesAsync(subjectUid);
+            relatedData.CourseInstancesCount = courses?.Count() ?? 0;
+
+            // Проверяем связанные учебные планы
+            var curricula = await _subjectService.GetSubjectCurriculaAsync(subjectUid);
+            relatedData.CurriculumSubjectsCount = curricula?.Count() ?? 0;
+
+            // Проверяем связанные задания
+            var assignments = await _subjectService.GetSubjectAssignmentsAsync(subjectUid);
+            relatedData.AssignmentsCount = assignments?.Count() ?? 0;
+
+            relatedData.HasRelatedData = relatedData.CourseInstancesCount > 0 || 
+                                       relatedData.CurriculumSubjectsCount > 0 || 
+                                       relatedData.AssignmentsCount > 0;
+
+            if (relatedData.HasRelatedData)
+            {
+                relatedData.RelatedDataDescriptions.Add($"Курсы: {relatedData.CourseInstancesCount}");
+                relatedData.RelatedDataDescriptions.Add($"Учебные планы: {relatedData.CurriculumSubjectsCount}");
+                relatedData.RelatedDataDescriptions.Add($"Задания: {relatedData.AssignmentsCount}");
+            }
+        }
+        catch (Exception ex)
+        {
+            LogError(ex, "Error checking related data for subject {SubjectUid}", subjectUid);
+        }
+
+        return relatedData;
+    }
+
+    private async Task<bool> HasPermissionAsync(string permission)
+    {
+        try
+        {
+            var currentPerson = await _authService.GetCurrentPersonAsync();
+            if (currentPerson == null) return false;
+
+            return await _permissionService.HasPermissionAsync(currentPerson.Uid, permission);
+        }
+        catch (Exception ex)
+        {
+            LogError(ex, "Error checking permission: {Permission}", permission);
+            return false;
+        }
+    }
+
+    private async Task UpdateStatisticsAsync()
+    {
+        try
+        {
+            // Обновление статистики предметов
+            TotalSubjects = await _subjectService.GetTotalCountAsync();
+        }
+        catch (Exception ex)
+        {
+            LogError(ex, "Failed to update statistics");
+        }
+    }
+
+    protected override async Task OnFirstTimeLoadedAsync()
+    {
+        await LoadSubjectsAsync();
     }
 } 

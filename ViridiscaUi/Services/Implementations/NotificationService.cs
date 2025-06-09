@@ -255,58 +255,40 @@ public class NotificationService(ApplicationDbContext dbContext, ILogger<Notific
     /// Массовая отправка уведомлений
     /// </summary>
     public async Task<BulkNotificationResult> SendBulkNotificationAsync(
-        IEnumerable<Guid> recipientUids, 
-        string title, 
-        string message, 
-        NotificationType type = NotificationType.Info, 
-        NotificationPriority priority = NotificationPriority.Normal, 
-        string? category = null, 
-        string? actionUrl = null, 
-        Dictionary<string, object>? metadata = null, 
+        IEnumerable<Guid> personUids,
+        string title,
+        string message,
+        NotificationType type,
+        NotificationPriority priority,
+        string? category = null,
+        string? actionUrl = null,
+        Dictionary<string, object>? metadata = null,
         DateTime? expiresAt = null)
     {
-        var notifications = new List<Notification>();
-        var errors = new List<string>();
         var successCount = 0;
+        var failureCount = 0;
+        var errors = new List<string>();
 
-        foreach (var recipientUid in recipientUids)
+        foreach (var personUid in personUids)
         {
             try
             {
-                var notification = new Notification
-                {
-                    PersonUid = recipientUid,
-                    Title = title,
-                    Message = message,
-                    Type = type,
-                    Priority = priority,
-                    Category = category,
-                    ActionUrl = actionUrl,
-                    SentAt = DateTime.UtcNow,
-                    IsRead = false,
-                    ExpiresAt = expiresAt
-                };
-
-                notifications.Add(notification);
+                await SendNotificationAsync(personUid, title, message, type, priority, category, actionUrl, metadata, expiresAt);
                 successCount++;
             }
             catch (Exception ex)
             {
-                errors.Add($"Failed to create notification for user {recipientUid}: {ex.Message}");
+                failureCount++;
+                errors.Add($"Failed to send to {personUid}: {ex.Message}");
             }
-        }
-
-        if (notifications.Any())
-        {
-            _dbContext.Notifications.AddRange(notifications);
-            await _dbContext.SaveChangesAsync();
         }
 
         return new BulkNotificationResult
         {
             SuccessfulSends = successCount,
-            FailedSends = errors.Count,
-            Errors = errors
+            FailedSends = failureCount,
+            Errors = errors,
+            SentNotificationUids = new List<Guid>()
         };
     }
 
@@ -362,7 +344,7 @@ public class NotificationService(ApplicationDbContext dbContext, ILogger<Notific
             .Select(e => e.StudentUid)
             .ToListAsync();
 
-        await SendBulkNotificationAsync(enrolledStudents, title, message, type);
+        await SendBulkNotificationAsync(enrolledStudents, title, message, type, NotificationPriority.Normal);
     }
 
     /// <summary>
@@ -413,30 +395,10 @@ public class NotificationService(ApplicationDbContext dbContext, ILogger<Notific
     }
 
     /// <summary>
-    /// Получает системную статистику уведомлений
+    /// Получает статистику уведомлений пользователя
     /// </summary>
-    public async Task<SystemNotificationStatistics> GetSystemNotificationStatisticsAsync()
-    {
-        var now = DateTime.UtcNow;
-        var today = now.Date;
-
-        var totalNotifications = await _dbContext.Notifications.CountAsync();
-        var unreadNotifications = await _dbContext.Notifications
-            .Where(n => !n.IsRead)
-            .Where(n => n.ExpiresAt == null || n.ExpiresAt > now)
-            .CountAsync();
-        var readNotifications = totalNotifications - unreadNotifications;
-        var errorNotifications = 0; // В будущем можно добавить логику для отслеживания ошибок
-
-        return new SystemNotificationStatistics
-        {
-            TotalNotifications = totalNotifications,
-            TotalUsers = 100, // Заглушка
-            ActiveUsers = 80, // Заглушка
-            AverageNotificationsPerUser = totalNotifications / 100.0,
-            ReadRate = totalNotifications > 0 ? (double)(totalNotifications - unreadNotifications) / totalNotifications * 100 : 0
-        };
-    }
+    public async Task<NotificationStatistics> GetNotificationStatisticsAsync(Guid userUid) =>
+        await GetUserNotificationStatisticsAsync(userUid);
 
     /// <summary>
     /// Очищает старые уведомления
@@ -471,51 +433,6 @@ public class NotificationService(ApplicationDbContext dbContext, ILogger<Notific
     }
 
     /// <summary>
-    /// Отправляет уведомления о просроченных заданиях
-    /// </summary>
-    public async Task SendOverdueAssignmentNotificationsAsync()
-    {
-        var overdueAssignments = await _dbContext.Assignments
-            .Where(a => a.DueDate.HasValue && a.DueDate < DateTime.UtcNow)
-            .Where(a => a.Status == AssignmentStatus.Published)
-            .Include(a => a.CourseInstance)
-            .ToListAsync();
-
-        foreach (var assignment in overdueAssignments)
-        {
-            await SendNotificationToCourseAsync(
-                assignment.CourseInstanceUid,
-                "Просроченное задание",
-                $"Задание '{assignment.Title}' просрочено. Срок сдачи был: {assignment.DueDate:dd.MM.yyyy}",
-                NotificationType.Warning);
-        }
-    }
-
-    /// <summary>
-    /// Отправляет уведомления о приближающихся дедлайнах
-    /// </summary>
-    public async Task SendUpcomingDeadlineNotificationsAsync()
-    {
-        var tomorrow = DateTime.UtcNow.AddDays(1);
-        var dayAfterTomorrow = DateTime.UtcNow.AddDays(2);
-
-        var upcomingAssignments = await _dbContext.Assignments
-            .Where(a => a.DueDate.HasValue && a.DueDate >= tomorrow && a.DueDate <= dayAfterTomorrow)
-            .Where(a => a.Status == AssignmentStatus.Published)
-            .Include(a => a.CourseInstance)
-            .ToListAsync();
-
-        foreach (var assignment in upcomingAssignments)
-        {
-            await SendNotificationToCourseAsync(
-                assignment.CourseInstanceUid,
-                "Приближается дедлайн",
-                $"Задание '{assignment.Title}' нужно сдать до {assignment.DueDate:dd.MM.yyyy HH:mm}",
-                NotificationType.Info);
-        }
-    }
-
-    /// <summary>
     /// Уведомляет родителей об оценках
     /// </summary>
     public async Task NotifyParentsAboutGradesAsync(IEnumerable<Grade> grades)
@@ -532,13 +449,57 @@ public class NotificationService(ApplicationDbContext dbContext, ILogger<Notific
         }
     }
 
-    // Методы-заглушки для совместимости с интерфейсом
+    /// <summary>
+    /// Получает статистику уведомлений пользователя (алиас для совместимости)
+    /// </summary>
     public async Task<NotificationStatistics> GetUserStatisticsAsync(Guid userUid) => 
         await GetUserNotificationStatisticsAsync(userUid);
 
+    /// <summary>
+    /// Получает системную статистику уведомлений (алиас для совместимости)
+    /// </summary>
     public async Task<SystemNotificationStatistics> GetSystemStatisticsAsync() => 
         await GetSystemNotificationStatisticsAsync();
 
+    /// <summary>
+    /// Получает системную статистику уведомлений
+    /// </summary>
+    public async Task<SystemNotificationStatistics> GetSystemNotificationStatisticsAsync()
+    {
+        var now = DateTime.UtcNow;
+        var today = now.Date;
+        var weekAgo = today.AddDays(-7);
+        var monthAgo = today.AddMonths(-1);
+
+        var totalNotifications = await _dbContext.Notifications.CountAsync();
+        var unreadNotifications = await _dbContext.Notifications
+            .Where(n => !n.IsRead)
+            .Where(n => n.ExpiresAt == null || n.ExpiresAt > now)
+            .CountAsync();
+
+        var todayNotifications = await _dbContext.Notifications
+            .Where(n => n.SentAt >= today)
+            .CountAsync();
+
+        var weekNotifications = await _dbContext.Notifications
+            .Where(n => n.SentAt >= weekAgo)
+            .CountAsync();
+
+        var monthNotifications = await _dbContext.Notifications
+            .Where(n => n.SentAt >= monthAgo)
+            .CountAsync();
+
+        return new SystemNotificationStatistics
+        {
+            TotalNotifications = totalNotifications,
+            UnreadNotifications = unreadNotifications,
+            TodayNotifications = todayNotifications,
+            WeekNotifications = weekNotifications,
+            MonthNotifications = monthNotifications
+        };
+    }
+
+    // Методы-заглушки для совместимости с интерфейсом
     public async Task<(IEnumerable<Notification> Notifications, int TotalCount)> GetNotificationsAdvancedAsync(
         Guid userUid, int page, int pageSize, NotificationFilter filter) =>
         await GetUserNotificationsPagedAsync(userUid, page, pageSize);
@@ -595,7 +556,7 @@ public class NotificationService(ApplicationDbContext dbContext, ILogger<Notific
 
     public async Task<BulkNotificationResult> SendBulkFromTemplateAsync(
         Guid templateUid, IEnumerable<Guid> recipientUids, Dictionary<string, object>? parameters = null) =>
-        await SendBulkNotificationAsync(recipientUids, "Template", "Message");
+        await SendBulkNotificationAsync(recipientUids, "Template", "Message", NotificationType.Info, NotificationPriority.Normal);
 
     public async Task<Interfaces.NotificationSettings> GetUserSettingsAsync(Guid userUid) 
     {
@@ -635,13 +596,6 @@ public class NotificationService(ApplicationDbContext dbContext, ILogger<Notific
             CreatedAt = DateTime.UtcNow
         };
 
-    public async Task<NotificationStatistics> GetNotificationStatisticsAsync(Guid userUid) =>
-        await GetUserNotificationStatisticsAsync(userUid);
-
-    public async Task<BulkNotificationResult> SendBulkNotificationAsync(
-        IEnumerable<Guid> userUids, string title, string message, NotificationType type) =>
-        await SendBulkNotificationAsync(userUids, title, message, type);
-
     /// <summary>
     /// Показывает уведомление об успехе
     /// </summary>
@@ -680,5 +634,211 @@ public class NotificationService(ApplicationDbContext dbContext, ILogger<Notific
         // В реальном приложении здесь будет показ toast-уведомления
         // Пока просто логируем
         Console.WriteLine($"WARNING: {message}");
-    } 
+    }
+
+    // === ДОПОЛНИТЕЛЬНЫЕ МЕТОДЫ ИНТЕРФЕЙСА ===
+
+    /// <summary>
+    /// Получает все уведомления
+    /// </summary>
+    public async Task<IEnumerable<Notification>> GetAllAsync()
+    {
+        return await _dbContext.Notifications
+            .OrderByDescending(n => n.SentAt)
+            .ToListAsync();
+    }
+
+    /// <summary>
+    /// Получает уведомление по идентификатору
+    /// </summary>
+    public async Task<Notification?> GetByIdAsync(Guid uid)
+    {
+        return await _dbContext.Notifications.FindAsync(uid);
+    }
+
+    /// <summary>
+    /// Получает уведомления пользователя
+    /// </summary>
+    public async Task<IEnumerable<Notification>> GetByPersonAsync(Guid personUid)
+    {
+        return await GetUserNotificationsAsync(personUid);
+    }
+
+    /// <summary>
+    /// Создает новое уведомление
+    /// </summary>
+    public async Task<Notification> CreateAsync(Notification notification)
+    {
+        _dbContext.Notifications.Add(notification);
+        await _dbContext.SaveChangesAsync();
+        return notification;
+    }
+
+    /// <summary>
+    /// Обновляет уведомление
+    /// </summary>
+    public async Task<Notification> UpdateAsync(Notification notification)
+    {
+        _dbContext.Notifications.Update(notification);
+        await _dbContext.SaveChangesAsync();
+        return notification;
+    }
+
+    /// <summary>
+    /// Удаляет уведомление (возвращает bool для совместимости с интерфейсом)
+    /// </summary>
+    public async Task<bool> DeleteAsync(Guid uid)
+    {
+        return await DeleteNotificationAsync(uid);
+    }
+
+    /// <summary>
+    /// Проверяет существование уведомления
+    /// </summary>
+    public async Task<bool> ExistsAsync(Guid uid)
+    {
+        return await _dbContext.Notifications.AnyAsync(n => n.Uid == uid);
+    }
+
+    /// <summary>
+    /// Получает количество уведомлений
+    /// </summary>
+    public async Task<int> GetCountAsync()
+    {
+        return await _dbContext.Notifications.CountAsync();
+    }
+
+    /// <summary>
+    /// Отправляет уведомление пользователю (простая версия)
+    /// </summary>
+    public async Task SendNotificationAsync(Guid recipientUid, string title, string message)
+    {
+        await SendNotificationAsync(recipientUid, title, message, NotificationType.Info);
+    }
+
+    /// <summary>
+    /// Отправляет уведомление пользователю с категорией
+    /// </summary>
+    public async Task SendNotificationAsync(Guid recipientUid, string title, string message, string category)
+    {
+        await SendNotificationAsync(recipientUid, title, message, NotificationType.Info, NotificationPriority.Normal, category);
+    }
+
+    /// <summary>
+    /// Массовая отправка уведомлений (простая версия)
+    /// </summary>
+    public async Task SendBulkNotificationAsync(IEnumerable<Guid> recipientUids, string title, string message)
+    {
+        await SendBulkNotificationAsync(recipientUids, title, message, NotificationType.Info, NotificationPriority.Normal);
+    }
+
+    /// <summary>
+    /// Отправляет уведомления о просроченных заданиях
+    /// </summary>
+    public async Task SendOverdueAssignmentNotificationsAsync()
+    {
+        var overdueAssignments = await _dbContext.Assignments
+            .Where(a => a.DueDate.HasValue && a.DueDate < DateTime.UtcNow)
+            .Where(a => a.Status == AssignmentStatus.Published)
+            .Include(a => a.CourseInstance)
+            .ToListAsync();
+
+        foreach (var assignment in overdueAssignments)
+        {
+            await SendNotificationToCourseAsync(
+                assignment.CourseInstanceUid,
+                "Просроченное задание",
+                $"Задание '{assignment.Title}' просрочено. Срок сдачи был: {assignment.DueDate:dd.MM.yyyy}",
+                NotificationType.Warning);
+        }
+    }
+
+    /// <summary>
+    /// Отправляет уведомления о приближающихся дедлайнах
+    /// </summary>
+    public async Task SendUpcomingDeadlineNotificationsAsync()
+    {
+        var tomorrow = DateTime.UtcNow.AddDays(1);
+        var dayAfterTomorrow = DateTime.UtcNow.AddDays(2);
+
+        var upcomingAssignments = await _dbContext.Assignments
+            .Where(a => a.DueDate.HasValue && a.DueDate >= tomorrow && a.DueDate <= dayAfterTomorrow)
+            .Where(a => a.Status == AssignmentStatus.Published)
+            .Include(a => a.CourseInstance)
+            .ToListAsync();
+
+        foreach (var assignment in upcomingAssignments)
+        {
+            await SendNotificationToCourseAsync(
+                assignment.CourseInstanceUid,
+                "Приближается дедлайн",
+                $"Задание '{assignment.Title}' нужно сдать до {assignment.DueDate:dd.MM.yyyy HH:mm}",
+                NotificationType.Info);
+        }
+    }
+
+    /// <summary>
+    /// Отправляет массовые уведомления
+    /// </summary>
+    public async Task<BulkNotificationResult> SendBulkNotificationsAsync(IEnumerable<Notification> notifications)
+    {
+        try
+        {
+            var notificationsList = notifications.ToList();
+            var successCount = 0;
+            var failureCount = 0;
+
+            foreach (var notification in notificationsList)
+            {
+                try
+                {
+                    await SendNotificationAsync(notification.PersonUid, notification.Title, notification.Message, notification.Type, notification.Priority, notification.Category, notification.ActionUrl, null, notification.ExpiresAt);
+                    successCount++;
+                }
+                catch
+                {
+                    failureCount++;
+                }
+            }
+
+            return new BulkNotificationResult
+            {
+                SuccessfulSends = successCount,
+                FailedSends = failureCount,
+                Errors = new List<string>(),
+                SentNotificationUids = notificationsList.Select(n => n.Uid).ToList()
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ошибка при отправке массовых уведомлений");
+            var notificationsList = notifications.ToList();
+            return new BulkNotificationResult
+            {
+                SuccessfulSends = 0,
+                FailedSends = notificationsList.Count,
+                Errors = new List<string> { ex.Message },
+                SentNotificationUids = new List<Guid>()
+            };
+        }
+    }
+
+    /// <summary>
+    /// Получает последние уведомления
+    /// </summary>
+    public async Task<IEnumerable<Notification>> GetRecentNotificationsAsync(int count = 10)
+    {
+        try
+        {
+            return await _dbContext.Notifications
+                .OrderByDescending(n => n.CreatedAt)
+                .Take(count)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting recent notifications");
+            return [];
+        }
+    }
 }

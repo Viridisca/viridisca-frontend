@@ -1,22 +1,31 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations;
+using DynamicData;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using ViridiscaUi.Domain.Models.Education;
-using ViridiscaUi.Services.Interfaces;
-using ViridiscaUi.ViewModels;
-using ViridiscaUi.Infrastructure;
-using ViridiscaUi.Infrastructure.Navigation;
-using System.Collections.Generic;
-using DynamicData;
-using DynamicData.Binding;
-using ViridiscaUi.ViewModels.Bases.Navigations;
 using ViridiscaUi.Domain.Models.Education.Enums;
+using ViridiscaUi.Domain.Models.Auth;
+using ViridiscaUi.Domain.Models.System;
+using ViridiscaUi.Domain.Models.System.Enums;
+using ViridiscaUi.Services.Interfaces;
+using ViridiscaUi.ViewModels.Bases.Navigations;
+using ViridiscaUi.Infrastructure.Navigation;
+using ViridiscaUi.Infrastructure;
+using ViridiscaUi.ViewModels;
+using ViridiscaUi.ViewModels.System;
+using ViridiscaUi.Domain.Models.Base;
+using Microsoft.EntityFrameworkCore;
+using DynamicData.Binding;
+using Microsoft.Extensions.Logging;
+using DomainValidationResult = ViridiscaUi.Domain.Models.Base.ValidationResult;
 
 namespace ViridiscaUi.ViewModels.Education;
 
@@ -39,6 +48,9 @@ public class StudentsViewModel : RoutableViewModelBase
     private readonly IStatusService _statusService;
     private readonly IExportService _exportService;
     private readonly IImportService _importService;
+    private readonly IPermissionService _permissionService;
+    private readonly IAuthService _authService;
+    private readonly INotificationService _notificationService;
 
     // Source collections for reactive data management
     private readonly SourceList<StudentViewModel> _studentsSource = new();
@@ -68,6 +80,8 @@ public class StudentsViewModel : RoutableViewModelBase
     [Reactive] public int TotalPages { get; set; }
     [Reactive] public int TotalStudents { get; set; }
     [Reactive] public int ActiveStudents { get; set; }
+    [Reactive] public int InactiveStudents { get; set; }
+    [Reactive] public int GraduatedStudents { get; set; }
 
     // Computed properties using ObservableAsProperty
     [ObservableAsProperty] public bool HasSelectedStudent { get; }
@@ -130,7 +144,10 @@ public class StudentsViewModel : RoutableViewModelBase
         IDialogService dialogService,
         IStatusService statusService,
         IExportService exportService,
-        IImportService importService) : base(hostScreen)
+        IImportService importService,
+        IPermissionService permissionService,
+        IAuthService authService,
+        INotificationService notificationService) : base(hostScreen)
     {
         var _navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
         _studentService = studentService ?? throw new ArgumentNullException(nameof(studentService));
@@ -139,6 +156,9 @@ public class StudentsViewModel : RoutableViewModelBase
         _statusService = statusService ?? throw new ArgumentNullException(nameof(statusService));
         _exportService = exportService ?? throw new ArgumentNullException(nameof(exportService));
         _importService = importService ?? throw new ArgumentNullException(nameof(importService));
+        _permissionService = permissionService ?? throw new ArgumentNullException(nameof(permissionService));
+        _authService = authService ?? throw new ArgumentNullException(nameof(authService));
+        _notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
 
         SetupReactiveCollections();
         InitializeCommands();
@@ -241,8 +261,8 @@ public class StudentsViewModel : RoutableViewModelBase
         LoadStudentsCommand = CreateCommand(LoadStudentsAsync, null, "Ошибка загрузки студентов");
         RefreshCommand = CreateCommand(RefreshAsync, null, "Ошибка обновления данных");
         CreateStudentCommand = CreateCommand(CreateStudentAsync, null, "Ошибка создания студента");
-        EditStudentCommand = CreateCommand<StudentViewModel>(EditStudentAsync, null, "Ошибка редактирования студента");
-        DeleteStudentCommand = CreateCommand<StudentViewModel>(DeleteStudentAsync, null, "Ошибка удаления студента");
+        EditStudentCommand = CreateCommand<StudentViewModel>(async (student) => await EditStudentAsync(student));
+        DeleteStudentCommand = CreateCommand<StudentViewModel>(async (student) => await DeleteStudentAsync(student));
         ViewStudentDetailsCommand = CreateCommand<StudentViewModel>(ViewStudentDetailsAsync, null, "Ошибка просмотра деталей студента");
 
         // Search and Filter Commands
@@ -389,8 +409,10 @@ public class StudentsViewModel : RoutableViewModelBase
         this.WhenAnyValue(x => x.Students.Count)
             .Subscribe(count =>
             {
-                TotalStudents = count;
-                ActiveStudents = Students.Count(s => s.Status == StudentStatus.Active);
+                TotalStudents = _studentsSource.Items.Count();
+                ActiveStudents = _studentsSource.Items.Count(s => s.Status == StudentStatus.Active);
+                InactiveStudents = _studentsSource.Items.Count(s => s.Status == StudentStatus.Inactive);
+                GraduatedStudents = _studentsSource.Items.Count(s => s.Status == StudentStatus.Graduated);
             })
             .DisposeWith(Disposables);
 
@@ -439,6 +461,8 @@ public class StudentsViewModel : RoutableViewModelBase
             TotalStudents = totalCount;
             TotalPages = (int)Math.Ceiling((double)totalCount / PageSize);
             ActiveStudents = studentViewModels.Count(s => s.Status == StudentStatus.Active);
+            InactiveStudents = studentViewModels.Count(s => s.Status == StudentStatus.Inactive);
+            GraduatedStudents = studentViewModels.Count(s => s.Status == StudentStatus.Graduated);
             
             LogInfo($"Loaded {studentViewModels.Count} students (page {CurrentPage} of {TotalPages})");
             ShowSuccess($"Загружено {studentViewModels.Count} студентов");
@@ -490,119 +514,245 @@ public class StudentsViewModel : RoutableViewModelBase
     }
 
     /// <summary>
-    /// Creates a new student
+    /// Creates a new student with enhanced validation and permission checks
     /// </summary>
     private async Task CreateStudentAsync()
     {
         try
         {
-            LogInfo("Opening create student dialog");
-            
-            var result = await _dialogService.ShowStudentEditorDialogAsync(null);
-            if (result != null)
+            IsLoading = true;
+            LogInfo("Начало создания нового студента");
+
+            // Проверка прав доступа
+            if (!await HasPermissionAsync("Students.Create"))
             {
-                var createdStudent = await _studentService.CreateAsync(result);
-                var studentViewModel = new StudentViewModel(createdStudent);
-                
-                _studentsSource.Add(studentViewModel);
-                SelectedStudent = studentViewModel;
-                
-                ShowSuccess($"Студент {createdStudent.FullName} успешно создан");
-                LogInfo($"Created student: {createdStudent.FullName}");
+                await _dialogService.ShowErrorAsync("Ошибка доступа", 
+                    "У вас нет прав для создания студентов");
+                return;
             }
+
+            // Создание диалога с валидацией
+            var editorViewModel = new StudentEditorViewModel(
+                _studentService, 
+                _groupService);
+            
+            var result = await _dialogService.ShowDialogAsync<object>(editorViewModel);
+
+            if (result is DialogResult dialogResult && dialogResult == DialogResult.Save)
+            {
+                // Дополнительная валидация
+                var student = CreateStudentFromEditor(editorViewModel);
+                var validationResult = await ValidateStudentAsync(student);
+                if (!validationResult.IsValid)
+                {
+                    await _dialogService.ShowErrorAsync("Ошибка валидации", 
+                        string.Join("\n", validationResult.Errors));
+                    return;
+                }
+
+                // Создание студента
+                var createdStudent = await _studentService.CreateAsync(student);
+                
+                // Добавление в коллекцию
+                var studentViewModel = new StudentViewModel(createdStudent);
+                _studentsSource.Add(studentViewModel);
+                
+                // Обновление статистики
+                await UpdateStatisticsAsync();
+                
+                ShowSuccess($"Студент '{createdStudent.Person?.FirstName} {createdStudent.Person?.LastName}' создан");
+                LogInfo($"Студент создан: {createdStudent.Uid}");
+            }
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            await _dialogService.ShowErrorAsync("Конфликт версий", ex.Message);
+            LogError(ex, "Конфликт версий при редактировании студента");
         }
         catch (Exception ex)
         {
-            LogError(ex, "Failed to create student");
-            ShowError("Ошибка при создании студента");
+            LogError(ex, "Ошибка при создании студента");
+            ErrorMessage = "Ошибка при создании студента";
+        }
+        finally
+        {
+            IsLoading = false;
         }
     }
 
     /// <summary>
-    /// Edits an existing student
+    /// Edits selected student with optimistic locking and validation
     /// </summary>
     private async Task EditStudentAsync(StudentViewModel studentViewModel)
     {
+        if (studentViewModel == null) return;
+
         try
         {
-            LogInfo($"Opening edit dialog for student: {studentViewModel.FullName}");
+            IsLoading = true;
+            LogInfo($"Начало редактирования студента: {studentViewModel.Uid}");
             
-            var student = await _studentService.GetByUidAsync(studentViewModel.Uid);
-            if (student == null)
+            // Проверка прав доступа
+            if (!await HasPermissionAsync("Students.Update"))
             {
-                ShowError("Студент не найден");
+                await _dialogService.ShowErrorAsync("Ошибка доступа", 
+                    "У вас нет прав для редактирования студентов");
                 return;
             }
             
-            var result = await _dialogService.ShowStudentEditDialogAsync(student);
-            if (result != null)
+            // Получение актуальных данных для optimistic locking
+            var currentStudent = await _studentService.GetByUidAsync(studentViewModel.Uid);
+            if (currentStudent == null)
             {
-                var success = await _studentService.UpdateAsync(result);
-                if (success)
-                {
-                    // Update the view model
-                    var index = _studentsSource.Items.ToList().FindIndex(s => s.Uid == studentViewModel.Uid);
-                    if (index >= 0)
-                    {
-                        var updatedViewModel = new StudentViewModel(result);
-                        _studentsSource.RemoveAt(index);
-                        _studentsSource.Insert(index, updatedViewModel);
-                        SelectedStudent = updatedViewModel;
-                    }
+                await _dialogService.ShowErrorAsync("Ошибка", "Студент не найден");
+                return;
+            }
+
+            // Проверка версии (optimistic locking)
+            if (currentStudent.LastModifiedAt != studentViewModel.LastModifiedAt)
+            {
+                var refreshResult = await _dialogService.ShowConfirmationAsync(
+                    "Конфликт версий", 
+                    "Данные студента были изменены другим пользователем. Обновить данные?",
+                    DialogButtons.YesNo);
                     
-                    ShowSuccess($"Студент {result.FullName} успешно обновлен");
-                    LogInfo($"Updated student: {result.FullName}");
+                if (refreshResult == DialogResult.Yes)
+                {
+                    studentViewModel.UpdateFromStudent(currentStudent);
                 }
                 else
                 {
-                    ShowError("Ошибка при обновлении студента");
+                    return;
+                }
+            }
+
+            // Создание диалога редактирования
+            var editedStudent = await _dialogService.ShowStudentEditDialogAsync(currentStudent);
+
+            if (editedStudent != null)
+            {
+                // Валидация изменений
+                var validationResult = await ValidateStudentAsync(editedStudent);
+                if (!validationResult.IsValid)
+                {
+                    await _dialogService.ShowErrorAsync("Ошибка валидации", 
+                        string.Join("\n", validationResult.Errors));
+                    return;
+                }
+
+                // Обновление студента
+                var updateResult = await _studentService.UpdateAsync(editedStudent);
+                
+                if (updateResult)
+                {
+                    // Получаем обновленного студента
+                    var updatedStudent = await _studentService.GetByUidAsync(editedStudent.Uid);
+                    if (updatedStudent != null)
+                    {
+                        // Обновление ViewModel
+                        studentViewModel.UpdateFromStudent(updatedStudent);
+                        
+                        // Обновление статистики
+                        await UpdateStatisticsAsync();
+                        
+                        ShowSuccess($"Данные студента '{updatedStudent.Person?.FirstName} {updatedStudent.Person?.LastName}' обновлены");
+                        LogInfo($"Студент обновлен: {updatedStudent.Uid}");
+                    }
+                    else
+                    {
+                        ShowWarning("Студент обновлен, но не удалось получить обновленные данные");
+                    }
+                }
+                else
+                {
+                    ShowError("Не удалось обновить данные студента");
                 }
             }
         }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            await _dialogService.ShowErrorAsync("Конфликт версий", ex.Message);
+            LogError(ex, "Конфликт версий при редактировании студента");
+        }
         catch (Exception ex)
         {
-            LogError(ex, $"Failed to edit student: {studentViewModel.FullName}");
-            ShowError("Ошибка при редактировании студента");
+            LogError(ex, "Ошибка при редактировании студента");
+            ErrorMessage = "Ошибка при редактировании студента";
+        }
+        finally
+        {
+            IsLoading = false;
         }
     }
 
     /// <summary>
-    /// Deletes a student with confirmation
+    /// Deletes selected student with related data check and confirmation
     /// </summary>
     private async Task DeleteStudentAsync(StudentViewModel studentViewModel)
     {
+        if (studentViewModel == null) return;
+
         try
         {
-            var confirmed = await _dialogService.ShowConfirmationDialogAsync(
-                "Подтверждение удаления",
-                $"Вы уверены, что хотите удалить студента {studentViewModel.FullName}?\n\nЭто действие нельзя отменить.",
-                "Удалить",
-                "Отмена");
-                
-            if (confirmed)
+            IsLoading = true;
+            LogInfo($"Начало удаления студента: {studentViewModel.Uid}");
+
+            // Проверка прав доступа
+            if (!await HasPermissionAsync("Students.Delete"))
             {
-                var success = await _studentService.DeleteAsync(studentViewModel.Uid);
-                if (success)
-                {
-                    _studentsSource.Remove(studentViewModel);
-                    if (SelectedStudent == studentViewModel)
-                    {
-                        SelectedStudent = null;
-                    }
-                    
-                    ShowSuccess($"Студент {studentViewModel.FullName} успешно удален");
-                    LogInfo($"Deleted student: {studentViewModel.FullName}");
-                }
-                else
-                {
-                    ShowError("Ошибка при удалении студента");
-                }
+                await _dialogService.ShowErrorAsync("Ошибка доступа", 
+                    "У вас нет прав для удаления студентов");
+                return;
             }
+
+            // Проверка связанных данных
+            var relatedData = await GetRelatedDataInfoAsync(studentViewModel.Uid);
+            
+            string confirmationMessage = $"Вы уверены, что хотите удалить студента '{studentViewModel.FullName}'?";
+            
+            if (relatedData.HasRelatedData)
+            {
+                confirmationMessage += $"\n\nВНИМАНИЕ: Будут также удалены связанные данные:\n{relatedData.GetWarningMessage()}";
+            }
+
+            var result = await _dialogService.ShowConfirmationAsync(
+                "Подтверждение удаления", 
+                confirmationMessage,
+                DialogButtons.YesNo);
+
+            if (result == DialogResult.Yes)
+            {
+                // Удаление студента
+                await _studentService.DeleteAsync(studentViewModel.Uid);
+                
+                // Удаление из коллекции
+                _studentsSource.Remove(studentViewModel);
+                
+                // Сброс выбора
+                SelectedStudent = null;
+                
+                // Обновление статистики
+                await UpdateStatisticsAsync();
+                    
+                ShowSuccess("Студент успешно удален");
+                LogInfo($"Студент удален: {studentViewModel.Uid}");
+            }
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("foreign key") || ex.Message.Contains("связанных данных"))
+        {
+            await _dialogService.ShowErrorAsync("Ошибка связанных данных", 
+                "Невозможно удалить студента, так как у него есть связанные данные (оценки, задания). Сначала удалите связанные записи.");
+            LogError(ex, "Foreign key constraint violation while deleting student");
         }
         catch (Exception ex)
         {
-            LogError(ex, $"Failed to delete student: {studentViewModel.FullName}");
-            ShowError("Ошибка при удалении студента");
+            await _dialogService.ShowErrorAsync("Ошибка удаления", 
+                "Произошла ошибка при удалении студента. Попробуйте еще раз.");
+            LogError(ex, "Неожиданная ошибка при удалении студента");
+        }
+        finally
+        {
+            IsLoading = false;
         }
     }
 
@@ -802,22 +952,20 @@ public class StudentsViewModel : RoutableViewModelBase
     {
         try
         {
-            LogInfo("Starting student import process");
-            
-            var result = await _dialogService.ShowFileOpenDialogAsync("Импорт студентов", new[] { "*.xlsx", "*.csv" });
-            if (result != null)
+            var importResult = await _dialogService.ShowFilePickerAsync("Выберите файл для импорта", new[] { "*.xlsx", "*.csv" });
+            if (importResult != null && !string.IsNullOrEmpty(importResult))
             {
-                var importedCount = await _importService.ImportStudentsAsync(result);
-                await RefreshAsync();
-                
-                ShowSuccess($"Импортировано {importedCount} студентов");
-                LogInfo($"Imported {importedCount} students");
+                var importedCount = await _importService.ImportStudentsAsync(importResult);
+                if (importedCount > 0)
+                {
+                    LogInfo($"Импортировано {importedCount} студентов");
+                    await LoadStudentsAsync();
+                }
             }
         }
         catch (Exception ex)
         {
-            LogError(ex, "Failed to import students");
-            ShowError("Ошибка импорта студентов");
+            LogError(ex, "Ошибка при импорте студентов");
         }
     }
 
@@ -857,37 +1005,72 @@ public class StudentsViewModel : RoutableViewModelBase
     {
         try
         {
-            LogInfo($"Starting bulk edit for {SelectedStudentsCount} students");
-            
-            // For now, just show a message that bulk edit is not implemented
-            ShowInfo($"Массовое редактирование {SelectedStudentsCount} студентов пока не реализовано");
-            
-            // TODO: Implement bulk edit dialog and logic
-            /*
-            var result = await _dialogService.ShowBulkEditDialogAsync(SelectedStudents.ToList());
-            if (result != null)
+            var selectedStudents = _studentsSource.Items.Where(s => s.IsSelected).ToList();
+            if (!selectedStudents.Any())
             {
-                var updatedCount = 0;
-                foreach (var student in SelectedStudents.ToList())
-                {
-                    // Apply bulk changes
-                    var studentEntity = student.ToStudent();
-                    // Apply bulk edit properties from result
-                    
-                    var success = await _studentService.UpdateAsync(studentEntity);
-                    if (success) updatedCount++;
-                }
-                
-                await RefreshAsync();
-                ShowSuccess($"Обновлено {updatedCount} студентов");
-                LogInfo($"Bulk edited {updatedCount} students");
+                ShowWarning("Выберите студентов для массового редактирования");
+                return;
             }
-            */
+
+            var bulkEditOptions = new BulkEditOptions
+            {
+                CanChangeGroup = true,
+                CanChangeStatus = true,
+                CanChangeAcademicYear = true
+            };
+
+            var bulkEditResult = await _dialogService.ShowBulkEditDialogAsync(bulkEditOptions);
+            if (bulkEditResult != null)
+            {
+                IsLoading = true;
+                var updatedCount = 0;
+
+                foreach (var studentVm in selectedStudents)
+                {
+                    var student = await _studentService.GetByUidAsync(studentVm.Uid);
+                    if (student != null)
+                    {
+                        var hasChanges = false;
+
+                        if (bulkEditResult.NewGroupUid.HasValue && bulkEditResult.NewGroupUid != student.GroupUid)
+                        {
+                            student.GroupUid = bulkEditResult.NewGroupUid;
+                            hasChanges = true;
+                        }
+
+                        if (bulkEditResult.NewStatus.HasValue && bulkEditResult.NewStatus != student.Status)
+                        {
+                            student.Status = bulkEditResult.NewStatus.Value;
+                            hasChanges = true;
+                        }
+
+                        if (bulkEditResult.NewAcademicYear.HasValue && bulkEditResult.NewAcademicYear != student.AcademicYear)
+                        {
+                            student.AcademicYear = bulkEditResult.NewAcademicYear.Value;
+                            hasChanges = true;
+                        }
+
+                        if (hasChanges)
+                        {
+                            await _studentService.UpdateAsync(student);
+                            updatedCount++;
+                        }
+                    }
+                }
+
+                await LoadStudentsAsync();
+                ShowSuccess($"Обновлено {updatedCount} студентов");
+                LogInfo("Bulk edit completed: {UpdatedCount} students updated", updatedCount);
+            }
         }
         catch (Exception ex)
         {
-            LogError(ex, "Failed to perform bulk edit");
+            LogError(ex, "Ошибка массового редактирования студентов");
             ShowError("Ошибка массового редактирования");
+        }
+        finally
+        {
+            IsLoading = false;
         }
     }
 
@@ -896,40 +1079,34 @@ public class StudentsViewModel : RoutableViewModelBase
     /// </summary>
     private async Task BulkDeleteAsync()
     {
+        if (SelectedStudents == null || !SelectedStudents.Any()) return;
+
         try
         {
-            var confirmed = await _dialogService.ShowConfirmationDialogAsync(
-                "Подтверждение массового удаления",
-                $"Вы уверены, что хотите удалить {SelectedStudentsCount} студентов?\n\nЭто действие нельзя отменить.",
-                "Удалить всех",
-                "Отмена");
-                
-            if (confirmed)
+            var studentsToDelete = SelectedStudents.ToList();
+            var result = await _dialogService.ShowConfirmationDialogAsync(
+                "Подтверждение удаления",
+                $"Вы уверены, что хотите удалить {studentsToDelete.Count} студентов?");
+
+            if (result == true)
             {
-                LogInfo($"Starting bulk delete for {SelectedStudentsCount} students");
-                
                 var deletedCount = 0;
-                var studentsToDelete = SelectedStudents.ToList();
-                
-                foreach (var student in studentsToDelete)
+                foreach (var studentViewModel in studentsToDelete)
                 {
-                    var success = await _studentService.DeleteAsync(student.Uid);
+                    var success = await _studentService.DeleteAsync(studentViewModel.Uid);
                     if (success)
                     {
-                        _studentsSource.Remove(student);
                         deletedCount++;
                     }
                 }
-                
-                SelectedStudents.Clear();
-                ShowSuccess($"Удалено {deletedCount} студентов");
-                LogInfo($"Bulk deleted {deletedCount} students");
+
+                LogInfo($"Удалено {deletedCount} из {studentsToDelete.Count} студентов");
+                await LoadStudentsAsync();
             }
         }
         catch (Exception ex)
         {
-            LogError(ex, "Failed to perform bulk delete");
-            ShowError("Ошибка массового удаления");
+            LogError(ex, "Ошибка при массовом удалении студентов");
         }
     }
 
@@ -1043,4 +1220,243 @@ public class StudentsViewModel : RoutableViewModelBase
     }
 
     #endregion
+
+    #region Helper Methods
+
+    /// <summary>
+    /// Валидация данных студента
+    /// </summary>
+    private async Task<DomainValidationResult> ValidateStudentAsync(Student student)
+    {
+        var errors = new List<string>();
+        var warnings = new List<string>();
+
+        try
+        {
+            // Базовая валидация
+            if (student.Person == null)
+            {
+                errors.Add("Информация о персоне обязательна");
+                return new DomainValidationResult { IsValid = false, Errors = errors };
+            }
+
+            // Валидация персональных данных
+            if (string.IsNullOrWhiteSpace(student.Person.FirstName))
+                errors.Add("Имя обязательно");
+            
+            if (string.IsNullOrWhiteSpace(student.Person.LastName))
+                errors.Add("Фамилия обязательна");
+            
+            if (string.IsNullOrWhiteSpace(student.Person.Email))
+                errors.Add("Email обязателен");
+            else if (!IsValidEmail(student.Person.Email))
+                errors.Add("Некорректный формат email");
+
+            // Валидация студенческих данных
+            if (string.IsNullOrWhiteSpace(student.StudentCode))
+                errors.Add("Код студента обязателен");
+            else
+            {
+                // Проверка уникальности кода студента
+                var existingStudent = await _studentService.GetByStudentCodeAsync(student.StudentCode);
+                if (existingStudent != null && existingStudent.Uid != student.Uid)
+                    errors.Add($"Студент с кодом '{student.StudentCode}' уже существует");
+            }
+
+            // Валидация дат
+            if (student.EnrollmentDate > DateTime.Now)
+                errors.Add("Дата поступления не может быть в будущем");
+            
+            if (student.GraduationDate.HasValue && student.GraduationDate <= student.EnrollmentDate)
+                errors.Add("Дата выпуска должна быть позже даты поступления");
+
+            // Валидация статуса
+            if (student.Status == StudentStatus.Graduated && !student.GraduationDate.HasValue)
+                warnings.Add("Для выпускника рекомендуется указать дату выпуска");
+
+            // Проверка группы
+            if (student.GroupUid.HasValue)
+            {
+                var group = await _groupService.GetByUidAsync(student.GroupUid.Value);
+                if (group == null)
+                    errors.Add("Выбранная группа не найдена");
+                else if (group.Status != GroupStatus.Active)
+                    warnings.Add($"Группа '{group.Name}' неактивна");
+            }
+
+            // Проверка возраста
+            if (student.Person.DateOfBirth.HasValue)
+            {
+                var age = DateTime.Now.Year - student.Person.DateOfBirth.Value.Year;
+                if (age < 16)
+                    warnings.Add("Студент младше 16 лет");
+                if (age > 65)
+                    warnings.Add("Студент старше 65 лет");
+            }
+
+            return new DomainValidationResult
+            {
+                IsValid = errors.Count == 0,
+                Errors = errors,
+                Warnings = warnings
+            };
+        }
+        catch (Exception ex)
+        {
+            LogError(ex, "Ошибка при валидации студента");
+            errors.Add("Ошибка при валидации данных");
+            return new DomainValidationResult { IsValid = false, Errors = errors };
+        }
+    }
+
+    /// <summary>
+    /// Gets information about related data for cascade deletion warning
+    /// </summary>
+    private async Task<RelatedDataInfo> GetRelatedDataInfoAsync(Guid studentUid)
+    {
+        try
+        {
+            var relatedData = new RelatedDataInfo
+            {
+                GradesCount = 0,
+                AssignmentsCount = 0,
+                CoursesCount = 0,
+                AttendanceCount = 0
+            };
+
+            // Получаем связанные данные
+            var grades = await _studentService.GetStudentGradesAsync(studentUid);
+            relatedData.GradesCount = grades?.Count() ?? 0;
+
+            // Assignments count - using alternative approach since GetStudentAssignmentsAsync doesn't exist
+            relatedData.AssignmentsCount = 0; // TODO: Implement when assignment service is available
+
+            var courses = await _studentService.GetStudentCoursesAsync(studentUid);
+            relatedData.CoursesCount = courses?.Count() ?? 0;
+
+            var attendance = await _studentService.GetStudentAttendanceAsync(studentUid);
+            relatedData.AttendanceCount = attendance?.Count() ?? 0;
+
+            return relatedData;
+        }
+        catch (Exception ex)
+        {
+            LogError(ex, "Ошибка получения связанных данных студента");
+            return new RelatedDataInfo();
+        }
+    }
+
+    /// <summary>
+    /// Updates statistics after CRUD operations
+    /// </summary>
+    private async Task UpdateStatisticsAsync()
+    {
+        try
+        {
+            // Обновление счетчиков
+            TotalStudents = _studentsSource.Items.Count();
+            ActiveStudents = _studentsSource.Items.Count(s => s.Status == StudentStatus.Active);
+            InactiveStudents = _studentsSource.Items.Count(s => s.Status == StudentStatus.Inactive);
+            GraduatedStudents = _studentsSource.Items.Count(s => s.Status == StudentStatus.Graduated);
+            
+            // Уведомление об изменении статистики
+            this.RaisePropertyChanged(nameof(TotalStudents));
+            this.RaisePropertyChanged(nameof(ActiveStudents));
+            this.RaisePropertyChanged(nameof(InactiveStudents));
+            this.RaisePropertyChanged(nameof(GraduatedStudents));
+        }
+        catch (Exception ex)
+        {
+            LogError(ex, "Ошибка при обновлении статистики");
+        }
+    }
+
+    /// <summary>
+    /// Validates email format
+    /// </summary>
+    private static bool IsValidEmail(string email)
+    {
+        try
+        {
+            // Simple email validation without System.Net.Mail dependency
+            return !string.IsNullOrWhiteSpace(email) && 
+                   email.Contains("@") && 
+                   email.Contains(".") &&
+                   email.IndexOf("@") > 0 &&
+                   email.LastIndexOf(".") > email.IndexOf("@");
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Checks if user has specific permission
+    /// </summary>
+    private async Task<bool> HasPermissionAsync(string permission)
+    {
+        try
+        {
+            return await _permissionService.HasPermissionAsync(permission);
+        }
+        catch (Exception ex)
+        {
+            LogError(ex, "Failed to check permission: {Permission}", permission);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Создает объект Student из StudentEditorViewModel
+    /// </summary>
+    private Student CreateStudentFromEditor(StudentEditorViewModel editor)
+    {
+        return new Student
+        {
+            Uid = editor.CurrentStudent?.Uid ?? Guid.NewGuid(),
+            PersonUid = editor.CurrentStudent?.PersonUid ?? Guid.NewGuid(),
+            StudentCode = editor.StudentCode,
+            EnrollmentDate = editor.EnrollmentDate,
+            GroupUid = editor.SelectedGroup?.Uid,
+            Status = editor.SelectedStatus,
+            AcademicYear = editor.AcademicYear,
+            Person = new Person
+            {
+                Uid = editor.CurrentStudent?.Person?.Uid ?? Guid.NewGuid(),
+                FirstName = editor.FirstName,
+                LastName = editor.LastName,
+                MiddleName = editor.MiddleName,
+                Email = editor.Email,
+                PhoneNumber = editor.PhoneNumber,
+                DateOfBirth = editor.BirthDate,
+                Address = editor.Address
+            }
+        };
+    }
+
+    #endregion
+}
+
+/// <summary>
+/// Информация о связанных данных студента
+/// </summary>
+public class RelatedDataInfo
+{
+    public int GradesCount { get; set; }
+    public int AssignmentsCount { get; set; }
+    public int CoursesCount { get; set; }
+    public int AttendanceCount { get; set; }
+
+    public bool HasRelatedData => GradesCount > 0 || AssignmentsCount > 0 || CoursesCount > 0 || AttendanceCount > 0;
+
+    public string GetWarningMessage()
+    {
+        var messages = new List<string>();
+        if (GradesCount > 0) messages.Add($"Оценки: {GradesCount}");
+        if (AssignmentsCount > 0) messages.Add($"Задания: {AssignmentsCount}");
+        if (CoursesCount > 0) messages.Add($"Курсы: {CoursesCount}");
+        if (AttendanceCount > 0) messages.Add($"Посещаемость: {AttendanceCount}");
+        return string.Join("\n", messages);
+    }
 } 

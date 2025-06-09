@@ -27,6 +27,7 @@ public class GroupViewModel : ReactiveObject
     [Reactive] public GroupStatus Status { get; set; }
     [Reactive] public string Specialization { get; set; } = string.Empty;
     [Reactive] public int AcademicYear { get; set; }
+    [Reactive] public DateTime? LastModifiedAt { get; set; }
 
     #endregion
 
@@ -485,6 +486,9 @@ public class GroupViewModel : ReactiveObject
         EndDate = group.EndDate;
         MaxStudents = group.MaxStudents;
         Status = group.Status;
+        Specialization = group.Description ?? "Не указано";
+        AcademicYear = group.Year;
+        LastModifiedAt = group.LastModifiedAt;
         CuratorUid = group.CuratorUid;
         DepartmentUid = group.DepartmentUid;
         

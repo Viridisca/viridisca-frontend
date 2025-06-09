@@ -5,10 +5,12 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using ViridiscaUi.Domain.Models.Education;
+using ViridiscaUi.Domain.Models.Education.Enums;
+using ViridiscaUi.Domain.Models.System;
+using ViridiscaUi.Domain.Models.System.Enums;
 using ViridiscaUi.Infrastructure;
 using ViridiscaUi.Services.Interfaces;
 using System.Linq.Expressions;
-using ViridiscaUi.Domain.Models.Education.Enums;
 using static ViridiscaUi.Services.Interfaces.IStudentService;
 
 namespace ViridiscaUi.Services.Implementations;
@@ -639,6 +641,47 @@ public class StudentService : GenericCrudService<Student>, IStudentService
         // Существующая реализация...
         await Task.CompletedTask;
         }
+
+    /// <summary>
+    /// Получает студента по коду студента
+    /// </summary>
+    public async Task<Student?> GetByStudentCodeAsync(string studentCode)
+    {
+        return await _dbContext.Students
+            .Include(s => s.Person)
+            .FirstOrDefaultAsync(s => s.StudentCode == studentCode);
+    }
+
+    /// <summary>
+    /// Получает посещаемость студента
+    /// </summary>
+    public async Task<IEnumerable<Attendance>> GetStudentAttendanceAsync(Guid studentUid)
+    {
+        try
+        {
+            return await _dbContext.Attendances
+                .Where(a => a.StudentUid == studentUid)
+                .Include(a => a.Lesson)
+                .ThenInclude(l => l.CourseInstance)
+                .ThenInclude(ci => ci.Subject)
+                .OrderByDescending(a => a.CreatedAt)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting student attendance: {StudentUid}", studentUid);
+            return [];
+        }
+    }
+
+    /// <summary>
+    /// Получает количество студентов в группе
+    /// </summary>
+    public async Task<int> GetStudentsCountByGroupAsync(Guid groupUid)
+    {
+        return await _dbContext.Students
+            .CountAsync(s => s.GroupUid == groupUid);
+    }
 
     #endregion
 }

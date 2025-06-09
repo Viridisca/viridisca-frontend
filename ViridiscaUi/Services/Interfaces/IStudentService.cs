@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using ViridiscaUi.Domain.Models.Education;
 using ViridiscaUi.Domain.Models.Education.Enums;
+using ViridiscaUi.Domain.Models.Base;
 
 namespace ViridiscaUi.Services.Interfaces;
 
@@ -123,6 +124,21 @@ public interface IStudentService : IGenericCrudService<Student>
     /// Получает просроченные задания студента
     /// </summary>
     Task<IEnumerable<Assignment>> GetStudentOverdueAssignmentsAsync(Guid studentUid);
+
+    /// <summary>
+    /// Получает студента по коду студента
+    /// </summary>
+    Task<Student?> GetByStudentCodeAsync(string studentCode);
+
+    /// <summary>
+    /// Получает посещаемость студента
+    /// </summary>
+    Task<IEnumerable<Attendance>> GetStudentAttendanceAsync(Guid studentUid);
+
+    /// <summary>
+    /// Получает количество студентов в группе
+    /// </summary>
+    Task<int> GetStudentsCountByGroupAsync(Guid groupUid);
 }
 
 /// <summary>

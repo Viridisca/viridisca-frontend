@@ -241,15 +241,13 @@ public class MainViewModel : ViewModelBase, IScreen, IDisposable
         // Команда открытия меню пользователя
         OpenUserMenuCommand = CreateCommand(async () =>
         {
-            // TODO: Реализовать открытие меню пользователя
-            ShowInfo("Меню пользователя");
+            await OpenUserMenuAsync();
         }, null, "Ошибка открытия меню пользователя");
 
         // Команда быстрого действия
         QuickActionCommand = CreateCommand(async () =>
         {
-            // TODO: Реализовать быстрое действие
-            ShowInfo("Быстрое действие");
+            await ExecuteQuickActionAsync();
         }, null, "Ошибка быстрого действия");
 
         // Команда обновления статистики
@@ -396,49 +394,35 @@ public class MainViewModel : ViewModelBase, IScreen, IDisposable
 
     private void UpdateMenuItems(Person? person)
     {
-        // Получаем роли пользователя из новой архитектуры PersonRoles
-        var userRoles = person?.PersonRoles?.Where(pr => pr.IsActive)
-            .Select(pr => pr.Role?.Name)
-            .Where(name => !string.IsNullOrEmpty(name))
-            .ToArray();
-        
+        var userRoles = person?.PersonRoles?.Select(pr => pr.Role?.Name).Where(r => r != null).ToArray() ?? new string[0];
         var menuRoutes = _navigationService.GetMenuRoutes(userRoles);
 
-        // Очищаем коллекцию
-        GroupedMenuItems.Clear();
-
-        // Создаем сгруппированное меню одним LINQ-запросом
+        // Группировка маршрутов
         var groupedMenuItems = menuRoutes
             .GroupBy(route => route.Group ?? "Основное")
-            .OrderBy(group => group.Min(r => r.Order)) // Сортируем группы по минимальному Order в группе
+            .OrderBy(group => group.Min(r => r.Order))
             .Select(group => new MenuGroup
             {
                 GroupName = group.Key,
-                Order = group.Min(r => r.Order), // Используем минимальный Order из группы
+                Order = group.Min(r => r.Order),
                 Items = new ObservableCollection<NavigationRoute>(
                     group.OrderBy(r => r.Order)
                          .ThenBy(r => r.DisplayName)
                          .Select(r =>
                          {
-                             // Создаем команду навигации для каждого маршрута
+                             // Создание команды навигации для каждого маршрута
                              r.NavigateCommand = ReactiveCommand.CreateFromTask(async () =>
                              {
                                  await _navigationService.NavigateToAsync(r.Path);
                              });
                              return r;
                          }))
-            })
-            .OrderBy(g => g.Order);
+            });
 
-        // Добавляем группы в коллекцию
+        GroupedMenuItems.Clear();
         foreach (var group in groupedMenuItems)
         {
             GroupedMenuItems.Add(group);
-        }
-
-        if (person != null)
-        {
-            StatusLogger.LogInfo($"Меню обновлено: {GroupedMenuItems.Count} групп, {menuRoutes.Count()} пунктов", "MainViewModel");
         }
     }
 
@@ -451,6 +435,49 @@ public class MainViewModel : ViewModelBase, IScreen, IDisposable
     {
         // Временная заглушка для компиляции
         await Task.CompletedTask;
+    }
+
+    private async Task OpenUserMenuAsync()
+    {
+        try
+        {
+            var currentPerson = await _authService.GetCurrentPersonAsync();
+            if (currentPerson != null)
+            {
+                await _navigationService.NavigateToAsync("profile");
+            }
+            else
+            {
+                await _navigationService.NavigateToAsync("auth");
+            }
+        }
+        catch (Exception ex)
+        {
+            LogError(ex, "Ошибка открытия меню пользователя");
+            ShowError("Ошибка открытия меню пользователя");
+        }
+    }
+
+    private async Task ExecuteQuickActionAsync()
+    {
+        try
+        {
+            var currentPerson = await _authService.GetCurrentPersonAsync();
+            if (currentPerson != null)
+            {
+                // Быстрое действие - переход к созданию нового элемента
+                await _navigationService.NavigateToAsync("students");
+            }
+            else
+            {
+                ShowError("Необходимо войти в систему для выполнения действий");
+            }
+        }
+        catch (Exception ex)
+        {
+            LogError(ex, "Ошибка выполнения быстрого действия");
+            ShowError("Ошибка выполнения быстрого действия");
+        }
     }
 
     #endregion

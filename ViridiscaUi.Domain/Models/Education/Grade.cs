@@ -63,6 +63,15 @@ public class Grade : AuditableEntity
     /// Дата выставления оценки
     /// </summary>
     public DateTime IssuedAt { get; set; }
+
+    /// <summary>
+    /// Дата выставления оценки (алиас для IssuedAt)
+    /// </summary>
+    public DateTime GradedAt 
+    { 
+        get => IssuedAt; 
+        set => IssuedAt = value; 
+    }
     
     /// <summary>
     /// Опубликована ли оценка для студента

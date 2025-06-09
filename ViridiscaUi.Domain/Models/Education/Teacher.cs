@@ -92,9 +92,9 @@ public class Teacher : AuditableEntity
     public string? Email => Person?.Email;
 
     /// <summary>
-    /// Полное имя (алиас для совместимости)
+    /// Полное имя (делегирует к Person.FullName)
     /// </summary>
-    public string? FullName => Person != null ? $"{Person.LastName} {Person.FirstName} {Person.MiddleName}".Trim() : null;
+    public string? FullName => Person?.FullName;
 
     /// <summary>
     /// Ученая степень

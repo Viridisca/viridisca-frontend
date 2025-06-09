@@ -10,6 +10,7 @@ using ViridiscaUi.Services.Interfaces;
 using ViridiscaUi.Infrastructure;
 using System.Collections.ObjectModel;
 using ViridiscaUi.Domain.Models.Education.Enums;
+using ViridiscaUi.Domain.Models.Base;
 
 namespace ViridiscaUi.Services.Implementations;
 
@@ -522,6 +523,93 @@ public class GroupService : GenericCrudService<Group>, IGroupService
             _logger.LogError(ex, "Error assigning curator {CuratorUid} to group {GroupUid}", curatorUid, groupUid);
             return false;
         }
+    }
+
+    /// <summary>
+    /// Получает группу по коду
+    /// </summary>
+    public async Task<Group?> GetByCodeAsync(string code)
+    {
+        return await _dbContext.Groups
+            .FirstOrDefaultAsync(g => g.Code == code);
+    }
+
+    /// <summary>
+    /// Получает количество экземпляров курсов для группы
+    /// </summary>
+    public async Task<int> GetCourseInstancesCountAsync(Guid groupUid)
+    {
+        return await _dbContext.CourseInstances
+            .Where(ci => ci.GroupUid == groupUid)
+            .CountAsync();
+    }
+
+    /// <summary>
+    /// Получает экземпляры курсов для группы
+    /// </summary>
+    public async Task<IEnumerable<CourseInstance>> GetGroupCourseInstancesAsync(Guid groupUid)
+    {
+        return await _dbContext.CourseInstances
+            .Include(ci => ci.Subject)
+            .Include(ci => ci.Teacher)
+            .Include(ci => ci.AcademicPeriod)
+            .Where(ci => ci.GroupUid == groupUid)
+            .ToListAsync();
+    }
+
+    /// <summary>
+    /// Получает количество студентов в группе
+    /// </summary>
+    public async Task<int> GetStudentsCountByGroupAsync(Guid groupUid)
+    {
+        try
+        {
+            return await _dbContext.Students
+                .Where(s => s.GroupUid == groupUid)
+                .CountAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting students count for group {GroupUid}", groupUid);
+            return 0;
+        }
+    }
+
+    /// <summary>
+    /// Получает информацию о связанных данных группы для безопасного удаления
+    /// </summary>
+    public async Task<GroupRelatedDataInfo> GetGroupRelatedDataInfoAsync(Guid groupUid)
+    {
+        var relatedData = new GroupRelatedDataInfo();
+
+        try
+        {
+            // Проверка студентов
+            var studentsCount = await GetStudentsCountByGroupAsync(groupUid);
+            if (studentsCount > 0)
+            {
+                relatedData.HasStudents = true;
+                relatedData.StudentsCount = studentsCount;
+                relatedData.RelatedDataDescriptions.Add($"• {studentsCount} студентов будут отвязаны от группы");
+            }
+
+            // Проверка экземпляров курсов
+            var courseInstancesCount = await GetCourseInstancesCountAsync(groupUid);
+            if (courseInstancesCount > 0)
+            {
+                relatedData.HasCourseInstances = true;
+                relatedData.CourseInstancesCount = courseInstancesCount;
+                relatedData.RelatedDataDescriptions.Add($"• {courseInstancesCount} экземпляров курсов будут удалены");
+            }
+
+            relatedData.HasRelatedData = relatedData.HasStudents || relatedData.HasCourseInstances;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to check related data for group {GroupUid}", groupUid);
+        }
+
+        return relatedData;
     }
 
     #endregion

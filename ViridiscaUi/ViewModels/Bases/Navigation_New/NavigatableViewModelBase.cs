@@ -16,9 +16,9 @@ public abstract class NavigatableViewModelBase : RoutableViewModelBase
     protected readonly IUnifiedNavigationService NavigationService;
 
     /// <summary>
-    /// Команда возврата назад
+    /// Команда для возврата назад
     /// </summary>
-    public ReactiveCommand<Unit, Unit> GoBackCommand { get; protected set; }
+    public new ReactiveCommand<Unit, Unit> GoBackCommand { get; protected set; } = null!;
 
     /// <summary>
     /// Команда навигации к главной странице
@@ -59,31 +59,23 @@ public abstract class NavigatableViewModelBase : RoutableViewModelBase
     /// Навигация к указанному пути
     /// </summary>
     /// <param name="path">Путь для навигации</param>
-    protected virtual async Task NavigateToAsync(string path)
+    protected new virtual async Task NavigateToAsync(string path)
     {
-        try
+        if (NavigationService != null)
         {
             await NavigationService.NavigateToAsync(path);
-        }
-        catch (Exception ex)
-        {
-            LogError(ex, "Ошибка навигации к {Path}", path);
         }
     }
 
     /// <summary>
-    /// Навигация к указанному ViewModel
+    /// Навигация к указанной ViewModel
     /// </summary>
     /// <typeparam name="TViewModel">Тип ViewModel</typeparam>
-    protected virtual async Task NavigateToAsync<TViewModel>() where TViewModel : class, IRoutableViewModel
+    protected new virtual async Task NavigateToAsync<TViewModel>() where TViewModel : class, IRoutableViewModel
     {
-        try
+        if (NavigationService != null)
         {
             await NavigationService.NavigateToAsync<TViewModel>();
-        }
-        catch (Exception ex)
-        {
-            LogError(ex, "Ошибка навигации к {ViewModelType}", typeof(TViewModel).Name);
         }
     }
 

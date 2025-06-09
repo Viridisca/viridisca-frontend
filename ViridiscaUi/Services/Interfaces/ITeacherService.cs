@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using ViridiscaUi.Domain.Models.Education;
 using ViridiscaUi.ViewModels.Education;
+using ViridiscaUi.Domain.Models.Base;
 
 namespace ViridiscaUi.Services.Interfaces;
 
@@ -92,4 +93,38 @@ public interface ITeacherService : IGenericCrudService<Teacher>
     /// </summary>
     Task<bool> UnassignFromCourseAsync(Guid teacherUid, Guid courseUid);
 
+    /// <summary>
+    /// Получает доступных кураторов
+    /// </summary>
+    Task<IEnumerable<Teacher>> GetAvailableCuratorsAsync();
+
+    /// <summary>
+    /// Получает доступных кураторов для назначения группе
+    /// </summary>
+    Task<IEnumerable<Teacher>> GetAvailableCuratorsForGroupAsync(Guid groupUid);
+
+    /// <summary>
+    /// Проверяет существование преподавателя по email
+    /// </summary>
+    Task<bool> ExistsByEmailAsync(string email);
+
+    /// <summary>
+    /// Проверяет существование преподавателя по email (с исключением определенного UID)
+    /// </summary>
+    Task<bool> ExistsByEmailAsync(string email, Guid excludeUid);
+
+    /// <summary>
+    /// Получает группы, которые курирует преподаватель
+    /// </summary>
+    Task<IEnumerable<Group>> GetCuratedGroupsAsync(Guid teacherUid);
+
+    /// <summary>
+    /// Экспортирует данные преподавателей
+    /// </summary>
+    Task<string> ExportTeachersAsync(IEnumerable<Teacher> teachers, string format = "xlsx");
+
+    /// <summary>
+    /// Получает информацию о связанных данных преподавателя для безопасного удаления
+    /// </summary>
+    Task<TeacherRelatedDataInfo> GetTeacherRelatedDataInfoAsync(Guid teacherUid);
 }

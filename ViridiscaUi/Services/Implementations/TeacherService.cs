@@ -10,6 +10,7 @@ using ViridiscaUi.Services.Interfaces;
 using ViridiscaUi.Infrastructure;
 using ViridiscaUi.ViewModels.Education;
 using ViridiscaUi.Domain.Models.Education.Enums;
+using ViridiscaUi.Domain.Models.Base;
 
 namespace ViridiscaUi.Services.Implementations;
 
@@ -198,24 +199,38 @@ public class TeacherService : GenericCrudService<Teacher>, ITeacherService
         return true;
     }
 
-    #endregion
-
-    #region Дополнительные методы
-
     /// <summary>
-    /// Получает преподавателей по кафедре
+    /// Получает доступных кураторов
     /// </summary>
-    public async Task<IEnumerable<Teacher>> GetByDepartmentAsync(string department)
+    public async Task<IEnumerable<Teacher>> GetAvailableCuratorsAsync()
     {
-        return await FindWithIncludesAsync(t => t.Department != null && t.Department.Name == department, t => t.Person);
+        return await _dbContext.Teachers
+            .Where(t => t.IsActive)
+            .OrderBy(t => t.Person.LastName)
+            .ToListAsync();
     }
 
     /// <summary>
-    /// Получает преподавателей по специализации
+    /// Получает группы преподавателя
     /// </summary>
-    public async Task<IEnumerable<Teacher>> GetBySpecializationAsync(string specialization)
+    public async Task<IEnumerable<Group>> GetCuratedGroupsAsync(Guid teacherUid)
     {
-        return await FindWithIncludesAsync(t => t.Specialization == specialization, t => t.Person);
+        var teacher = await _dbContext.Teachers
+            .Where(t => t.Uid == teacherUid)
+            .Include(t => t.CourseInstances)
+                .ThenInclude(ci => ci.Group)
+            .FirstOrDefaultAsync();
+
+        // Возвращаем группы из курсов, которые ведет преподаватель
+        return teacher?.CourseInstances?.Select(ci => ci.Group).Distinct() ?? new List<Group>();
+    }
+
+    /// <summary>
+    /// Получает группы преподавателя (алиас для GetCuratedGroupsAsync для совместимости с интерфейсом)
+    /// </summary>
+    public async Task<IEnumerable<Group>> GetTeacherGroupsAsync(Guid teacherUid)
+    {
+        return await GetCuratedGroupsAsync(teacherUid);
     }
 
     /// <summary>
@@ -225,31 +240,35 @@ public class TeacherService : GenericCrudService<Teacher>, ITeacherService
     {
         try
         {
-            var coursesCount = await _dbContext.CourseInstances
-                .Where(c => c.TeacherUid == teacherUid)
-                .CountAsync();
+            var teacher = await _dbContext.Teachers
+                .Include(t => t.CourseInstances)
+                    .ThenInclude(ci => ci.Subject)
+                .Include(t => t.CourseInstances)
+                    .ThenInclude(ci => ci.Group)
+                .Include(t => t.CourseInstances)
+                    .ThenInclude(ci => ci.AcademicPeriod)
+                .FirstOrDefaultAsync(t => t.PersonUid == teacherUid);
 
-            var studentsCount = await _dbContext.Enrollments
-                .Where(e => e.CourseInstance.TeacherUid == teacherUid)
-                .Select(e => e.StudentUid)
-                .Distinct()
-                .CountAsync();
+            if (teacher == null)
+                return null;
 
-            var averageGrade = await _dbContext.Grades
-                .Where(g => g.TeacherUid == teacherUid)
-                .AverageAsync(g => (double?)g.Value) ?? 0;
-
-            var totalGrades = await _dbContext.Grades
-                .Where(g => g.TeacherUid == teacherUid)
-                .CountAsync();
-
-            return new TeacherStatistics
+            var teacherStatistics = new TeacherStatistics
             {
-                TotalCourses = coursesCount,
-                ActiveCourses = coursesCount, // Simplified for now
-                TotalStudents = studentsCount,
-                AverageGrade = averageGrade
+                TotalCourses = teacher.CourseInstances?.Count ?? 0,
+                ActiveCourses = teacher.CourseInstances?.Count(c => c.Status == CourseStatus.Active) ?? 0,
+                TotalStudents = teacher.CourseInstances?.SelectMany(c => c.Enrollments ?? new List<Enrollment>()).Count() ?? 0,
+                CuratedGroups = teacher.CourseInstances?.Select(c => c.Group).Distinct().Count() ?? 0,
+                AverageGrade = 0, // Будет вычислено позже
+                CompletedCourses = teacher.CourseInstances?.Count(c => c.Status == CourseStatus.Completed) ?? 0,
+                PendingAssignments = 0, // Будет вычислено позже
+                TotalAssignments = teacher.CourseInstances?.SelectMany(c => c.Assignments ?? new List<Assignment>()).Count() ?? 0
             };
+
+            // Логирование через стандартный ILogger
+            _logger.LogInformation("Loaded statistics for teacher {TeacherName}: {TotalCourses} courses", 
+                teacher.Person?.FirstName + " " + teacher.Person?.LastName, teacherStatistics.TotalCourses);
+
+            return teacherStatistics;
         }
         catch (Exception ex)
         {
@@ -283,25 +302,6 @@ public class TeacherService : GenericCrudService<Teacher>, ITeacherService
         {
             _logger.LogError(ex, "Error getting teacher courses: {TeacherUid}", teacherUid);
             return new List<CourseInstance>();
-        }
-    }
-
-    /// <summary>
-    /// Получает группы преподавателя
-    /// </summary>
-    public async Task<IEnumerable<Group>> GetTeacherGroupsAsync(Guid teacherUid)
-    {
-        try
-        {
-            return await _dbContext.Groups
-                .Where(g => g.CuratorUid == teacherUid)
-                .OrderBy(g => g.Name)
-                .ToListAsync();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting teacher groups: {TeacherUid}", teacherUid);
-            throw;
         }
     }
 
@@ -498,6 +498,130 @@ public class TeacherService : GenericCrudService<Teacher>, ITeacherService
                 }
             }
         };
+    }
+
+    /// <summary>
+    /// Получает доступных кураторов для назначения группе
+    /// </summary>
+    public async Task<IEnumerable<Teacher>> GetAvailableCuratorsForGroupAsync(Guid groupUid)
+    {
+        try
+        {
+            // Получаем всех активных преподавателей, которые могут быть кураторами
+            var availableCurators = await _dbContext.Teachers
+                .Include(t => t.Person)
+                .Where(t => t.IsActive)
+                .ToListAsync();
+
+            return availableCurators;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ошибка при получении доступных кураторов для группы {GroupUid}", groupUid);
+            return new List<Teacher>();
+        }
+    }
+
+    /// <summary>
+    /// Проверяет существование преподавателя по email
+    /// </summary>
+    public async Task<bool> ExistsByEmailAsync(string email)
+    {
+        try
+        {
+            return await _dbContext.Teachers
+                .Include(t => t.Person)
+                .AnyAsync(t => t.Person != null && t.Person.Email == email);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ошибка при проверке существования преподавателя по email {Email}", email);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Проверяет существование преподавателя по email (с исключением определенного UID)
+    /// </summary>
+    public async Task<bool> ExistsByEmailAsync(string email, Guid excludeUid)
+    {
+        try
+        {
+            return await _dbContext.Teachers
+                .Include(t => t.Person)
+                .AnyAsync(t => t.Person != null && t.Person.Email == email && t.Uid != excludeUid);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ошибка при проверке существования преподавателя по email {Email} (исключая {ExcludeUid})", email, excludeUid);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Экспортирует данные преподавателей
+    /// </summary>
+    public async Task<string> ExportTeachersAsync(IEnumerable<Teacher> teachers, string format = "xlsx")
+    {
+        try
+        {
+            // TODO: Реализовать экспорт в Excel/CSV
+            // Пока возвращаем заглушку
+            await Task.Delay(100);
+            
+            var fileName = $"teachers_export_{DateTime.Now:yyyyMMdd_HHmmss}.{format}";
+            _logger.LogInformation("Экспорт преподавателей в файл {FileName} (заглушка)", fileName);
+            
+            return fileName;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ошибка при экспорте преподавателей");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Получает информацию о связанных данных преподавателя для безопасного удаления
+    /// </summary>
+    public async Task<TeacherRelatedDataInfo> GetTeacherRelatedDataInfoAsync(Guid teacherUid)
+    {
+        var relatedData = new TeacherRelatedDataInfo();
+
+        try
+        {
+            // Проверка экземпляров курсов
+            var courseInstancesCount = await _dbContext.CourseInstances
+                .Where(ci => ci.TeacherUid == teacherUid)
+                .CountAsync();
+            
+            if (courseInstancesCount > 0)
+            {
+                relatedData.HasCourseInstances = true;
+                relatedData.CourseInstancesCount = courseInstancesCount;
+                relatedData.RelatedDataDescriptions.Add($"• {courseInstancesCount} экземпляров курсов будут удалены");
+            }
+
+            // Проверка групп, которые курирует
+            var curatedGroupsCount = await _dbContext.Groups
+                .Where(g => g.CuratorUid == teacherUid)
+                .CountAsync();
+            
+            if (curatedGroupsCount > 0)
+            {
+                relatedData.HasCuratedGroups = true;
+                relatedData.CuratedGroupsCount = curatedGroupsCount;
+                relatedData.RelatedDataDescriptions.Add($"• {curatedGroupsCount} групп останутся без куратора");
+            }
+
+            relatedData.HasRelatedData = relatedData.HasCourseInstances || relatedData.HasCuratedGroups;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to check related data for teacher {TeacherUid}", teacherUid);
+        }
+
+        return relatedData;
     }
 
     #endregion

@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using Avalonia;
 using Avalonia.Data.Converters;
 using Material.Icons;
 
@@ -26,6 +27,7 @@ public class StatusIconConverter : IValueConverter
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        throw new NotImplementedException();
+        // Обратное преобразование не поддерживается
+        return AvaloniaProperty.UnsetValue;
     }
 } 

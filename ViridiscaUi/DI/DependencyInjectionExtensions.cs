@@ -16,6 +16,7 @@ using ViridiscaUi.ViewModels.Bases.Navigations;
 using ViridiscaUi.Windows;
 using Microsoft.Extensions.Configuration;
 using ViridiscaUi.Configuration;
+using System;
 
 namespace ViridiscaUi.DI;
 
@@ -27,6 +28,9 @@ public static class DependencyInjectionExtensions
         services.AddLogging(configuration);
         services.AddDatabase(configuration);
         services.AddReactiveUI();
+
+        // Add Lazy Resolution support for circular dependencies
+        services.AddLazyResolution();
 
         // Application services
         services.AddEducationServices();
@@ -40,6 +44,25 @@ public static class DependencyInjectionExtensions
         services.AddWindows();
 
         return services;
+    }
+
+    /// <summary>
+    /// Добавляет поддержку Lazy Resolution для разрыва циклических зависимостей
+    /// </summary>
+    private static IServiceCollection AddLazyResolution(this IServiceCollection services)
+    {
+        return services.AddTransient(typeof(Lazy<>), typeof(LazilyResolved<>));
+    }
+
+    /// <summary>
+    /// Реализация Lazy Resolution для DI контейнера
+    /// </summary>
+    private class LazilyResolved<T> : Lazy<T>
+    {
+        public LazilyResolved(IServiceProvider serviceProvider) 
+            : base(serviceProvider.GetRequiredService<T>)
+        {
+        }
     }
 
     private static IServiceCollection AddLogging(this IServiceCollection services, IConfiguration configuration)
@@ -93,6 +116,9 @@ public static class DependencyInjectionExtensions
         services.AddScoped<IImportService, ImportService>();
         services.AddScoped<ISubjectService, SubjectService>();
         services.AddScoped<IDepartmentService, DepartmentService>();
+        services.AddScoped<IEnrollmentService, EnrollmentService>();
+        services.AddScoped<IAcademicPeriodService, AcademicPeriodService>();
+        services.AddScoped<IScheduleSlotService, ScheduleSlotService>();
 
         return services;
     }
@@ -153,6 +179,7 @@ public static class DependencyInjectionExtensions
         services.AddTransient<AssignmentsViewModel>();
         services.AddTransient<GradesViewModel>();
         services.AddTransient<SubjectsViewModel>();
+        services.AddTransient<ScheduleViewModel>();
 
         // Education Editor ViewModels
         services.AddTransient<GroupEditorViewModel>();

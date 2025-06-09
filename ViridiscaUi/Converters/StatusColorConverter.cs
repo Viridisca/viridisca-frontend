@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using Avalonia;
 using Avalonia.Data.Converters;
 using Avalonia.Media;
 
@@ -42,11 +43,13 @@ public class StatusColorConverter : IMultiValueConverter, IValueConverter
 
     public object?[] ConvertBack(object? value, Type[] targetTypes, object? parameter, CultureInfo culture)
     {
-        throw new NotImplementedException();
+        // Обратное преобразование не поддерживается
+        return new object[] { AvaloniaProperty.UnsetValue };
     }
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        throw new NotImplementedException();
+        // Обратное преобразование не поддерживается
+        return AvaloniaProperty.UnsetValue;
     }
 } 

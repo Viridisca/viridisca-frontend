@@ -3,7 +3,7 @@ using System;
 namespace ViridiscaUi.Domain.Models.Education;
 
 /// <summary>
-/// Детальная информация об уроке
+/// Детальная информация о занятии для отображения в UI
 /// </summary>
 public class LessonDetail
 {
@@ -15,12 +15,12 @@ public class LessonDetail
     /// <summary>
     /// Тема урока
     /// </summary>
-    public string Topic { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
 
     /// <summary>
     /// Описание урока
     /// </summary>
-    public string? Description { get; set; }
+    public string Description { get; set; } = string.Empty;
     
     /// <summary>
     /// Время начала урока
@@ -45,7 +45,7 @@ public class LessonDetail
     /// <summary>
     /// Отчество преподавателя
     /// </summary>
-    public string? TeacherMiddleName { get; set; }
+    public string TeacherMiddleName { get; set; } = string.Empty;
     
     /// <summary>
     /// Название предмета
@@ -56,6 +56,11 @@ public class LessonDetail
     /// Название группы
     /// </summary>
     public string GroupName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Название аудитории
+    /// </summary>
+    public string Room { get; set; } = string.Empty;
     
     /// <summary>
     /// Признак отмены урока
@@ -68,14 +73,29 @@ public class LessonDetail
     public bool IsCompleted { get; set; }
 
     /// <summary>
-    /// Полное имя преподавателя (Фамилия Имя Отчество)
+    /// Полное имя преподавателя
     /// </summary>
-    public string FullName => $"{TeacherLastName} {TeacherFirstName} {TeacherMiddleName}".Trim();
+    public string TeacherFullName => $"{TeacherLastName} {TeacherFirstName} {TeacherMiddleName}".Trim();
 
     /// <summary>
-    /// Продолжительность урока в минутах
+    /// Продолжительность занятия
     /// </summary>
-    public int DurationMinutes => (int)(EndTime - StartTime).TotalMinutes;
+    public TimeSpan Duration => EndTime - StartTime;
+
+    /// <summary>
+    /// Статус занятия
+    /// </summary>
+    public string Status
+    {
+        get
+        {
+            if (IsCancelled) return "Отменено";
+            if (IsCompleted) return "Завершено";
+            if (DateTime.Now > EndTime) return "Пропущено";
+            if (DateTime.Now >= StartTime && DateTime.Now <= EndTime) return "Идет";
+            return "Запланировано";
+        }
+    }
 
     /// <summary>
     /// Создает новый экземпляр детальной информации об уроке
@@ -89,52 +109,54 @@ public class LessonDetail
     /// </summary>
     public LessonDetail(
         Guid lessonUid,
-        string topic,
+        string title,
+        string description,
         DateTime startTime,
         DateTime endTime,
         string teacherLastName,
         string teacherFirstName,
-        string? teacherMiddleName,
+        string teacherMiddleName,
         string subjectName,
         string groupName,
-        string? description,
-        bool isCancelled = false,
-        bool isCompleted = false)
+        string room,
+        bool isCancelled,
+        bool isCompleted)
     {
         LessonUid = lessonUid;
-        Topic = topic;
+        Title = title ?? string.Empty;
+        Description = description ?? string.Empty;
         StartTime = startTime;
         EndTime = endTime;
-        TeacherLastName = teacherLastName;
-        TeacherFirstName = teacherFirstName;
-        TeacherMiddleName = teacherMiddleName;
-        SubjectName = subjectName;
-        GroupName = groupName;
-        Description = description;
+        TeacherLastName = teacherLastName ?? string.Empty;
+        TeacherFirstName = teacherFirstName ?? string.Empty;
+        TeacherMiddleName = teacherMiddleName ?? string.Empty;
+        SubjectName = subjectName ?? string.Empty;
+        GroupName = groupName ?? string.Empty;
+        Room = room ?? string.Empty;
         IsCancelled = isCancelled;
         IsCompleted = isCompleted;
     }
 
     /// <summary>
-    /// Создает детальную информацию об уроке на основе объекта урока
+    /// Создает пустой объект LessonDetail для случаев, когда данные недоступны
     /// </summary>
-    public static LessonDetail FromLesson(Lesson lesson)
+    public static LessonDetail CreateEmpty()
     {
-        ArgumentNullException.ThrowIfNull(lesson);
-
-        // Для новой модели Lesson используем доступные свойства
-        return new LessonDetail(
-            lesson.Uid,
-            lesson.Title, // Используем Title вместо Topic
-            DateTime.Now, // Временная заглушка для StartTime
-            DateTime.Now.AddHours(1), // Временная заглушка для EndTime
-            "Unknown", // Временная заглушка для LastName
-            "Teacher", // Временная заглушка для FirstName
-            "", // Временная заглушка для MiddleName
-            "Unknown Subject", // Временная заглушка для Subject
-            "Unknown Group", // Временная заглушка для Group
-            lesson.Description,
-            false, // Временная заглушка для IsCancelled
-            false); // Временная заглушка для IsCompleted
+        return new LessonDetail
+        {
+            LessonUid = Guid.Empty,
+            Title = "Занятие не найдено",
+            Description = "Информация о занятии недоступна",
+            StartTime = DateTime.MinValue,
+            EndTime = DateTime.MinValue,
+            TeacherLastName = "Неизвестно",
+            TeacherFirstName = string.Empty,
+            TeacherMiddleName = string.Empty,
+            SubjectName = "Неизвестный предмет",
+            GroupName = "Неизвестная группа",
+            Room = string.Empty,
+            IsCancelled = false,
+            IsCompleted = false
+        };
     }
 }

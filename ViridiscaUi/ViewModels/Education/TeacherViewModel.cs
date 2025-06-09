@@ -44,6 +44,11 @@ public class TeacherViewModel : ReactiveObject
     [Reactive] public DateTime CreatedAt { get; set; }
     [Reactive] public DateTime? LastModifiedAt { get; set; }
 
+    /// <summary>
+    /// Связанная модель Teacher
+    /// </summary>
+    [Reactive] public Teacher Teacher { get; set; } = new();
+
     #endregion
 
     #region Department Properties
@@ -145,6 +150,7 @@ public class TeacherViewModel : ReactiveObject
     {
         if (teacher == null) return;
 
+        Teacher = teacher;
         Uid = teacher.Uid;
         EmployeeCode = teacher.EmployeeCode;
         Specialization = teacher.Specialization ?? string.Empty;
@@ -170,6 +176,14 @@ public class TeacherViewModel : ReactiveObject
         
         CreatedAt = teacher.CreatedAt;
         LastModifiedAt = teacher.LastModifiedAt;
+    }
+
+    /// <summary>
+    /// Обновляет ViewModel из модели Teacher (алиас для совместимости)
+    /// </summary>
+    public void UpdateFromModel(Teacher teacher)
+    {
+        UpdateFromTeacher(teacher);
     }
 
     /// <summary>

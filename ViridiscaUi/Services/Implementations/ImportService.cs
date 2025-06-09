@@ -4,8 +4,8 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using ViridiscaUi.Domain.Models.Education;
+using ViridiscaUi.Domain.Models.Base;
 using ViridiscaUi.Services.Interfaces;
-using ViridiscaUi.Models;
 
 namespace ViridiscaUi.Services.Implementations;
 

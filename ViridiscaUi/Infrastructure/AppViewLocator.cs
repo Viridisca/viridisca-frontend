@@ -45,6 +45,11 @@ public class ReactiveViewLocator : IViewLocator
             GroupsViewModel => new GroupsView(),
             StudentsViewModel => new StudentsView(),
             SubjectsViewModel => new SubjectsView(),
+            
+            // NEW: Education ViewModels - Advanced Views
+            ExamsViewModel => new ExamsView(),
+            ScheduleViewModel => new ScheduleView(),
+            CurriculumViewModel => new CurriculumView(),
 
             // Education ViewModels - Editor Views (for navigation)
             TeacherEditorViewModel => new TeacherEditorView(),
@@ -56,8 +61,9 @@ public class ReactiveViewLocator : IViewLocator
             AssignmentEditorViewModel => new AssignmentEditorView(),
 
             // System ViewModels
+            LibraryViewModel => new LibraryView(),
+            DepartmentsViewModel => new DepartmentsView(),
             // NotificationCenterViewModel => new NotificationCenterView(), // TODO: Create NotificationCenterView
-            // DepartmentsViewModel => new DepartmentsView(), // TODO: Create DepartmentsView
             
             // Notification ViewModels
             // NotificationCenterViewModel => new NotificationCenterView(), // TODO: Create NotificationCenterView

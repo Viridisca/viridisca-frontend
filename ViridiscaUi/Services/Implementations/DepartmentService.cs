@@ -385,4 +385,175 @@ public class DepartmentService : IDepartmentService
             throw;
         }
     }
+
+    /// <summary>
+    /// Получает все департаменты
+    /// </summary>
+    public async Task<IEnumerable<Department>> GetAllAsync()
+    {
+        return await _dbContext.Departments
+            .OrderBy(d => d.Name)
+            .ToListAsync();
+    }
+
+    /// <summary>
+    /// Получает департамент по идентификатору
+    /// </summary>
+    public async Task<Department?> GetByUidAsync(Guid uid)
+    {
+        return await _dbContext.Departments.FindAsync(uid);
+    }
+
+    /// <summary>
+    /// Удаляет департамент
+    /// </summary>
+    public async Task<bool> DeleteAsync(Guid uid)
+    {
+        try
+        {
+            var department = await _dbContext.Departments.FindAsync(uid);
+            if (department == null) return false;
+
+            _dbContext.Departments.Remove(department);
+            await _dbContext.SaveChangesAsync();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ошибка при удалении департамента {DepartmentUid}", uid);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Обновляет департамент
+    /// </summary>
+    public async Task<bool> UpdateAsync(Department department)
+    {
+        try
+        {
+            department.LastModifiedAt = DateTime.UtcNow;
+            _dbContext.Departments.Update(department);
+            await _dbContext.SaveChangesAsync();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ошибка при обновлении департамента {DepartmentUid}", department.Uid);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Создает новый департамент
+    /// </summary>
+    public async Task<Department> CreateAsync(Department department)
+    {
+        try
+        {
+            department.CreatedAt = DateTime.UtcNow;
+            department.LastModifiedAt = DateTime.UtcNow;
+
+            _dbContext.Departments.Add(department);
+            await _dbContext.SaveChangesAsync();
+
+            return department;
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Ошибка при создании департамента: {ex.Message}", ex);
+        }
+    }
+
+    /// <summary>
+    /// Получает департамент по коду
+    /// </summary>
+    public async Task<Department?> GetByCodeAsync(string code)
+    {
+        try
+        {
+            return await _dbContext.Departments
+                .FirstOrDefaultAsync(d => d.Code == code);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Ошибка при получении департамента по коду: {ex.Message}", ex);
+        }
+    }
+
+    /// <summary>
+    /// Получает все департаменты с пагинацией
+    /// </summary>
+    public async Task<(IEnumerable<Department> Departments, int TotalCount)> GetPagedAsync(
+        int page = 1, 
+        int pageSize = 20, 
+        string? searchTerm = null)
+    {
+        try
+        {
+            var query = _dbContext.Departments.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                query = query.Where(d => 
+                    d.Name.Contains(searchTerm) || 
+                    d.Code.Contains(searchTerm) ||
+                    (d.Description != null && d.Description.Contains(searchTerm)));
+            }
+
+            var totalCount = await query.CountAsync();
+            var departments = await query
+                .OrderBy(d => d.Name)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (departments, totalCount);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Ошибка при получении департаментов: {ex.Message}", ex);
+        }
+    }
+
+    /// <summary>
+    /// Проверяет существование департамента
+    /// </summary>
+    public async Task<bool> ExistsAsync(Guid uid)
+    {
+        try
+        {
+            return await _dbContext.Departments
+                .AnyAsync(d => d.Uid == uid);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Ошибка при проверке существования департамента: {ex.Message}", ex);
+        }
+    }
+
+    /// <summary>
+    /// Получает статистику департаментов
+    /// </summary>
+    public async Task<object> GetStatisticsAsync()
+    {
+        try
+        {
+            var totalCount = await _dbContext.Departments.CountAsync();
+            var activeCount = await _dbContext.Departments.CountAsync();
+            var teachersCount = await _dbContext.Teachers.CountAsync();
+
+            return new
+            {
+                TotalDepartments = totalCount,
+                ActiveDepartments = activeCount,
+                TotalTeachers = teachersCount,
+                AverageTeachersPerDepartment = totalCount > 0 ? (double)teachersCount / totalCount : 0
+            };
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Ошибка при получении статистики департаментов: {ex.Message}", ex);
+        }
+    }
 }

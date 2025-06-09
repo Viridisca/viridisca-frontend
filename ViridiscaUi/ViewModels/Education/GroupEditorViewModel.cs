@@ -52,7 +52,7 @@ namespace ViridiscaUi.ViewModels.Education
 
         public string Title => Group == null ? "Добавить группу" : "Редактировать группу";
 
-        private Group? Group { get; }
+        public Group? Group { get; }
 
         public ReactiveCommand<Unit, Group?> SaveCommand { get; private set; }
         public ReactiveCommand<Unit, Unit> CancelCommand { get; private set; }

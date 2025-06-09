@@ -21,6 +21,11 @@ public class Curriculum : AuditableEntity
     /// </summary>
     public int DurationMonths { get; set; }
     
+    /// <summary>
+    /// Академический год
+    /// </summary>
+    public int AcademicYear { get; set; }
+    
     public bool IsActive { get; set; } = true;
     public DateTime ValidFrom { get; set; }
     public DateTime? ValidTo { get; set; }

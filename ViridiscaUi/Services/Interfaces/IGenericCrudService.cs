@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
+using ViridiscaUi.Domain.Models.Base;
+using DomainValidationResult = ViridiscaUi.Domain.Models.Base.ValidationResult;
 
 namespace ViridiscaUi.Services.Interfaces;
 
@@ -195,59 +197,14 @@ public interface IGenericCrudService<TEntity> where TEntity : class
     /// </summary>
     /// <param name="entity">Сущность для валидации</param>
     /// <returns>Результат валидации</returns>
-    Task<ValidationResult> ValidateAsync(TEntity entity);
+    Task<DomainValidationResult> ValidateAsync(TEntity entity);
 
     /// <summary>
     /// Валидирует сущность для обновления
     /// </summary>
     /// <param name="entity">Сущность для валидации</param>
     /// <returns>Результат валидации</returns>
-    Task<ValidationResult> ValidateForUpdateAsync(TEntity entity);
+    Task<DomainValidationResult> ValidateForUpdateAsync(TEntity entity);
 
     #endregion
-}
-
-/// <summary>
-/// Результат валидации сущности
-/// </summary>
-public class ValidationResult
-{
-    /// <summary>
-    /// Успешна ли валидация
-    /// </summary>
-    public bool IsValid { get; set; }
-
-    /// <summary>
-    /// Список ошибок валидации
-    /// </summary>
-    public List<string> Errors { get; set; } = new();
-
-    /// <summary>
-    /// Список предупреждений
-    /// </summary>
-    public List<string> Warnings { get; set; } = new();
-
-    /// <summary>
-    /// Создает успешный результат валидации
-    /// </summary>
-    public static ValidationResult Success() => new() { IsValid = true };
-
-    /// <summary>
-    /// Создает неуспешный результат валидации с ошибками
-    /// </summary>
-    public static ValidationResult Failure(params string[] errors) => new() 
-    { 
-        IsValid = false, 
-        Errors = errors.ToList() 
-    };
-
-    /// <summary>
-    /// Создает неуспешный результат валидации с ошибками и предупреждениями
-    /// </summary>
-    public static ValidationResult Failure(IEnumerable<string> errors, IEnumerable<string>? warnings = null) => new() 
-    { 
-        IsValid = false, 
-        Errors = errors.ToList(),
-        Warnings = warnings?.ToList() ?? new List<string>()
-    };
 } 

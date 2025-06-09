@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using ViridiscaUi.Domain.Models.Education;
+using ViridiscaUi.Domain.Models.Education.Enums;
 using ViridiscaUi.ViewModels.Education;
 
 namespace ViridiscaUi.Services.Interfaces;
@@ -124,4 +125,28 @@ public interface IGradeService : IGenericCrudService<Grade>
     /// Получает оценки по заданию
     /// </summary>
     Task<IEnumerable<Grade>> GetAssignmentGradesAsync(Guid assignmentUid);
+    
+    /// <summary>
+    /// Получает оценки с пагинацией и фильтрацией
+    /// </summary>
+    Task<(IEnumerable<Grade> grades, int totalCount)> GetPagedAsync(
+        int page, 
+        int pageSize, 
+        string? searchTerm = null,
+        Guid? studentUid = null,
+        Guid? courseInstanceUid = null,
+        Guid? assignmentUid = null,
+        GradeType? gradeType = null,
+        DateTime? fromDate = null,
+        DateTime? toDate = null);
+    
+    /// <summary>
+    /// Получает статистику оценок
+    /// </summary>
+    Task<object> GetStatisticsAsync(Guid? studentUid = null, Guid? courseInstanceUid = null);
+    
+    /// <summary>
+    /// Получает оценку по студенту и заданию
+    /// </summary>
+    Task<Grade?> GetByStudentAndAssignmentAsync(Guid studentUid, Guid assignmentUid);
 }

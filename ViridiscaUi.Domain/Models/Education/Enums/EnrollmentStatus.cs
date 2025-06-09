@@ -10,21 +10,24 @@ public enum EnrollmentStatus
     [Description("Активная")]
     Active = 1,
 
+    [Description("Записан")]
+    Enrolled = 2,
+
     [Description("Завершена")]
-    Completed = 2,
+    Completed = 3,
 
     [Description("Отменена")]
-    Cancelled = 3,
+    Cancelled = 4,
 
     [Description("Приостановлена")]
-    Suspended = 4,
+    Suspended = 5,
 
     [Description("Провалена")]
-    Failed = 5,
+    Failed = 6,
 
     [Description("Отчислена")]
-    Dropped = 6,
+    Dropped = 7,
 
     [Description("В ожидании")]
-    Pending = 7
+    Pending = 8
 } 

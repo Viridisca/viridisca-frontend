@@ -10,10 +10,17 @@ using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using ViridiscaUi.Domain.Models.Education;
 using ViridiscaUi.Domain.Models.Education.Enums;
+using ViridiscaUi.Domain.Models.Auth;
+using ViridiscaUi.Domain.Models.Base;
 using ViridiscaUi.Services.Interfaces;
 using ViridiscaUi.Infrastructure.Navigation;
-using CourseStatus = ViridiscaUi.Domain.Models.Education.Enums.CourseStatus;
 using ViridiscaUi.ViewModels.Bases.Navigations;
+using ViridiscaUi.ViewModels.System;
+using DynamicData;
+using DynamicData.Binding;
+using System.ComponentModel.DataAnnotations;
+using Microsoft.Extensions.Logging;
+using CourseStatus = ViridiscaUi.Domain.Models.Education.Enums.CourseStatus;
 
 namespace ViridiscaUi.ViewModels.Education;
 
@@ -130,30 +137,30 @@ public class CoursesViewModel : RoutableViewModelBase
     private void InitializeCommands()
     {
         // Используем стандартизированные методы создания команд из ViewModelBase
-        LoadCourseInstancesCommand = CreateCommand(LoadCourseInstancesAsync, null, "Ошибка загрузки курсов");
-        RefreshCommand = CreateCommand(RefreshAsync, null, "Ошибка обновления данных");
-        CreateCourseInstanceCommand = CreateCommand(CreateCourseInstanceAsync, null, "Ошибка создания курса");
-        EditCourseInstanceCommand = CreateCommand<CourseInstanceViewModel>(EditCourseInstanceAsync, null, "Ошибка редактирования курса");
-        DeleteCourseInstanceCommand = CreateCommand<CourseInstanceViewModel>(DeleteCourseInstanceAsync, null, "Ошибка удаления курса");
-        ViewCourseInstanceDetailsCommand = CreateCommand<CourseInstanceViewModel>(ViewCourseInstanceDetailsAsync, null, "Ошибка просмотра деталей курса");
-        ViewStatisticsCommand = CreateCommand<CourseInstanceViewModel>(ViewStatisticsAsync, null, "Ошибка просмотра статистики");
-        ManageEnrollmentsCommand = CreateCommand<CourseInstanceViewModel>(ManageEnrollmentsAsync, null, "Ошибка управления записями");
-        ManageContentCommand = CreateCommand<CourseInstanceViewModel>(ManageContentAsync, null, "Ошибка управления контентом");
-        SearchCommand = CreateCommand<string>(SearchCoursesAsync, null, "Ошибка поиска курсов");
-        ApplyFiltersCommand = CreateCommand(ApplyFiltersAsync, null, "Ошибка применения фильтров");
-        ClearFiltersCommand = CreateCommand(ClearFiltersAsync, null, "Ошибка очистки фильтров");
-        GoToPageCommand = CreateCommand<int>(GoToPageAsync, null, "Ошибка навигации по страницам");
+        LoadCourseInstancesCommand = CreateCommand(async () => await LoadCourseInstancesAsync(), null, "Ошибка загрузки курсов");
+        RefreshCommand = CreateCommand(async () => await RefreshAsync(), null, "Ошибка обновления данных");
+        CreateCourseInstanceCommand = CreateCommand(async () => await CreateCourseInstanceAsync(), null, "Ошибка создания курса");
+        EditCourseInstanceCommand = CreateCommand<CourseInstanceViewModel>(async (course) => await EditCourseInstanceAsync(course), null, "Ошибка редактирования курса");
+        DeleteCourseInstanceCommand = CreateCommand<CourseInstanceViewModel>(async (course) => await DeleteCourseInstanceAsync(course), null, "Ошибка удаления курса");
+        ViewCourseInstanceDetailsCommand = CreateCommand<CourseInstanceViewModel>(async (course) => await ViewCourseInstanceDetailsAsync(course), null, "Ошибка просмотра деталей курса");
+        ViewStatisticsCommand = CreateCommand<CourseInstanceViewModel>(async (course) => await ViewStatisticsAsync(course), null, "Ошибка просмотра статистики");
+        ManageEnrollmentsCommand = CreateCommand<CourseInstanceViewModel>(async (course) => await ManageEnrollmentsAsync(course), null, "Ошибка управления записями");
+        ManageContentCommand = CreateCommand<CourseInstanceViewModel>(async (course) => await ManageContentAsync(course), null, "Ошибка управления контентом");
+        SearchCommand = CreateCommand<string>(async (searchTerm) => await SearchCoursesAsync(searchTerm), null, "Ошибка поиска курсов");
+        ApplyFiltersCommand = CreateCommand(async () => await ApplyFiltersAsync(), null, "Ошибка применения фильтров");
+        ClearFiltersCommand = CreateCommand(async () => await ClearFiltersAsync(), null, "Ошибка очистки фильтров");
+        GoToPageCommand = CreateCommand<int>(async (page) => await GoToPageAsync(page), null, "Ошибка навигации по страницам");
         
         var canGoNext = this.WhenAnyValue(x => x.CurrentPage, x => x.TotalPages, (current, total) => current < total);
         var canGoPrevious = this.WhenAnyValue(x => x.CurrentPage, current => current > 1);
         
-        NextPageCommand = CreateCommand(NextPageAsync, canGoNext, "Ошибка перехода на следующую страницу");
-        PreviousPageCommand = CreateCommand(PreviousPageAsync, canGoPrevious, "Ошибка перехода на предыдущую страницу");
-        FirstPageCommand = CreateCommand(FirstPageAsync, null, "Ошибка перехода на первую страницу");
-        LastPageCommand = CreateCommand(LastPageAsync, null, "Ошибка перехода на последнюю страницу");
-        CloneCourseInstanceCommand = CreateCommand<CourseInstanceViewModel>(CloneCourseInstanceAsync, null, "Ошибка клонирования курса");
-        ImportCoursesCommand = CreateCommand(ImportCoursesAsync, null, "Ошибка импорта курсов");
-        ExportReportCommand = CreateCommand(ExportReportAsync, null, "Ошибка экспорта отчета");
+        NextPageCommand = CreateCommand(async () => await NextPageAsync(), canGoNext, "Ошибка перехода на следующую страницу");
+        PreviousPageCommand = CreateCommand(async () => await PreviousPageAsync(), canGoPrevious, "Ошибка перехода на предыдущую страницу");
+        FirstPageCommand = CreateCommand(async () => await FirstPageAsync(), null, "Ошибка перехода на первую страницу");
+        LastPageCommand = CreateCommand(async () => await LastPageAsync(), null, "Ошибка перехода на последнюю страницу");
+        CloneCourseInstanceCommand = CreateCommand<CourseInstanceViewModel>(async (course) => await CloneCourseInstanceAsync(course), null, "Ошибка клонирования курса");
+        ImportCoursesCommand = CreateCommand(async () => await ImportCoursesAsync(), null, "Ошибка импорта курсов");
+        ExportReportCommand = CreateCommand(async () => await ExportReportAsync(), null, "Ошибка экспорта отчета");
     }
 
     /// <summary>
@@ -433,7 +440,7 @@ public class CoursesViewModel : RoutableViewModelBase
             "Удаление курса",
             $"Вы уверены, что хотите удалить курс '{courseInstanceViewModel.Name}'?\nВсе связанные данные будут утеряны.");
 
-        if (!confirmResult)
+        if (confirmResult != DialogResult.Yes)
         {
             LogDebug("Course deletion cancelled by user");
             return;
@@ -468,9 +475,9 @@ public class CoursesViewModel : RoutableViewModelBase
         try
         {
             var statistics = await _courseInstanceService.GetCourseStatisticsAsync(courseInstanceViewModel.Uid);
-            if (statistics is CourseInstanceStatistics courseStats)
+            if (statistics != null)
             {
-                await _dialogService.ShowCourseStatisticsDialogAsync(courseStats);
+                await _dialogService.ShowCourseStatisticsDialogAsync(courseInstanceViewModel.ToCourseInstance());
             }
             else
             {

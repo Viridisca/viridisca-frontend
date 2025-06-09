@@ -27,6 +27,7 @@ public class GradeViewModel : ReactiveObject, IDisposable
     [Reactive] public DateTime IssuedAt { get; set; }
     [Reactive] public bool IsPublished { get; set; }
     [Reactive] public DateTime? PublishedAt { get; set; }
+    [Reactive] public DateTime? LastModifiedAt { get; set; }
 
     #endregion
 

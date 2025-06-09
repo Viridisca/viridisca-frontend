@@ -16,12 +16,21 @@ public class AssignmentViewModel : ReactiveObject
 {
     #region Core Properties
 
+    /// <summary>
+    /// Базовая модель задания
+    /// </summary>
+    public Assignment Assignment { get; private set; }
+
     [Reactive] public Guid Uid { get; set; }
     [Reactive] public string Title { get; set; } = string.Empty;
     [Reactive] public string Description { get; set; } = string.Empty;
-    [Reactive] public string Type { get; set; } = string.Empty;
+    [Reactive] public AssignmentType Type { get; set; } = AssignmentType.Homework;
+    [Reactive] public AssignmentDifficulty Difficulty { get; set; } = AssignmentDifficulty.Medium;
     [Reactive] public AssignmentStatus Status { get; set; }
     [Reactive] public DateTime CreatedAt { get; set; }
+    [Reactive] public DateTime? LastModifiedAt { get; set; }
+    [Reactive] public Guid CreatedBy { get; set; }
+    [Reactive] public Guid? UpdatedBy { get; set; }
     [Reactive] public DateTime DueDate { get; set; }
     [Reactive] public DateTime? PublishedAt { get; set; }
     [Reactive] public int MaxScore { get; set; }
@@ -196,19 +205,26 @@ public class AssignmentViewModel : ReactiveObject
 
     public AssignmentViewModel()
     {
-        // Инициализация значений по умолчанию
-        Uid = Guid.NewGuid();
-        CreatedAt = DateTime.Now;
-        DueDate = DateTime.Now.AddDays(7);
-        Status = AssignmentStatus.Draft;
-        MaxScore = 100;
-        AllowLateSubmissions = false;
-
+        Assignment = new Assignment
+        {
+            Uid = Guid.NewGuid(),
+            Title = string.Empty,
+            Description = string.Empty,
+            Type = AssignmentType.Homework,
+            Difficulty = AssignmentDifficulty.Medium,
+            Status = AssignmentStatus.Draft,
+            CreatedAt = DateTime.UtcNow,
+            DueDate = DateTime.Now.AddDays(7),
+            Instructions = string.Empty,
+            AttachmentsPath = string.Empty
+        };
+        
         InitializeComputedProperties();
     }
 
     public AssignmentViewModel(Assignment assignment) : this()
     {
+        Assignment = assignment ?? throw new ArgumentNullException(nameof(assignment));
         UpdateFromAssignment(assignment);
     }
 
@@ -440,7 +456,8 @@ public class AssignmentViewModel : ReactiveObject
             Uid = Uid,
             Title = Title,
             Description = Description,
-            Type = Enum.TryParse<AssignmentType>(Type, out var assignmentType) ? assignmentType : AssignmentType.Homework,
+            Type = Type,
+            Difficulty = Difficulty,
             Status = Status,
             DueDate = DueDate,
             MaxScore = MaxScore,
@@ -463,7 +480,8 @@ public class AssignmentViewModel : ReactiveObject
         Uid = assignment.Uid;
         Title = assignment.Title ?? string.Empty;
         Description = assignment.Description ?? string.Empty;
-        Type = assignment.Type.ToString();
+        Type = assignment.Type;
+        Difficulty = assignment.Difficulty;
         Status = assignment.Status;
         DueDate = assignment.DueDate ?? DateTime.Now.AddDays(7);
         MaxScore = (int)assignment.MaxScore;
@@ -486,6 +504,7 @@ public class AssignmentViewModel : ReactiveObject
             Title = Title,
             Description = Description,
             Type = Type,
+            Difficulty = Difficulty,
             Status = Status,
             CreatedAt = CreatedAt,
             DueDate = DueDate,

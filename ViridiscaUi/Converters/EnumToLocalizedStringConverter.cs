@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using Avalonia;
 using Avalonia.Data.Converters;
 using ViridiscaUi.Domain.Models.Auth;
 using ViridiscaUi.Domain.Models.Education;
@@ -103,9 +104,9 @@ public class EnumToLocalizedStringConverter : IValueConverter
         };
     }
 
-    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         // Обратное преобразование не поддерживается
-        throw new NotImplementedException();
+        return AvaloniaProperty.UnsetValue;
     }
 } 

@@ -37,9 +37,14 @@ public class Student : AuditableEntity
     public StudentStatus Status { get; set; } = StudentStatus.Active;
 
     /// <summary>
-    /// Средний балл
+    /// Средний балл студента
     /// </summary>
-    public decimal GPA { get; set; }
+    public double GPA { get; set; } = 0.0;
+
+    /// <summary>
+    /// Академический год
+    /// </summary>
+    public int AcademicYear { get; set; } = DateTime.Now.Year;
 
     /// <summary>
     /// ID группы
@@ -55,16 +60,6 @@ public class Student : AuditableEntity
     /// Связанный человек
     /// </summary>
     public Person? Person { get; set; }
-
-    /// <summary>
-    /// Полное имя (алиас для совместимости)
-    /// </summary>
-    public string? FullName => Person != null ? $"{Person.LastName} {Person.FirstName} {Person.MiddleName}".Trim() : null;
-
-    /// <summary>
-    /// Адрес (алиас для совместимости)
-    /// </summary>
-    public string? Address => Person?.Address;
 
     /// <summary>
     /// Группа
@@ -110,4 +105,19 @@ public class Student : AuditableEntity
     /// Является ли студент активным (не отчислен, не в академ. отпуске)
     /// </summary>
     public bool IsActive => Status == StudentStatus.Active;
+
+    /// <summary>
+    /// Флаг удаления (мягкое удаление)
+    /// </summary>
+    public bool IsDeleted { get; set; } = false;
+
+    /// <summary>
+    /// Дата удаления
+    /// </summary>
+    public DateTime? DeletedAt { get; set; }
+
+    /// <summary>
+    /// Полное имя студента (делегирует к Person.FullName)
+    /// </summary>
+    public string FullName => Person?.FullName ?? "Неизвестный студент";
 }

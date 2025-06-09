@@ -54,6 +54,16 @@ public class Enrollment : AuditableEntity
     public string? Notes { get; set; }
 
     /// <summary>
+    /// Флаг удаления (мягкое удаление)
+    /// </summary>
+    public bool IsDeleted { get; set; } = false;
+
+    /// <summary>
+    /// Дата удаления
+    /// </summary>
+    public DateTime? DeletedAt { get; set; }
+
+    /// <summary>
     /// Студент
     /// </summary>
     public Student? Student { get; set; }

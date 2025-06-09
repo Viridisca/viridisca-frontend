@@ -719,6 +719,74 @@ public class AssignmentService(ApplicationDbContext dbContext, INotificationServ
         }
     }
 
+    /// <summary>
+    /// Получает задание по названию и курсу
+    /// </summary>
+    public async Task<Assignment?> GetByTitleAndCourseAsync(string title, Guid courseInstanceUid)
+    {
+        return await _dbContext.Assignments
+            .FirstOrDefaultAsync(a => a.Title == title && a.CourseInstanceUid == courseInstanceUid);
+    }
+
+    /// <summary>
+    /// Получает количество сданных работ по заданию
+    /// </summary>
+    public async Task<int> GetSubmissionsCountAsync(Guid assignmentUid)
+    {
+        return await _dbContext.Submissions
+            .CountAsync(s => s.AssignmentUid == assignmentUid);
+    }
+
+    /// <summary>
+    /// Получает количество оценок по заданию
+    /// </summary>
+    public async Task<int> GetGradesCountAsync(Guid assignmentUid)
+    {
+        return await _dbContext.Grades
+            .CountAsync(g => g.AssignmentUid == assignmentUid);
+    }
+
+    /// <summary>
+    /// Получает статистику задания
+    /// </summary>
+    public async Task<AssignmentStatistics> GetStatisticsAsync(Guid assignmentUid)
+    {
+        var assignment = await GetByUidAsync(assignmentUid);
+        if (assignment == null)
+            throw new ArgumentException("Assignment not found", nameof(assignmentUid));
+
+        var submissions = await _dbContext.Submissions
+            .Where(s => s.AssignmentUid == assignmentUid)
+            .ToListAsync();
+
+        var totalStudents = await _dbContext.Enrollments
+            .CountAsync(e => e.CourseInstanceUid == assignment.CourseInstanceUid);
+
+        var submittedCount = submissions.Count;
+        var gradedCount = submissions.Count(s => s.Score.HasValue);
+        var pendingCount = submittedCount - gradedCount;
+        var overdueCount = submissions.Count(s => assignment.DueDate.HasValue && s.SubmissionDate > assignment.DueDate.Value);
+
+        var averageScore = submissions.Where(s => s.Score.HasValue).Average(s => s.Score) ?? 0;
+        var submissionRate = totalStudents > 0 ? (double)submittedCount / totalStudents : 0;
+
+        return new AssignmentStatistics
+        {
+            AssignmentUid = assignmentUid,
+            TotalStudents = totalStudents,
+            SubmittedCount = submittedCount,
+            GradedCount = gradedCount,
+            PendingCount = pendingCount,
+            OverdueCount = overdueCount,
+            AverageScore = averageScore,
+            SubmissionRate = submissionRate,
+            AverageSubmissionTime = TimeSpan.Zero, // TODO: Реализовать расчет
+            FirstSubmissionDate = submissions.OrderBy(s => s.SubmissionDate).FirstOrDefault()?.SubmissionDate,
+            LastSubmissionDate = submissions.OrderByDescending(s => s.SubmissionDate).FirstOrDefault()?.SubmissionDate,
+            ScoreDistribution = new Dictionary<string, int>() // TODO: Реализовать распределение
+        };
+    }
+
     #endregion
 
     #region Дополнительные методы

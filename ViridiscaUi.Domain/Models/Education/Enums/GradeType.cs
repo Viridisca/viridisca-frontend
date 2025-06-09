@@ -14,6 +14,12 @@ public enum GradeType
     Homework,
 
     /// <summary>
+    /// Задание
+    /// </summary>
+    [Description("Задание")]
+    Assignment,
+
+    /// <summary>
     /// Тест/Опрос
     /// </summary>
     [Description("Тест/Опрос")]
